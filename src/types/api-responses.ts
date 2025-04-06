@@ -61,18 +61,25 @@ export interface WAMessage {
 	timestamp: number;
 	fromMe: boolean;
 	author?: string;
-	chatId: string;
-	type: string;
+	chatId?: string;
+	type?: string;
 	body: string;
+	from?: string;
+	to?: string;
+	source?: string;
 	hasMedia?: boolean;
 	media?: {
 		mimetype: string;
 		data?: string;
 		filename?: string;
-	};
+	} | null;
 	caption?: string;
 	quotedMsg?: WAMessage;
 	mentionedIds?: string[];
+	ack?: number;
+	ackName?: string;
+	vCards?: string[];
+	_data?: Record<string, unknown>;
 	location?: {
 		latitude: number;
 		longitude: number;
@@ -161,10 +168,23 @@ export interface GroupParticipant {
 
 // Webhook响应
 export interface WebhookNotification {
+	id: string;
 	event: string;
 	session: string;
 	timestamp: number;
-	data: WebhookData;
+	metadata?: Record<string, string>;
+	me?: {
+		id: string;
+		pushName: string;
+	};
+	payload: WAMessage | { status: SessionStatus } | Record<string, unknown>;
+	engine?: string;
+	environment?: {
+		version: string;
+		engine: string;
+		tier: string;
+		browser: string;
+	};
 }
 
 export type WebhookData =

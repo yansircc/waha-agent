@@ -59,7 +59,10 @@ export interface MessageTextRequest {
 	chatId: string;
 	text: string;
 	quotedMessageId?: string;
+	reply_to?: string | null;
 	mentionedIds?: string[];
+	linkPreview?: boolean;
+	linkPreviewHighQuality?: boolean;
 }
 
 export interface MessageImageRequest {

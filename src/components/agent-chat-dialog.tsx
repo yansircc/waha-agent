@@ -1,6 +1,5 @@
 "use client";
 
-import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -52,18 +51,53 @@ export function AgentChatDialog({
 		setInputValue("");
 		setIsLoading(true);
 
-		// Simulate an API call - this would be replaced with your actual API call
-		setTimeout(() => {
+		try {
+			// Convert our messages to the format expected by the API
+			const apiMessages = messages
+				.concat(userMessage)
+				.map(({ role, content }) => ({ role, content }));
+
+			// Send the request to our API endpoint
+			const response = await fetch("/api/chat", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					messages: apiMessages,
+					agentId, // Pass the agent ID to the API
+				}),
+			});
+
+			if (!response.ok) {
+				throw new Error(`API request failed with status ${response.status}`);
+			}
+
+			const { text } = await response.json();
+
+			// Create the assistant message from the API response
 			const assistantMessage: Message = {
 				id: crypto.randomUUID(),
-				content: `This is a simulated response from the agent "${agentName}" (ID: ${agentId}). In a real implementation, you would integrate with your AI provider here.`,
+				content: text,
 				role: "assistant",
 				timestamp: new Date(),
 			};
 
 			setMessages((prev) => [...prev, assistantMessage]);
+		} catch (error) {
+			console.error("Error sending message:", error);
+			// Add an error message
+			const errorMessage: Message = {
+				id: crypto.randomUUID(),
+				content:
+					"Sorry, there was an error processing your request. Please try again.",
+				role: "assistant",
+				timestamp: new Date(),
+			};
+			setMessages((prev) => [...prev, errorMessage]);
+		} finally {
 			setIsLoading(false);
-		}, 1000);
+		}
 	};
 
 	const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

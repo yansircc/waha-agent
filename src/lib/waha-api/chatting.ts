@@ -27,10 +27,18 @@ export class ChattingApi extends BaseApiClient {
 	 */
 	async sendText(data: MessageTextRequest): Promise<WAMessage> {
 		try {
-			const session = data.session || "default";
-			const { session: _, ...requestData } = data;
-			return await this.post<WAMessage, Omit<MessageTextRequest, "session">>(
-				`/api/${session}/sendText`,
+			const requestData = {
+				chatId: data.chatId,
+				text: data.text,
+				session: data.session || "default",
+				reply_to: null,
+				linkPreview: true,
+				linkPreviewHighQuality: false,
+				...(data.mentionedIds && { mentionedIds: data.mentionedIds }),
+			};
+
+			return await this.post<WAMessage, typeof requestData>(
+				"/api/sendText",
 				requestData,
 			);
 		} catch (error) {

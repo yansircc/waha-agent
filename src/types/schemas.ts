@@ -21,36 +21,12 @@ export const SessionStatusEnum = z.enum([
 	"WORKING",
 ]);
 
-export const SessionInfoSchema = z.object({
-	id: z.string().optional(),
-	name: z.string(),
-	status: SessionStatusEnum,
-	config: z.record(z.unknown()).nullable().optional(),
-	qrCode: z.string().optional(),
-	error: z.string().optional(),
-	updatedAt: z.string().optional(),
-	createdAt: z.string().optional(),
-	apiKey: z.string().optional(),
-});
-
-// 请求相关验证模式
-export const SessionCreateRequestSchema = z.object({
-	name: z.string().optional().default("default"),
-	config: z.record(z.unknown()).optional(),
-	start: z.boolean().optional().default(true),
-	userId: z.string().optional(),
-});
-
-export const SessionUpdateRequestSchema = z.object({
-	config: z.record(z.unknown()).optional(),
-});
-
 // Webhook 相关验证模式
 export const WebhookSchema = z.object({
 	url: z.string().url(),
 	events: z.array(z.string()),
-	hmac: z.string().nullable().optional(),
-	retries: z.number().nullable().optional(),
+	hmac: z.union([z.string(), z.record(z.unknown()), z.null()]).optional(),
+	retries: z.union([z.number(), z.record(z.unknown()), z.null()]).optional(),
 	customHeaders: z.record(z.string()).nullable().optional(),
 });
 
@@ -79,6 +55,30 @@ export const SessionConfigSchema = z.object({
 		})
 		.optional(),
 	webhooks: z.array(WebhookSchema).optional(),
+});
+
+export const SessionInfoSchema = z.object({
+	id: z.string().optional(),
+	name: z.string(),
+	status: SessionStatusEnum,
+	config: SessionConfigSchema,
+	qrCode: z.string().optional(),
+	error: z.string().optional(),
+	updatedAt: z.string().optional(),
+	createdAt: z.string().optional(),
+	apiKey: z.string().optional(),
+});
+
+// 请求相关验证模式
+export const SessionCreateRequestSchema = z.object({
+	name: z.string().optional().default("default"),
+	config: SessionConfigSchema,
+	start: z.boolean().optional().default(true),
+	userId: z.string().optional(),
+});
+
+export const SessionUpdateRequestSchema = z.object({
+	config: SessionConfigSchema,
 });
 
 // Profile相关验证模式

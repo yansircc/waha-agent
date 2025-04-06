@@ -31,6 +31,7 @@ export const env = createEnv({
 	 */
 	client: {
 		NEXT_PUBLIC_WAHA_API_URL: z.string(),
+		NEXT_PUBLIC_WEBHOOK_URL: z.string(),
 	},
 
 	/**
@@ -49,6 +50,7 @@ export const env = createEnv({
 		OPENAI_API_KEY: process.env.OPENAI_API_KEY,
 		WAHA_API_KEY: process.env.WAHA_API_KEY,
 		NEXT_PUBLIC_WAHA_API_URL: process.env.NEXT_PUBLIC_WAHA_API_URL,
+		NEXT_PUBLIC_WEBHOOK_URL: process.env.NEXT_PUBLIC_WEBHOOK_URL,
 	},
 	/**
 	 * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

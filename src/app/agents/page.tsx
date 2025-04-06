@@ -5,7 +5,6 @@ import { AgentConfigDialog } from "@/components/agent-config-dialog";
 import { Button } from "@/components/ui/button";
 import { useAgents } from "@/hooks/use-agents";
 import { useKnowledgeBases } from "@/hooks/use-knowledge-bases";
-import type { Agent } from "@/types/agents";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 

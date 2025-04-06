@@ -1,6 +1,9 @@
+import { env } from "@/env";
+import type { SessionConfigSchema } from "@/types/schemas";
 import { sanitizeSessionName } from "@/utils/session-utils";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
+import type { z } from "zod";
 import { useInstances } from "./use-instances";
 import { useQRCode } from "./use-qr-code";
 import { useSessionStatus } from "./use-session-status";
@@ -36,24 +39,21 @@ export function useInstancesApi({
 
 	// Create a WhatsApp session for the instance
 	const createInstanceSession = useCallback(
-		async (
-			instanceId: string,
-			instanceName: string,
-			options?: Record<string, unknown>,
-		) => {
+		async (instanceId: string, instanceName: string, userId?: string) => {
 			setIsLoading(true);
 			try {
 				// Sanitize session name to ensure it's API-friendly
 				const sanitizedName = sanitizeSessionName(instanceName);
 
 				// 获取配置信息
-				const config: Record<string, unknown> = {};
+				const config: z.infer<typeof SessionConfigSchema> = {
+					debug: false,
+					webhooks: [],
+				};
 
 				// 如果提供了用户ID，创建带webhooks的配置
-				if (options?.userId) {
-					const userId = options.userId as string;
-					const appUrl = window.location.origin;
-					const webhookUrl = `${appUrl}/api/webhooks/whatsapp/${userId}`;
+				if (userId) {
+					const webhookUrl = `${env.NEXT_PUBLIC_WEBHOOK_URL}/${userId}`;
 
 					// 构建配置信息
 					config.metadata = {
