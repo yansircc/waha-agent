@@ -1,9 +1,9 @@
 import "@/styles/globals.css";
 
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { TRPCReactProvider } from "@/trpc/react";
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
-
-import { TRPCReactProvider } from "@/trpc/react";
 
 export const metadata: Metadata = {
 	title: "Create T3 App",
@@ -22,7 +22,9 @@ export default function RootLayout({
 	return (
 		<html lang="en" className={`${geist.variable}`}>
 			<body>
-				<TRPCReactProvider>{children}</TRPCReactProvider>
+				<TRPCReactProvider>
+					<TooltipProvider delayDuration={0}>{children}</TooltipProvider>
+				</TRPCReactProvider>
 			</body>
 		</html>
 	);
