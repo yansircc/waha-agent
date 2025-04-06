@@ -68,7 +68,7 @@ export function ChatForm({
 	return (
 		<main
 			className={cn(
-				"mx-auto flex h-svh max-h-svh w-full max-w-[35rem] flex-col items-stretch border-none ring-none",
+				"mx-auto flex w-full max-w-[35rem] flex-col items-stretch border-none ring-none",
 				className,
 			)}
 			{...props}

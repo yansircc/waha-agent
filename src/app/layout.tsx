@@ -20,8 +20,8 @@ export default function RootLayout({
 	children,
 }: Readonly<{ children: React.ReactNode }>) {
 	return (
-		<html lang="en" className={`${geist.variable}`}>
-			<body>
+		<html lang="en" className={`${geist.variable} h-full bg-gray-50`}>
+			<body className="h-full">
 				<TRPCReactProvider>
 					<TooltipProvider delayDuration={0}>{children}</TooltipProvider>
 				</TRPCReactProvider>
