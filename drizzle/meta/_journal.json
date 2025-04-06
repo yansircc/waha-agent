@@ -8,6 +8,13 @@
       "when": 1743922866015,
       "tag": "0000_wide_shadowcat",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1743927888630,
+      "tag": "0001_minor_omega_sentinel",
+      "breakpoints": true
     }
   ]
 }

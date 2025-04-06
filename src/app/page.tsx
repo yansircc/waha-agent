@@ -1,5 +1,5 @@
-import { ChatForm } from "@/components/chat-form";
+import { redirect } from "next/navigation";
 
-export default function Page() {
-	return <ChatForm />;
+export default function Home() {
+	redirect("/dashboard");
 }

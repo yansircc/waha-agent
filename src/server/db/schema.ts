@@ -50,6 +50,8 @@ export const users = createTable("user", (d) => ({
 
 export const usersRelations = relations(users, ({ many }) => ({
 	accounts: many(accounts),
+	agents: many(agents),
+	instances: many(instances),
 }));
 
 export const accounts = createTable(
@@ -106,3 +108,113 @@ export const verificationTokens = createTable(
 	}),
 	(t) => [primaryKey({ columns: [t.identifier, t.token] })],
 );
+
+// WhatsApp AI Agent schema
+export const agents = createTable(
+	"agent",
+	(d) => ({
+		id: d
+			.varchar({ length: 255 })
+			.notNull()
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		name: d.varchar({ length: 255 }).notNull(),
+		prompt: d.text().notNull(),
+		knowledgeBaseIds: d.text().array(), // Array of knowledge base IDs
+		createdById: d
+			.varchar({ length: 255 })
+			.notNull()
+			.references(() => users.id),
+		createdAt: d
+			.timestamp({ withTimezone: true })
+			.default(sql`CURRENT_TIMESTAMP`)
+			.notNull(),
+		updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+	}),
+	(t) => [
+		index("agent_created_by_idx").on(t.createdById),
+		index("agent_name_idx").on(t.name),
+	],
+);
+
+export const agentsRelations = relations(agents, ({ one, many }) => ({
+	user: one(users, { fields: [agents.createdById], references: [users.id] }),
+	instances: many(instances),
+	knowledgeBases: many(knowledgeBases),
+}));
+
+// Knowledge Base schema
+export const knowledgeBases = createTable(
+	"knowledge_base",
+	(d) => ({
+		id: d
+			.varchar({ length: 255 })
+			.notNull()
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		name: d.varchar({ length: 255 }).notNull(),
+		description: d.text(),
+		content: d.text().notNull(),
+		metadata: d.jsonb(),
+		createdById: d
+			.varchar({ length: 255 })
+			.notNull()
+			.references(() => users.id),
+		createdAt: d
+			.timestamp({ withTimezone: true })
+			.default(sql`CURRENT_TIMESTAMP`)
+			.notNull(),
+		updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+	}),
+	(t) => [
+		index("kb_created_by_idx").on(t.createdById),
+		index("kb_name_idx").on(t.name),
+	],
+);
+
+export const knowledgeBasesRelations = relations(
+	knowledgeBases,
+	({ one, many }) => ({
+		user: one(users, {
+			fields: [knowledgeBases.createdById],
+			references: [users.id],
+		}),
+		agents: many(agents),
+	}),
+);
+
+// WhatsApp Instance schema
+export const instances = createTable(
+	"instance",
+	(d) => ({
+		id: d
+			.varchar({ length: 255 })
+			.notNull()
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		name: d.varchar({ length: 255 }).notNull(),
+		phoneNumber: d.varchar({ length: 20 }),
+		status: d.varchar({ length: 50 }).default("disconnected").notNull(),
+		agentId: d.varchar({ length: 255 }).references(() => agents.id),
+		createdById: d
+			.varchar({ length: 255 })
+			.notNull()
+			.references(() => users.id),
+		qrCode: d.text(),
+		sessionData: d.jsonb(),
+		createdAt: d
+			.timestamp({ withTimezone: true })
+			.default(sql`CURRENT_TIMESTAMP`)
+			.notNull(),
+		updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+	}),
+	(t) => [
+		index("instance_created_by_idx").on(t.createdById),
+		index("instance_agent_idx").on(t.agentId),
+	],
+);
+
+export const instancesRelations = relations(instances, ({ one }) => ({
+	user: one(users, { fields: [instances.createdById], references: [users.id] }),
+	agent: one(agents, { fields: [instances.agentId], references: [agents.id] }),
+}));
