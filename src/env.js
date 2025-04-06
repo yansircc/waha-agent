@@ -21,6 +21,7 @@ export const env = createEnv({
 			.default("development"),
 		AI_HUB_MIX_API_KEY: z.string(),
 		OPENAI_API_KEY: z.string(),
+		WAHA_API_KEY: z.string(),
 	},
 
 	/**
@@ -29,7 +30,7 @@ export const env = createEnv({
 	 * `NEXT_PUBLIC_`.
 	 */
 	client: {
-		// NEXT_PUBLIC_CLIENTVAR: z.string(),
+		NEXT_PUBLIC_WAHA_API_URL: z.string(),
 	},
 
 	/**
@@ -46,6 +47,8 @@ export const env = createEnv({
 		NODE_ENV: process.env.NODE_ENV,
 		AI_HUB_MIX_API_KEY: process.env.AI_HUB_MIX_API_KEY,
 		OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+		WAHA_API_KEY: process.env.WAHA_API_KEY,
+		NEXT_PUBLIC_WAHA_API_URL: process.env.NEXT_PUBLIC_WAHA_API_URL,
 	},
 	/**
 	 * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

@@ -1,10 +1,6 @@
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
-import {
-	agentToKnowledgeBase,
-	agents,
-	knowledgeBases,
-} from "@/server/db/schema";
-import { and, eq } from "drizzle-orm";
+import { agentToKnowledgeBase, agents } from "@/server/db/schema";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 export const agentsRouter = createTRPCRouter({
@@ -70,15 +66,17 @@ export const agentsRouter = createTRPCRouter({
 		)
 		.mutation(async ({ ctx, input }) => {
 			// Create the agent
+			const agentData = {
+				name: input.name,
+				prompt: input.prompt,
+				knowledgeBaseIds: input.knowledgeBaseIds || null,
+				isActive: input.isActive ?? false,
+				createdById: ctx.session.user.id,
+			};
+
 			const insertResult = await ctx.db
 				.insert(agents)
-				.values({
-					name: input.name,
-					prompt: input.prompt,
-					knowledgeBaseIds: input.knowledgeBaseIds || null,
-					isActive: input.isActive ?? false,
-					createdById: ctx.session.user.id,
-				})
+				.values(agentData)
 				.returning();
 
 			if (!insertResult[0]) {

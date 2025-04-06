@@ -260,3 +260,35 @@ export const instancesRelations = relations(instances, ({ one }) => ({
 	user: one(users, { fields: [instances.createdById], references: [users.id] }),
 	agent: one(agents, { fields: [instances.agentId], references: [agents.id] }),
 }));
+
+// 添加WhatsApp消息表
+export const waMessages = createTable(
+	"wa_message",
+	(d) => ({
+		id: d.integer().primaryKey().generatedByDefaultAsIdentity(),
+		messageId: d.varchar({ length: 255 }).notNull(),
+		sessionName: d.varchar({ length: 255 }).notNull(),
+		fromMe: d.boolean().notNull(),
+		timestamp: d.timestamp({ withTimezone: true }).notNull(),
+		chatId: d.varchar({ length: 255 }).notNull(),
+		type: d.varchar({ length: 50 }).notNull(),
+		author: d.varchar({ length: 255 }),
+		body: d.text(),
+		caption: d.text(),
+		userId: d.varchar({ length: 255 }).notNull(),
+		rawData: d.text(),
+		createdAt: d
+			.timestamp({ withTimezone: true })
+			.default(sql`CURRENT_TIMESTAMP`)
+			.notNull(),
+		updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+	}),
+	(t) => [
+		index("wa_message_user_id_idx").on(t.userId),
+		index("wa_message_session_idx").on(t.sessionName),
+	],
+);
+
+// waMessages关系类型
+export type WaMessage = typeof waMessages.$inferSelect;
+export type InsertWaMessage = typeof waMessages.$inferInsert;

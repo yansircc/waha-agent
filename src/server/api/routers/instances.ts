@@ -1,5 +1,10 @@
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { instances } from "@/server/db/schema";
+import type {
+	InstanceCreateInput,
+	InstanceStatus,
+	InstanceUpdateInput,
+} from "@/types";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -41,14 +46,18 @@ export const instancesRouter = createTRPCRouter({
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
+			const createInput: InstanceCreateInput & { createdById: string } = {
+				name: input.name,
+				phoneNumber: input.phoneNumber || "",
+				agentId: input.agentId,
+				createdById: ctx.session.user.id,
+			};
+
 			const result = await ctx.db
 				.insert(instances)
 				.values({
-					name: input.name,
-					phoneNumber: input.phoneNumber || "",
-					agentId: input.agentId,
-					status: "disconnected",
-					createdById: ctx.session.user.id,
+					...createInput,
+					status: "disconnected" as InstanceStatus,
 				})
 				.returning();
 
@@ -83,7 +92,10 @@ export const instancesRouter = createTRPCRouter({
 				);
 			}
 
-			const updateData: Record<string, unknown> = {};
+			const updateData: InstanceUpdateInput = {
+				id: input.id,
+			};
+
 			if (input.name !== undefined) updateData.name = input.name;
 			if (input.phoneNumber !== undefined)
 				updateData.phoneNumber = input.phoneNumber;

@@ -1,6 +1,10 @@
 import { agentsRouter } from "@/server/api/routers/agents";
 import { instancesRouter } from "@/server/api/routers/instances";
 import { knowledgeBasesRouter } from "@/server/api/routers/knowledgeBases";
+import { wahaAuthRouter } from "@/server/api/routers/waha-auth";
+import { wahaChattingRouter } from "@/server/api/routers/waha-chatting";
+import { wahaProfileRouter } from "@/server/api/routers/waha-profile";
+import { wahaSessionsRouter } from "@/server/api/routers/waha-sessions";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 
 /**
@@ -12,6 +16,10 @@ export const appRouter = createTRPCRouter({
 	agents: agentsRouter,
 	knowledgeBases: knowledgeBasesRouter,
 	instances: instancesRouter,
+	wahaSessions: wahaSessionsRouter,
+	wahaAuth: wahaAuthRouter,
+	wahaProfile: wahaProfileRouter,
+	wahaChatting: wahaChattingRouter,
 });
 
 // export type definition of API

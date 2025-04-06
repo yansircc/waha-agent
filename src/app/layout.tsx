@@ -1,6 +1,7 @@
 import "@/styles/globals.css";
 
 import { SideNav } from "@/components/side-nav";
+import { Toaster } from "@/components/ui/sonner";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { Providers } from "./providers";
@@ -28,6 +29,7 @@ export default function RootLayout({
 					<div className="flex min-h-screen">
 						<SideNav />
 						<div className="flex-1 overflow-hidden">{children}</div>
+						<Toaster />
 					</div>
 				</Providers>
 			</body>
