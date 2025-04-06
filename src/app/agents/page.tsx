@@ -1,131 +1,139 @@
 "use client";
 
-import { AgentCard } from "@/components/agents/agent-card";
-import { AgentConfigDialog } from "@/components/agents/agent-config-dialog";
-import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import { AgentCard } from "@/components/agent-card";
+import { AgentConfigDialog } from "@/components/agent-config-dialog";
 import { Button } from "@/components/ui/button";
-import { PlusIcon } from "@heroicons/react/24/outline";
+import { useAgents } from "@/hooks/use-agents";
+import { useKnowledgeBases } from "@/hooks/use-knowledge-bases";
+import type { Agent } from "@/types/agents";
+import { Plus } from "lucide-react";
 import { useState } from "react";
 
-export type Agent = {
-	id: string;
-	name: string;
-	prompt: string;
-	knowledgeBaseIds: string[];
-	createdAt: Date;
-};
-
 export default function AgentsPage() {
-	const [agents, setAgents] = useState<Agent[]>([]);
-	const [isConfigOpen, setIsConfigOpen] = useState(false);
-	const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
+	const [isCreatingAgent, setIsCreatingAgent] = useState(false);
+	const [editingAgentId, setEditingAgentId] = useState<string | null>(null);
 
-	const handleCreateAgent = () => {
-		setEditingAgent(null);
-		setIsConfigOpen(true);
+	const { agents, isLoadingAgents, createAgent, updateAgent, deleteAgent } =
+		useAgents();
+	const { knowledgeBases } = useKnowledgeBases();
+
+	const handleOpenCreateDialog = () => {
+		setIsCreatingAgent(true);
 	};
 
-	const handleEditAgent = (agent: Agent) => {
-		setEditingAgent(agent);
-		setIsConfigOpen(true);
+	const handleOpenEditDialog = (agentId: string) => {
+		setEditingAgentId(agentId);
 	};
 
-	const handleSaveAgent = (agent: Agent) => {
-		if (editingAgent) {
-			// Update existing agent
-			setAgents(agents.map((a) => (a.id === agent.id ? agent : a)));
+	const handleCloseDialog = () => {
+		setIsCreatingAgent(false);
+		setEditingAgentId(null);
+	};
+
+	const handleSubmit = (data: {
+		id?: string;
+		name: string;
+		prompt: string;
+		knowledgeBaseIds: string[];
+	}) => {
+		if (data.id) {
+			updateAgent({
+				id: data.id,
+				name: data.name,
+				prompt: data.prompt,
+				knowledgeBaseIds: data.knowledgeBaseIds,
+				isActive: editingAgent?.isActive ?? false,
+			});
 		} else {
-			// Create new agent
-			const newAgent = {
-				...agent,
-				id: crypto.randomUUID(),
-				createdAt: new Date(),
-			};
-			setAgents([...agents, newAgent]);
+			createAgent({
+				name: data.name,
+				prompt: data.prompt,
+				knowledgeBaseIds: data.knowledgeBaseIds,
+				isActive: false,
+			});
 		}
-		setIsConfigOpen(false);
+		handleCloseDialog();
 	};
 
-	const handleDeleteAgent = (id: string) => {
-		setAgents(agents.filter((agent) => agent.id !== id));
+	const handleDeleteAgent = (agentId: string) => {
+		if (window.confirm("Are you sure you want to delete this agent?")) {
+			deleteAgent(agentId);
+		}
 	};
+
+	const editingAgent = editingAgentId
+		? agents.find((agent) => agent.id === editingAgentId)
+		: null;
+
+	const formDefaultValues = editingAgent
+		? {
+				id: editingAgent.id,
+				name: editingAgent.name,
+				prompt: editingAgent.prompt,
+				knowledgeBaseIds: editingAgent.knowledgeBaseIds || [],
+			}
+		: undefined;
+
+	const loadingPlaceholderIds = [
+		"placeholder-1",
+		"placeholder-2",
+		"placeholder-3",
+	];
 
 	return (
-		<DashboardLayout>
-			<div className="py-10">
-				<header className="mb-8">
-					<div className="mx-auto flex max-w-7xl justify-between px-4 sm:px-6 lg:px-8">
-						<h1 className="font-bold text-3xl text-gray-900 leading-tight tracking-tight">
-							AI Agents
-						</h1>
-						<Button
-							onClick={handleCreateAgent}
-							className="inline-flex items-center gap-x-2 rounded-md bg-indigo-600 px-3.5 py-2.5 font-semibold text-sm text-white shadow-sm hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-indigo-600 focus-visible:outline-offset-2"
-						>
-							<PlusIcon className="-ml-0.5 h-5 w-5" aria-hidden="true" />
-							New Agent
-						</Button>
-					</div>
-				</header>
-				<main>
-					<div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
-						{agents.length === 0 ? (
-							<div className="text-center">
-								<svg
-									className="mx-auto h-12 w-12 text-gray-400"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-									aria-hidden="true"
-								>
-									<path
-										strokeLinecap="round"
-										strokeLinejoin="round"
-										strokeWidth={2}
-										d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"
-									/>
-								</svg>
-								<h3 className="mt-2 font-semibold text-gray-900 text-sm">
-									No agents
-								</h3>
-								<p className="mt-1 text-gray-500 text-sm">
-									Get started by creating a new agent.
-								</p>
-								<div className="mt-6">
-									<Button
-										onClick={handleCreateAgent}
-										className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 font-semibold text-sm text-white shadow-sm hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-indigo-600 focus-visible:outline-offset-2"
-									>
-										<PlusIcon
-											className="-ml-0.5 mr-1.5 h-5 w-5"
-											aria-hidden="true"
-										/>
-										New Agent
-									</Button>
-								</div>
-							</div>
-						) : (
-							<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-								{agents.map((agent) => (
-									<AgentCard
-										key={agent.id}
-										agent={agent}
-										onEdit={() => handleEditAgent(agent)}
-										onDelete={() => handleDeleteAgent(agent.id)}
-									/>
-								))}
-							</div>
-						)}
-					</div>
-				</main>
+		<div className="container py-8">
+			<div className="mb-8 flex items-center justify-between">
+				<h1 className="font-bold text-3xl">Agents</h1>
+				<Button onClick={handleOpenCreateDialog}>
+					<Plus className="mr-2 h-4 w-4" /> Create Agent
+				</Button>
 			</div>
 
-			<AgentConfigDialog
-				open={isConfigOpen}
-				onClose={() => setIsConfigOpen(false)}
-				onSave={handleSaveAgent}
-				agent={editingAgent}
-			/>
-		</DashboardLayout>
+			{isLoadingAgents ? (
+				<div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+					{loadingPlaceholderIds.map((id) => (
+						<div
+							key={id}
+							className="h-64 animate-pulse rounded-lg border bg-muted"
+						/>
+					))}
+				</div>
+			) : agents.length === 0 ? (
+				<div className="flex flex-col items-center justify-center rounded-lg border bg-background p-12 text-center">
+					<h2 className="mb-2 font-semibold text-xl">No agents yet</h2>
+					<p className="mb-6 text-muted-foreground">
+						Create your first AI agent to start automating WhatsApp responses.
+					</p>
+					<Button onClick={handleOpenCreateDialog}>
+						<Plus className="mr-2 h-4 w-4" /> Create Agent
+					</Button>
+				</div>
+			) : (
+				<div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+					{agents.map((agent) => (
+						<AgentCard
+							key={agent.id}
+							id={agent.id}
+							name={agent.name}
+							prompt={agent.prompt}
+							knowledgeBases={agent.knowledgeBases}
+							isActive={agent.isActive}
+							onEdit={() => handleOpenEditDialog(agent.id)}
+						/>
+					))}
+				</div>
+			)}
+
+			{(isCreatingAgent || editingAgentId) && (
+				<AgentConfigDialog
+					open={isCreatingAgent || !!editingAgentId}
+					onOpenChange={handleCloseDialog}
+					onSubmit={handleSubmit}
+					knowledgeBases={knowledgeBases}
+					defaultValues={formDefaultValues}
+					mode={editingAgentId ? "edit" : "create"}
+				/>
+			)}
+		</div>
 	);
 }

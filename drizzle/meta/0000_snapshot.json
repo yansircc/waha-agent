@@ -1,11 +1,11 @@
 {
-  "id": "29f1ac0e-4d4d-4aba-a060-c5c7b6fe49a1",
+  "id": "ae790f76-5bf5-401c-8c63-3ff7d9d04aff",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
-    "public.11-waha-mastra_account": {
-      "name": "11-waha-mastra_account",
+    "public.wm_account": {
+      "name": "wm_account",
       "schema": "",
       "columns": {
         "userId": {
@@ -93,10 +93,10 @@
         }
       },
       "foreignKeys": {
-        "11-waha-mastra_account_userId_11-waha-mastra_user_id_fk": {
-          "name": "11-waha-mastra_account_userId_11-waha-mastra_user_id_fk",
-          "tableFrom": "11-waha-mastra_account",
-          "tableTo": "11-waha-mastra_user",
+        "wm_account_userId_wm_user_id_fk": {
+          "name": "wm_account_userId_wm_user_id_fk",
+          "tableFrom": "wm_account",
+          "tableTo": "wm_user",
           "columnsFrom": [
             "userId"
           ],
@@ -108,8 +108,8 @@
         }
       },
       "compositePrimaryKeys": {
-        "11-waha-mastra_account_provider_providerAccountId_pk": {
-          "name": "11-waha-mastra_account_provider_providerAccountId_pk",
+        "wm_account_provider_providerAccountId_pk": {
+          "name": "wm_account_provider_providerAccountId_pk",
           "columns": [
             "provider",
             "providerAccountId"
@@ -121,8 +121,368 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.11-waha-mastra_post": {
-      "name": "11-waha-mastra_post",
+    "public.wm_agent": {
+      "name": "wm_agent",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(255)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "prompt": {
+          "name": "prompt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "knowledgeBaseIds": {
+          "name": "knowledgeBaseIds",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "isActive": {
+          "name": "isActive",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "createdById": {
+          "name": "createdById",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "agent_created_by_idx": {
+          "name": "agent_created_by_idx",
+          "columns": [
+            {
+              "expression": "createdById",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "agent_name_idx": {
+          "name": "agent_name_idx",
+          "columns": [
+            {
+              "expression": "name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "wm_agent_createdById_wm_user_id_fk": {
+          "name": "wm_agent_createdById_wm_user_id_fk",
+          "tableFrom": "wm_agent",
+          "tableTo": "wm_user",
+          "columnsFrom": [
+            "createdById"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.wm_instance": {
+      "name": "wm_instance",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(255)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "phoneNumber": {
+          "name": "phoneNumber",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'disconnected'"
+        },
+        "agentId": {
+          "name": "agentId",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdById": {
+          "name": "createdById",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "qrCode": {
+          "name": "qrCode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sessionData": {
+          "name": "sessionData",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "instance_created_by_idx": {
+          "name": "instance_created_by_idx",
+          "columns": [
+            {
+              "expression": "createdById",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "instance_agent_idx": {
+          "name": "instance_agent_idx",
+          "columns": [
+            {
+              "expression": "agentId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "wm_instance_agentId_wm_agent_id_fk": {
+          "name": "wm_instance_agentId_wm_agent_id_fk",
+          "tableFrom": "wm_instance",
+          "tableTo": "wm_agent",
+          "columnsFrom": [
+            "agentId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "wm_instance_createdById_wm_user_id_fk": {
+          "name": "wm_instance_createdById_wm_user_id_fk",
+          "tableFrom": "wm_instance",
+          "tableTo": "wm_user",
+          "columnsFrom": [
+            "createdById"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.wm_kb": {
+      "name": "wm_kb",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(255)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fileUrl": {
+          "name": "fileUrl",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fileType": {
+          "name": "fileType",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdById": {
+          "name": "createdById",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "kb_created_by_idx": {
+          "name": "kb_created_by_idx",
+          "columns": [
+            {
+              "expression": "createdById",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "kb_name_idx": {
+          "name": "kb_name_idx",
+          "columns": [
+            {
+              "expression": "name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "wm_kb_createdById_wm_user_id_fk": {
+          "name": "wm_kb_createdById_wm_user_id_fk",
+          "tableFrom": "wm_kb",
+          "tableTo": "wm_user",
+          "columnsFrom": [
+            "createdById"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.wm_post": {
+      "name": "wm_post",
       "schema": "",
       "columns": {
         "id": {
@@ -132,7 +492,7 @@
           "notNull": true,
           "identity": {
             "type": "byDefault",
-            "name": "11-waha-mastra_post_id_seq",
+            "name": "wm_post_id_seq",
             "schema": "public",
             "increment": "1",
             "startWith": "1",
@@ -201,10 +561,10 @@
         }
       },
       "foreignKeys": {
-        "11-waha-mastra_post_createdById_11-waha-mastra_user_id_fk": {
-          "name": "11-waha-mastra_post_createdById_11-waha-mastra_user_id_fk",
-          "tableFrom": "11-waha-mastra_post",
-          "tableTo": "11-waha-mastra_user",
+        "wm_post_createdById_wm_user_id_fk": {
+          "name": "wm_post_createdById_wm_user_id_fk",
+          "tableFrom": "wm_post",
+          "tableTo": "wm_user",
           "columnsFrom": [
             "createdById"
           ],
@@ -221,8 +581,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.11-waha-mastra_session": {
-      "name": "11-waha-mastra_session",
+    "public.wm_session": {
+      "name": "wm_session",
       "schema": "",
       "columns": {
         "sessionToken": {
@@ -262,10 +622,10 @@
         }
       },
       "foreignKeys": {
-        "11-waha-mastra_session_userId_11-waha-mastra_user_id_fk": {
-          "name": "11-waha-mastra_session_userId_11-waha-mastra_user_id_fk",
-          "tableFrom": "11-waha-mastra_session",
-          "tableTo": "11-waha-mastra_user",
+        "wm_session_userId_wm_user_id_fk": {
+          "name": "wm_session_userId_wm_user_id_fk",
+          "tableFrom": "wm_session",
+          "tableTo": "wm_user",
           "columnsFrom": [
             "userId"
           ],
@@ -282,8 +642,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.11-waha-mastra_user": {
-      "name": "11-waha-mastra_user",
+    "public.wm_user": {
+      "name": "wm_user",
       "schema": "",
       "columns": {
         "id": {
@@ -326,8 +686,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.11-waha-mastra_verification_token": {
-      "name": "11-waha-mastra_verification_token",
+    "public.wm_verification_token": {
+      "name": "wm_verification_token",
       "schema": "",
       "columns": {
         "identifier": {
@@ -352,8 +712,8 @@
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {
-        "11-waha-mastra_verification_token_identifier_token_pk": {
-          "name": "11-waha-mastra_verification_token_identifier_token_pk",
+        "wm_verification_token_identifier_token_pk": {
+          "name": "wm_verification_token_identifier_token_pk",
           "columns": [
             "identifier",
             "token"

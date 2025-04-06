@@ -8,7 +8,7 @@ import type { AdapterAccount } from "next-auth/adapters";
  *
  * @see https://orm.drizzle.team/docs/goodies#multi-project-schema
  */
-export const createTable = pgTableCreator((name) => `11-waha-mastra_${name}`);
+export const createTable = pgTableCreator((name) => `wm_${name}`);
 
 export const posts = createTable(
 	"post",
@@ -121,6 +121,7 @@ export const agents = createTable(
 		name: d.varchar({ length: 255 }).notNull(),
 		prompt: d.text().notNull(),
 		knowledgeBaseIds: d.text().array(), // Array of knowledge base IDs
+		isActive: d.boolean().default(false).notNull(),
 		createdById: d
 			.varchar({ length: 255 })
 			.notNull()
@@ -140,12 +141,14 @@ export const agents = createTable(
 export const agentsRelations = relations(agents, ({ one, many }) => ({
 	user: one(users, { fields: [agents.createdById], references: [users.id] }),
 	instances: many(instances),
-	knowledgeBases: many(knowledgeBases),
+	knowledgeBases: many(agentToKnowledgeBase, {
+		relationName: "agentToKnowledgeBase",
+	}),
 }));
 
 // Knowledge Base schema
 export const knowledgeBases = createTable(
-	"knowledge_base",
+	"kb",
 	(d) => ({
 		id: d
 			.varchar({ length: 255 })
@@ -155,6 +158,8 @@ export const knowledgeBases = createTable(
 		name: d.varchar({ length: 255 }).notNull(),
 		description: d.text(),
 		content: d.text().notNull(),
+		fileUrl: d.text(),
+		fileType: d.varchar({ length: 50 }),
 		metadata: d.jsonb(),
 		createdById: d
 			.varchar({ length: 255 })
@@ -179,7 +184,44 @@ export const knowledgeBasesRelations = relations(
 			fields: [knowledgeBases.createdById],
 			references: [users.id],
 		}),
-		agents: many(agents),
+		agents: many(agentToKnowledgeBase, { relationName: "kbToAgent" }),
+	}),
+);
+
+// Junction table for many-to-many relationship between agents and knowledge bases
+export const agentToKnowledgeBase = createTable(
+	"agent_to_kb",
+	(d) => ({
+		agentId: d
+			.varchar({ length: 255 })
+			.notNull()
+			.references(() => agents.id, { onDelete: "cascade" }),
+		knowledgeBaseId: d
+			.varchar({ length: 255 })
+			.notNull()
+			.references(() => knowledgeBases.id, { onDelete: "cascade" }),
+	}),
+	(t) => [
+		primaryKey({ columns: [t.agentId, t.knowledgeBaseId] }),
+		index("idx_agent_to_kb_agent").on(t.agentId),
+		index("idx_agent_to_kb_kb").on(t.knowledgeBaseId),
+	],
+);
+
+// Define relations for the junction table
+export const agentToKnowledgeBaseRelations = relations(
+	agentToKnowledgeBase,
+	({ one }) => ({
+		agent: one(agents, {
+			fields: [agentToKnowledgeBase.agentId],
+			references: [agents.id],
+			relationName: "agentToKnowledgeBase",
+		}),
+		knowledgeBase: one(knowledgeBases, {
+			fields: [agentToKnowledgeBase.knowledgeBaseId],
+			references: [knowledgeBases.id],
+			relationName: "kbToAgent",
+		}),
 	}),
 );
 

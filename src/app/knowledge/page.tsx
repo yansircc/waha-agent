@@ -1,123 +1,311 @@
 "use client";
 
-import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import {
-	BookOpenIcon,
-	MagnifyingGlassIcon,
-	PlusIcon,
-} from "@heroicons/react/24/outline";
+	Dialog,
+	DialogContent,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useKnowledgeBases } from "@/hooks/use-knowledge-bases";
+import { Database, FileText, Plus, UploadCloud } from "lucide-react";
 import { useState } from "react";
 
-interface KnowledgeBase {
-	id: string;
-	name: string;
-	description: string;
-	createdAt: Date;
-}
-
 export default function KnowledgePage() {
-	const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
-	const [searchQuery, setSearchQuery] = useState("");
+	const [isAddOpen, setIsAddOpen] = useState(false);
+	const [name, setName] = useState("");
+	const [description, setDescription] = useState("");
+	const [content, setContent] = useState("");
+	const [dragActive, setDragActive] = useState(false);
+	const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+
+	const {
+		knowledgeBases,
+		isLoadingKnowledgeBases,
+		createKnowledgeBase,
+		deleteKnowledgeBase,
+	} = useKnowledgeBases();
+
+	const handleOpenAddDialog = () => setIsAddOpen(true);
+	const handleCloseAddDialog = () => {
+		setIsAddOpen(false);
+		resetForm();
+	};
+
+	const resetForm = () => {
+		setName("");
+		setDescription("");
+		setContent("");
+		setUploadedFile(null);
+	};
+
+	const handleDrag = (e: React.DragEvent) => {
+		e.preventDefault();
+		e.stopPropagation();
+		if (e.type === "dragenter" || e.type === "dragover") {
+			setDragActive(true);
+		} else if (e.type === "dragleave") {
+			setDragActive(false);
+		}
+	};
+
+	const handleDrop = (e: React.DragEvent) => {
+		e.preventDefault();
+		e.stopPropagation();
+		setDragActive(false);
+
+		if (e.dataTransfer.files?.[0]) {
+			const file = e.dataTransfer.files[0];
+			setUploadedFile(file);
+
+			// For text files, automatically load the content
+			if (file.type === "text/plain") {
+				const reader = new FileReader();
+				reader.onload = (event) => {
+					if (event.target?.result) {
+						setContent(event.target.result as string);
+					}
+				};
+				reader.readAsText(file);
+			}
+		}
+	};
+
+	const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+		if (e.target.files?.[0]) {
+			const file = e.target.files[0];
+			setUploadedFile(file);
+
+			// For text files, automatically load the content
+			if (file.type === "text/plain") {
+				const reader = new FileReader();
+				reader.onload = (event) => {
+					if (event.target?.result) {
+						setContent(event.target.result as string);
+					}
+				};
+				reader.readAsText(file);
+			}
+		}
+	};
+
+	const handleSubmit = async (e: React.FormEvent) => {
+		e.preventDefault();
+
+		const fileType = uploadedFile?.type || "text/plain";
+
+		await createKnowledgeBase({
+			name,
+			description,
+			content,
+			fileType,
+			// In a real implementation, the file would be uploaded to a storage service
+			// and the URL would be returned, but for now we'll just use a placeholder
+			fileUrl: uploadedFile ? `file://${uploadedFile.name}` : undefined,
+		});
+
+		handleCloseAddDialog();
+	};
+
+	const handleDeleteKnowledgeBase = async (id: string) => {
+		if (confirm("Are you sure you want to delete this knowledge base?")) {
+			await deleteKnowledgeBase(id);
+		}
+	};
+
+	const loadingPlaceholderIds = [
+		"placeholder-1",
+		"placeholder-2",
+		"placeholder-3",
+	];
 
 	return (
-		<DashboardLayout>
-			<div className="py-10">
-				<header className="mb-8">
-					<div className="mx-auto flex max-w-7xl justify-between px-4 sm:px-6 lg:px-8">
-						<h1 className="font-bold text-3xl text-gray-900 leading-tight tracking-tight">
-							Knowledge Base
-						</h1>
-						<Button className="inline-flex items-center gap-x-2 rounded-md bg-indigo-600 px-3.5 py-2.5 font-semibold text-sm text-white shadow-sm hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-indigo-600 focus-visible:outline-offset-2">
-							<PlusIcon className="-ml-0.5 h-5 w-5" aria-hidden="true" />
-							New Knowledge Base
-						</Button>
-					</div>
-				</header>
-				<main>
-					<div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
-						<div className="relative mb-6">
-							<div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-								<MagnifyingGlassIcon
-									className="h-5 w-5 text-gray-400"
-									aria-hidden="true"
+		<div className="container py-8">
+			<div className="mb-8 flex items-center justify-between">
+				<h1 className="font-bold text-3xl">Knowledge Bases</h1>
+				<Button onClick={handleOpenAddDialog}>
+					<Plus className="mr-2 h-4 w-4" /> Add Knowledge
+				</Button>
+			</div>
+
+			{isLoadingKnowledgeBases ? (
+				<div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+					{loadingPlaceholderIds.map((id) => (
+						<div
+							key={id}
+							className="h-48 animate-pulse rounded-lg border bg-muted"
+						/>
+					))}
+				</div>
+			) : knowledgeBases.length === 0 ? (
+				<div className="flex flex-col items-center justify-center rounded-lg border bg-background p-12 text-center">
+					<Database className="mb-2 h-12 w-12 text-muted-foreground" />
+					<h2 className="mb-2 font-semibold text-xl">No knowledge bases yet</h2>
+					<p className="mb-6 text-muted-foreground">
+						Add your first knowledge base to enhance your agents with
+						domain-specific knowledge.
+					</p>
+					<Button onClick={handleOpenAddDialog}>
+						<Plus className="mr-2 h-4 w-4" /> Add Knowledge
+					</Button>
+				</div>
+			) : (
+				<div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+					{knowledgeBases.map((kb) => (
+						<div
+							key={kb.id}
+							className="group relative flex flex-col overflow-hidden rounded-lg border bg-background p-6 shadow transition-all hover:shadow-md"
+						>
+							<div className="mb-4 flex items-center justify-between">
+								<div className="flex items-center gap-2">
+									<FileText className="h-5 w-5 text-primary" />
+									<h3 className="font-semibold text-xl tracking-tight">
+										{kb.name}
+									</h3>
+								</div>
+								<Button
+									variant="ghost"
+									size="sm"
+									className="opacity-0 group-hover:opacity-100"
+									onClick={() => handleDeleteKnowledgeBase(kb.id)}
+								>
+									Delete
+								</Button>
+							</div>
+
+							{kb.description && (
+								<p className="mb-4 text-muted-foreground text-sm">
+									{kb.description}
+								</p>
+							)}
+
+							<div className="mt-auto flex items-center justify-between pt-4 text-sm">
+								<span>
+									{kb.fileType && (
+										<span className="rounded-full bg-muted px-2 py-1 text-xs">
+											{kb.fileType}
+										</span>
+									)}
+								</span>
+								<span className="text-muted-foreground">
+									{new Date(kb.createdAt).toLocaleDateString()}
+								</span>
+							</div>
+						</div>
+					))}
+				</div>
+			)}
+
+			<Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+				<DialogContent className="sm:max-w-[600px]">
+					<DialogHeader>
+						<DialogTitle>Add Knowledge Base</DialogTitle>
+					</DialogHeader>
+					<form onSubmit={handleSubmit}>
+						<div className="grid gap-6 py-4">
+							<div className="grid gap-2">
+								<Label htmlFor="name">Name</Label>
+								<Input
+									id="name"
+									value={name}
+									onChange={(e) => setName(e.target.value)}
+									placeholder="Product Manual"
+									required
 								/>
 							</div>
-							<input
-								type="text"
-								name="search"
-								id="search"
-								value={searchQuery}
-								onChange={(e) => setSearchQuery(e.target.value)}
-								className="block w-full rounded-md border-0 py-2 pl-10 text-gray-900 shadow-sm ring-1 ring-gray-300 ring-inset placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-600 focus:ring-inset sm:text-sm sm:leading-6"
-								placeholder="Search knowledge bases..."
-							/>
-						</div>
 
-						{knowledgeBases.length === 0 ? (
-							<div className="text-center">
-								<BookOpenIcon className="mx-auto h-12 w-12 text-gray-400" />
-								<h3 className="mt-2 font-semibold text-gray-900 text-sm">
-									No knowledge bases
-								</h3>
-								<p className="mt-1 text-gray-500 text-sm">
-									Get started by creating a new knowledge base.
-								</p>
-								<div className="mt-6">
-									<Button className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 font-semibold text-sm text-white shadow-sm hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-indigo-600 focus-visible:outline-offset-2">
-										<PlusIcon
-											className="-ml-0.5 mr-1.5 h-5 w-5"
-											aria-hidden="true"
-										/>
-										New Knowledge Base
-									</Button>
+							<div className="grid gap-2">
+								<Label htmlFor="description">Description (Optional)</Label>
+								<Input
+									id="description"
+									value={description}
+									onChange={(e) => setDescription(e.target.value)}
+									placeholder="Knowledge about our products and services"
+								/>
+							</div>
+
+							<div className="grid gap-2">
+								<Label>Upload File or Enter Text</Label>
+								<div
+									className={`flex min-h-[150px] cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed p-6 transition-colors ${
+										dragActive ? "border-primary bg-primary/10" : "border-muted"
+									}`}
+									onDragEnter={handleDrag}
+									onDragLeave={handleDrag}
+									onDragOver={handleDrag}
+									onDrop={handleDrop}
+									onClick={() =>
+										document.getElementById("file-upload")?.click()
+									}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") {
+											document.getElementById("file-upload")?.click();
+										}
+									}}
+								>
+									<input
+										id="file-upload"
+										type="file"
+										className="hidden"
+										onChange={handleFileInput}
+									/>
+									{uploadedFile ? (
+										<>
+											<FileText className="mb-2 h-10 w-10 text-primary" />
+											<p className="font-medium">{uploadedFile.name}</p>
+											<p className="text-muted-foreground text-sm">
+												{(uploadedFile.size / 1024).toFixed(2)} KB
+											</p>
+										</>
+									) : (
+										<>
+											<UploadCloud className="mb-2 h-10 w-10 text-muted-foreground" />
+											<p className="mb-1 font-medium">
+												Drag and drop a file or click to browse
+											</p>
+											<p className="text-muted-foreground text-sm">
+												Support for TXT, PDF, DOCX, and other document formats
+											</p>
+										</>
+									)}
 								</div>
 							</div>
-						) : (
-							<ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-								{knowledgeBases.map((kb) => (
-									<li
-										key={kb.id}
-										className="col-span-1 flex flex-col divide-y divide-gray-200 rounded-lg bg-white shadow"
-									>
-										<div className="flex flex-1 flex-col p-8">
-											<h3 className="font-medium text-gray-900 text-sm">
-												{kb.name}
-											</h3>
-											<p className="mt-1 text-gray-500 text-sm">
-												{kb.description}
-											</p>
-											<p className="mt-2 text-gray-400 text-xs">
-												Created: {kb.createdAt.toLocaleDateString()}
-											</p>
-										</div>
-										<div>
-											<div className="-mt-px flex divide-x divide-gray-200">
-												<div className="flex w-0 flex-1">
-													<Button
-														variant="ghost"
-														className="-mr-px relative inline-flex w-0 flex-1 items-center justify-center gap-x-3 rounded-bl-lg border border-transparent py-4 font-semibold text-gray-900 text-sm"
-													>
-														View
-													</Button>
-												</div>
-												<div className="-ml-px flex w-0 flex-1">
-													<Button
-														variant="ghost"
-														className="relative inline-flex w-0 flex-1 items-center justify-center gap-x-3 rounded-br-lg border border-transparent py-4 font-semibold text-gray-900 text-sm"
-													>
-														Edit
-													</Button>
-												</div>
-											</div>
-										</div>
-									</li>
-								))}
-							</ul>
-						)}
-					</div>
-				</main>
-			</div>
-		</DashboardLayout>
+
+							<div className="grid gap-2">
+								<Label htmlFor="content">Content</Label>
+								<Textarea
+									id="content"
+									value={content}
+									onChange={(e) => setContent(e.target.value)}
+									placeholder="Enter text content or paste information here..."
+									className="min-h-[200px]"
+									required={!uploadedFile}
+								/>
+							</div>
+						</div>
+
+						<DialogFooter>
+							<Button
+								type="button"
+								variant="outline"
+								onClick={handleCloseAddDialog}
+							>
+								Cancel
+							</Button>
+							<Button
+								type="submit"
+								disabled={!name || (!content && !uploadedFile)}
+							>
+								Add Knowledge Base
+							</Button>
+						</DialogFooter>
+					</form>
+				</DialogContent>
+			</Dialog>
+		</div>
 	);
 }
