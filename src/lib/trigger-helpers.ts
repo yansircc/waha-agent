@@ -1,3 +1,4 @@
+import { chatGenerationTask } from "@/trigger/chat-generation";
 import { processDocumentTask } from "@/trigger/embedding";
 
 /**
@@ -29,6 +30,43 @@ export async function triggerDocumentProcessing({
 		userId,
 		documentId,
 		webhookUrl, // 如果提供了webhook URL，将通知处理结果
+	});
+
+	// 返回任务句柄ID以便跟踪
+	return {
+		taskId: handle.id,
+		status: "triggered",
+	};
+}
+
+/**
+ * 触发聊天生成任务
+ *
+ * 将聊天生成任务发送到Trigger.dev以执行AI响应生成
+ */
+export async function triggerChatGeneration({
+	messages,
+	agentId,
+	userId,
+	webhookUrl,
+	conversationId,
+}: {
+	messages: Array<{
+		role: "user" | "assistant";
+		content: string;
+	}>;
+	agentId?: string;
+	userId: string;
+	webhookUrl?: string;
+	conversationId?: string;
+}) {
+	// 触发任务并返回句柄
+	const handle = await chatGenerationTask.trigger({
+		messages,
+		agentId,
+		userId,
+		webhookUrl,
+		conversationId,
 	});
 
 	// 返回任务句柄ID以便跟踪

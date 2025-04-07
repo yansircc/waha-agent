@@ -1,7 +1,6 @@
 "use client";
 
 import { AgentChatDialog } from "@/components/agent-chat-dialog";
-import { AgentQueryDialog } from "@/components/agent-query-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,9 +10,13 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useAgents } from "@/hooks/use-agents";
-import { MessageCircle, MoveRight, PenIcon } from "lucide-react";
-import Link from "next/link";
+import { InfoIcon, MessageCircle, MoveRight, PenIcon } from "lucide-react";
 import { useState } from "react";
 
 interface AgentCardProps {
@@ -26,6 +29,8 @@ interface AgentCardProps {
 	}[];
 	isActive?: boolean;
 	onEdit?: () => void;
+	createdAt?: Date | null;
+	updatedAt?: Date | null;
 }
 
 export function AgentCard({
@@ -35,6 +40,8 @@ export function AgentCard({
 	knowledgeBases = [],
 	isActive = false,
 	onEdit,
+	createdAt,
+	updatedAt,
 }: AgentCardProps) {
 	const [isChatOpen, setIsChatOpen] = useState(false);
 	const { toggleAgentActiveStatus, isLoading } = useAgents();
@@ -42,6 +49,9 @@ export function AgentCard({
 	const handleToggleActive = async (checked: boolean) => {
 		await toggleAgentActiveStatus(id);
 	};
+
+	// Extract knowledge base IDs for use with the chat dialog
+	const knowledgeBaseIds = knowledgeBases.map((kb) => kb.id);
 
 	return (
 		<div className="group relative flex flex-col overflow-hidden rounded-lg border bg-background p-6 shadow transition-all hover:shadow-md">
@@ -83,8 +93,6 @@ export function AgentCard({
 			)}
 
 			<div className="mt-auto flex items-center gap-2 pt-4">
-				<AgentQueryDialog agentId={id} agentName={name} />
-
 				<Button
 					variant="outline"
 					size="sm"
@@ -92,20 +100,46 @@ export function AgentCard({
 					onClick={() => setIsChatOpen(true)}
 					disabled={!isActive}
 				>
-					<MessageCircle className="h-4 w-4" /> Test Chat
+					<MessageCircle className="h-4 w-4" /> Chat
 				</Button>
 
-				<div className="flex-1 text-right">
-					<Button
-						variant="link"
-						size="sm"
-						asChild
-						className="px-0 text-foreground/60 hover:text-foreground/80"
-					>
-						<Link href={`/agents/${id}`}>
-							Details <MoveRight className="ml-1 h-4 w-4" />
-						</Link>
-					</Button>
+				<div className="flex flex-1 items-center justify-end gap-2">
+					{(createdAt || updatedAt) && (
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button variant="ghost" size="icon" className="h-8 w-8">
+									<InfoIcon className="h-4 w-4" />
+									<span className="sr-only">Agent details</span>
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent className="max-w-xs p-4">
+								<div className="space-y-2">
+									{createdAt && (
+										<div>
+											<p className="font-semibold text-xs">Created:</p>
+											<p className="text-muted-foreground text-xs">
+												{new Date(createdAt).toLocaleString()}
+											</p>
+										</div>
+									)}
+									{updatedAt && (
+										<div>
+											<p className="font-semibold text-xs">Updated:</p>
+											<p className="text-muted-foreground text-xs">
+												{new Date(updatedAt).toLocaleString()}
+											</p>
+										</div>
+									)}
+									<div>
+										<p className="font-semibold text-xs">Status:</p>
+										<p className="text-muted-foreground text-xs">
+											{isActive ? "Active" : "Inactive"}
+										</p>
+									</div>
+								</div>
+							</TooltipContent>
+						</Tooltip>
+					)}
 				</div>
 			</div>
 
@@ -115,6 +149,7 @@ export function AgentCard({
 					agentName={name}
 					open={isChatOpen}
 					onOpenChange={setIsChatOpen}
+					knowledgeBaseIds={knowledgeBaseIds}
 				/>
 			)}
 		</div>

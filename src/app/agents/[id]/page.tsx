@@ -1,10 +1,9 @@
-import { AgentQueryDialog } from "@/components/agent-query-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { auth } from "@/server/auth";
 import { db } from "@/server/db";
-import { ArrowLeft, Search } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -63,16 +62,6 @@ export default async function AgentDetailsPage({ params }: PageProps) {
 						</Badge>
 					)}
 				</div>
-				<AgentQueryDialog
-					agentId={agentData.id}
-					agentName={agentData.name}
-					trigger={
-						<Button>
-							<Search className="mr-2 h-4 w-4" />
-							Query with this Agent
-						</Button>
-					}
-				/>
 			</div>
 
 			<div className="grid gap-6 md:grid-cols-2">

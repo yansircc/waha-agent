@@ -118,6 +118,8 @@ export default function AgentsPage() {
 							knowledgeBases={agent.knowledgeBases}
 							isActive={agent.isActive}
 							onEdit={() => handleOpenEditDialog(agent.id)}
+							createdAt={agent.createdAt}
+							updatedAt={agent.updatedAt}
 						/>
 					))}
 				</div>

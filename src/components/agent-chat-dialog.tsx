@@ -8,8 +8,13 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useAgentQuery } from "@/hooks/use-agent-query";
 import { cn } from "@/lib/utils";
-import { api } from "@/trpc/react";
 import { Bot, Cloud, Send, User } from "lucide-react";
 import { useState } from "react";
 
@@ -18,40 +23,42 @@ interface Message {
 	content: string;
 	role: "user" | "assistant";
 	timestamp: Date;
+	sources?: string[];
 }
 
 interface AgentChatDialogProps {
-	agentId?: string;
-	agentName?: string;
+	agentId: string;
+	agentName: string;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
+	knowledgeBaseIds?: string[];
 }
 
 export function AgentChatDialog({
-	agentId = "weatherAgent",
-	agentName = "Weather Assistant",
+	agentId,
+	agentName,
 	open,
 	onOpenChange,
+	knowledgeBaseIds,
 }: AgentChatDialogProps) {
 	const [messages, setMessages] = useState<Message[]>([]);
 	const [inputValue, setInputValue] = useState("");
-	const [isLoading, setIsLoading] = useState(false);
 
-	const chatMutation = api.chat.sendMessage.useMutation({
+	const { isLoading, queryWithAgent, error } = useAgentQuery({
 		onSuccess: (data) => {
 			// Create the assistant message from the API response
 			const assistantMessage: Message = {
 				id: crypto.randomUUID(),
-				content: data.response,
+				content: data.answer,
 				role: "assistant",
 				timestamp: new Date(),
+				sources: data.sources,
 			};
 
 			setMessages((prev) => [...prev, assistantMessage]);
-			setIsLoading(false);
 		},
 		onError: (error) => {
-			console.error("Error sending message:", error);
+			console.error("Error querying agent:", error);
 			// Add an error message
 			const errorMessage: Message = {
 				id: crypto.randomUUID(),
@@ -61,7 +68,6 @@ export function AgentChatDialog({
 				timestamp: new Date(),
 			};
 			setMessages((prev) => [...prev, errorMessage]);
-			setIsLoading(false);
 		},
 	});
 
@@ -78,18 +84,9 @@ export function AgentChatDialog({
 
 		setMessages((prev) => [...prev, userMessage]);
 		setInputValue("");
-		setIsLoading(true);
 
-		// Convert our messages to the format expected by the API
-		const apiMessages = messages
-			.concat(userMessage)
-			.map(({ role, content }) => ({ role, content }));
-
-		// Send the request using tRPC
-		chatMutation.mutate({
-			messages: apiMessages,
-			agentId, // Pass the agent ID to the API
-		});
+		// Query the agent using the useAgentQuery hook
+		queryWithAgent(agentId, inputValue, knowledgeBaseIds);
 	};
 
 	const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -113,9 +110,9 @@ export function AgentChatDialog({
 					{messages.length === 0 ? (
 						<div className="flex h-full flex-col items-center justify-center text-center">
 							<Cloud className="mb-2 h-12 w-12 text-muted-foreground/50" />
-							<p className="font-medium text-lg">Ask about the weather</p>
+							<p className="font-medium text-lg">Ask me anything</p>
 							<p className="text-muted-foreground text-sm">
-								Try "What's the weather like in Tokyo today?"
+								Try asking a question about your knowledge base
 							</p>
 						</div>
 					) : (
@@ -140,6 +137,37 @@ export function AgentChatDialog({
 									</span>
 								</div>
 								<p className="text-sm">{message.content}</p>
+
+								{message.sources && message.sources.length > 0 && (
+									<div className="mt-2">
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<Button
+													variant="link"
+													size="sm"
+													className="h-auto p-0 text-xs"
+												>
+													Sources: {message.sources.length}
+												</Button>
+											</TooltipTrigger>
+											<TooltipContent>
+												<div className="max-w-xs">
+													<p className="mb-1 font-medium text-xs">Sources:</p>
+													<ul className="list-disc pl-4 text-xs">
+														{message.sources.map((source, index) => (
+															<li
+																key={`${message.id}-source-${index}`}
+																className="mb-1"
+															>
+																{source}
+															</li>
+														))}
+													</ul>
+												</div>
+											</TooltipContent>
+										</Tooltip>
+									</div>
+								)}
 							</div>
 						))
 					)}
@@ -158,9 +186,15 @@ export function AgentChatDialog({
 					)}
 				</div>
 
+				{error && (
+					<div className="mb-4 rounded-md bg-destructive/15 p-3 text-destructive text-sm">
+						{error}
+					</div>
+				)}
+
 				<div className="flex items-center gap-2">
 					<Input
-						placeholder="Ask about weather..."
+						placeholder="Ask a question..."
 						value={inputValue}
 						onChange={(e) => setInputValue(e.target.value)}
 						onKeyDown={handleKeyDown}

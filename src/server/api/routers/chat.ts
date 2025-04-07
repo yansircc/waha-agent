@@ -1,36 +1,51 @@
-import { mastra } from "@/mastra";
+import { triggerChatGeneration } from "@/lib/trigger-helpers";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { db } from "@/server/db";
 import { z } from "zod";
+
+// 定义消息类型
+type Message = {
+	role: "user" | "assistant";
+	content: string;
+};
 
 export const chatRouter = createTRPCRouter({
 	sendMessage: protectedProcedure
 		.input(
 			z.object({
-				messages: z.array(
-					z.object({
-						role: z.enum(["user", "assistant"]),
-						content: z.string(),
-					}),
-				),
+				messages: z
+					.array(
+						z.object({
+							role: z.enum(["user", "assistant"]),
+							content: z.string(),
+						}),
+					)
+					.min(1, "At least one message is required"),
 				agentId: z.string().optional(),
+				conversationId: z.string().optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
-			const { messages, agentId } = input;
+			const { messages, agentId, conversationId } = input;
+			const userId = ctx.session.user.id;
 
-			// 默认使用研究型agent
-			const mastraAgentId = "researchAgent";
+			// 通过 zod 验证确保有消息，这里只是为了类型安全
+			if (messages.length === 0) {
+				throw new Error("At least one message is required");
+			}
 
-			// 如果提供了agentId，验证并获取agent信息
+			// 获取最后一条消息
+			const lastMessage = messages[messages.length - 1] as Message;
+			if (lastMessage.role !== "user") {
+				throw new Error("Last message must be from user");
+			}
+
+			// 如果提供了agentId，验证其属于当前用户
 			if (agentId) {
 				// 从数据库查询agent
 				const userAgent = await db.query.agents.findFirst({
 					where: (agent, { eq, and }) =>
-						and(
-							eq(agent.id, agentId),
-							eq(agent.createdById, ctx.session.user.id),
-						),
+						and(eq(agent.id, agentId), eq(agent.createdById, userId)),
 				});
 
 				if (!userAgent) {
@@ -40,20 +55,23 @@ export const chatRouter = createTRPCRouter({
 				}
 			}
 
-			// 获取最后一条消息作为查询内容
-			const lastMessage = messages[messages.length - 1];
+			// 配置webhook URL
+			const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/chat`;
 
-			if (!lastMessage || !lastMessage.content) {
-				throw new Error("Invalid request: message content is required");
-			}
+			// 使用Trigger.dev触发聊天生成任务
+			const { taskId } = await triggerChatGeneration({
+				messages,
+				agentId,
+				userId,
+				webhookUrl,
+				conversationId,
+			});
 
-			// 直接使用mastra库生成回复
-			const mastraAgent = mastra.getAgent(mastraAgentId);
-			const response = await mastraAgent.generate(lastMessage.content);
-
+			// 返回任务ID，前端可以用它查询状态
 			return {
-				response: response.text,
-				messages: [...messages, { role: "assistant", content: response.text }],
+				taskId,
+				status: "processing",
+				lastMessageContent: lastMessage.content,
 			};
 		}),
 });

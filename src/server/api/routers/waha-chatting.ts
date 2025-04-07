@@ -20,7 +20,6 @@ import {
 	SendSeenRequestSchema,
 	WAMessageSchema,
 } from "@/types/schemas";
-import { z } from "zod";
 
 export const wahaChattingRouter = createTRPCRouter({
 	// Send a text message
