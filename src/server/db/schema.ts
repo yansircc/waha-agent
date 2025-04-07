@@ -10,27 +10,6 @@ import type { AdapterAccount } from "next-auth/adapters";
  */
 export const createTable = pgTableCreator((name) => `wm_${name}`);
 
-export const posts = createTable(
-	"post",
-	(d) => ({
-		id: d.integer().primaryKey().generatedByDefaultAsIdentity(),
-		name: d.varchar({ length: 256 }),
-		createdById: d
-			.varchar({ length: 255 })
-			.notNull()
-			.references(() => users.id),
-		createdAt: d
-			.timestamp({ withTimezone: true })
-			.default(sql`CURRENT_TIMESTAMP`)
-			.notNull(),
-		updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
-	}),
-	(t) => [
-		index("created_by_idx").on(t.createdById),
-		index("name_idx").on(t.name),
-	],
-);
-
 export const users = createTable("user", (d) => ({
 	id: d
 		.varchar({ length: 255 })
@@ -98,16 +77,6 @@ export const sessions = createTable(
 export const sessionsRelations = relations(sessions, ({ one }) => ({
 	user: one(users, { fields: [sessions.userId], references: [users.id] }),
 }));
-
-export const verificationTokens = createTable(
-	"verification_token",
-	(d) => ({
-		identifier: d.varchar({ length: 255 }).notNull(),
-		token: d.varchar({ length: 255 }).notNull(),
-		expires: d.timestamp({ mode: "date", withTimezone: true }).notNull(),
-	}),
-	(t) => [primaryKey({ columns: [t.identifier, t.token] })],
-);
 
 // WhatsApp AI Agent schema
 export const agents = createTable(

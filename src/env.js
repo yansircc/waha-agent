@@ -27,6 +27,7 @@ export const env = createEnv({
 		MASTRA_API_URL: z.string(),
 		QDRANT_URL: z.string().url(),
 		QDRANT_API_KEY: z.string(),
+		TRIGGER_SECRET_KEY: z.string(),
 	},
 
 	/**
@@ -37,6 +38,7 @@ export const env = createEnv({
 	client: {
 		NEXT_PUBLIC_WAHA_API_URL: z.string(),
 		NEXT_PUBLIC_WEBHOOK_URL: z.string(),
+		NEXT_PUBLIC_APP_URL: z.string(),
 	},
 
 	/**
@@ -61,6 +63,8 @@ export const env = createEnv({
 		MASTRA_API_URL: process.env.MASTRA_API_URL,
 		QDRANT_URL: process.env.QDRANT_URL,
 		QDRANT_API_KEY: process.env.QDRANT_API_KEY,
+		TRIGGER_SECRET_KEY: process.env.TRIGGER_SECRET_KEY,
+		NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
 	},
 	/**
 	 * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

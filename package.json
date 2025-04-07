@@ -20,7 +20,7 @@
 		"preview": "next build && next start",
 		"start": "next start",
 		"typecheck": "tsc --noEmit",
-		"clean": "rm -rf .next && rm -rf node_modules && rm -rf bun.lockb && bun i"
+		"clean": "rm -rf .next && rm -rf node_modules && rm -rf bun.lockb && bun i && bun dev"
 	},
 	"dependencies": {
 		"@ai-sdk/cohere": "^1.2.5",
@@ -31,6 +31,7 @@
 		"@heroicons/react": "^2.2.0",
 		"@hookform/resolvers": "^5.0.1",
 		"@mastra/core": "^0.7.0",
+		"@mastra/pg": "^0.2.6",
 		"@mastra/rag": "^0.1.14",
 		"@radix-ui/react-alert-dialog": "^1.1.6",
 		"@radix-ui/react-avatar": "^1.1.3",

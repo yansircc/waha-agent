@@ -10,7 +10,7 @@ import { createVectorQueryTool } from "@mastra/rag";
 // 创建向量查询工具
 const vectorQueryTool = createVectorQueryTool({
 	vectorStoreName: "pgVector",
-	indexName: "kb_vectors",
+	indexName: "wm_kb_vectors",
 	model: cohere.embedding("embed-multilingual-v3.0"),
 });
 

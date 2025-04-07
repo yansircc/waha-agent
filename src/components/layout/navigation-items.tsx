@@ -31,9 +31,9 @@ export function NavigationItems() {
 		},
 		{
 			name: "Knowledge",
-			href: "/knowledge",
+			href: "/kb",
 			icon: BookOpenIcon,
-			current: pathname === "/knowledge",
+			current: pathname === "/kb",
 		},
 		{
 			name: "Instances",

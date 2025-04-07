@@ -111,7 +111,7 @@ export default async function AgentDetailsPage({ params }: PageProps) {
 									<li key={kb.id} className="flex items-center justify-between">
 										<span>{kb.name}</span>
 										<Button variant="ghost" size="sm" asChild>
-											<Link href={`/knowledge/${kb.id}`}>View</Link>
+											<Link href={`/kb/${kb.id}`}>View</Link>
 										</Button>
 									</li>
 								))}

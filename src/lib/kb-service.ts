@@ -1,3 +1,4 @@
+import { triggerDocumentProcessing } from "@/lib/trigger-helpers";
 import { mastra } from "@/mastra";
 import { db } from "@/server/db";
 import { documents, knowledgeBases } from "@/server/db/schema";
@@ -7,9 +8,6 @@ import type {
 	UpdateDocumentInput,
 	UpdateKnowledgeBaseInput,
 } from "@/types/kb";
-import { cohere } from "@ai-sdk/cohere";
-import { MDocument } from "@mastra/rag";
-import { embedMany } from "ai";
 import { and, eq } from "drizzle-orm";
 
 /**
@@ -121,27 +119,27 @@ export const kbService = {
 				);
 			}
 
-			// Get the vector store instance from Mastra
-			const vectorStore = mastra.getVector("pgVector");
-			const indexName = "kb_vectors";
-
 			try {
-				// Query获取与知识库关联的向量（添加userId进行精确筛选）
+				// 获取向量存储实例
+				const vectorStore = mastra.getVector("pgVector");
+				const indexName = "kb_vectors";
+
+				// 查询匹配该知识库的向量
 				const matchingVectors = await vectorStore.query({
 					indexName,
 					queryVector: Array(1024).fill(0), // 临时查询向量
 					topK: 1000, // 获取足够多的结果
 					filter: {
 						knowledgeBaseId: id,
-						userId: userId,
+						userId,
 					},
 					includeVector: false,
 				});
 
-				// 如果有匹配的向量, 逐个删除
+				// 删除匹配的向量
 				if (matchingVectors && matchingVectors.length > 0) {
 					console.log(
-						`Found ${matchingVectors.length} vectors to delete for knowledge base: ${id}`,
+						`Found ${matchingVectors.length} vectors to delete for knowledge base: ${kb.name}`,
 					);
 
 					for (const vector of matchingVectors) {
@@ -151,14 +149,14 @@ export const kbService = {
 					}
 
 					console.log(
-						`Deleted ${matchingVectors.length} vectors for knowledge base: ${id}`,
+						`Deleted ${matchingVectors.length} vectors for knowledge base: ${kb.name}`,
 					);
 				} else {
-					console.log(`No vectors found for knowledge base: ${id}`);
+					console.log(`No vectors found for knowledge base: ${kb.name}`);
 				}
 			} catch (error) {
 				console.error(
-					`Failed to delete vectors for knowledge base ${id}:`,
+					`Failed to delete vectors for knowledge base ${kb.name}:`,
 					error,
 				);
 				// 继续执行，不阻止知识库的删除
@@ -220,14 +218,19 @@ export const kbService = {
 				throw new Error("Failed to create document");
 			}
 
-			// Now process document content for embedding with the correct document ID
-			await processDocumentContent(
+			// 可选的webhook URL - 用于接收处理状态的通知
+			const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/embedding`;
+
+			// 触发文档处理任务
+			// 现在文档嵌入将直接存储在数据库中，webhookUrl仅用于通知
+			await triggerDocumentProcessing({
 				content,
 				knowledgeBaseId,
-				name,
+				documentName: name,
 				userId,
-				doc.id,
-			);
+				documentId: doc.id,
+				webhookUrl, // 可选的webhook通知
+			});
 
 			return doc;
 		},
@@ -302,15 +305,20 @@ export const kbService = {
 				throw new Error("Document not found or you don't have permission");
 			}
 
-			// If content is being updated, process it for embedding
+			// If content is being updated, trigger the document processing task
 			if (content && content !== doc.content) {
-				await processDocumentContent(
+				// 可选的webhook URL
+				const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/embedding`;
+
+				// 触发文档处理 - 现在直接存储到数据库
+				await triggerDocumentProcessing({
 					content,
-					doc.knowledgeBaseId,
-					name || doc.name,
+					knowledgeBaseId: doc.knowledgeBaseId,
+					documentName: name || doc.name,
 					userId,
-					doc.id,
-				);
+					documentId: doc.id,
+					webhookUrl, // 可选的webhook通知
+				});
 			}
 
 			// Update document
@@ -347,30 +355,27 @@ export const kbService = {
 				throw new Error("Document not found or you don't have permission");
 			}
 
-			// Delete document
-			await db.delete(documents).where(eq(documents.id, id));
-
-			// 获取向量存储实例
-			const vectorStore = mastra.getVector("pgVector");
-			const indexName = "kb_vectors";
-
 			try {
-				// 查询匹配该文档的向量（使用documentId和userId进行精确筛选）
+				// 获取向量存储实例
+				const vectorStore = mastra.getVector("pgVector");
+				const indexName = "kb_vectors";
+
+				// 查询匹配该文档的向量
 				const matchingVectors = await vectorStore.query({
 					indexName,
 					queryVector: Array(1024).fill(0), // 临时查询向量
-					topK: 10,
+					topK: 1000, // 获取足够多的结果
 					filter: {
 						documentId: id,
-						userId: userId,
+						userId,
 					},
 					includeVector: false,
 				});
 
-				// 如果有匹配的向量, 逐个删除
+				// 删除匹配的向量
 				if (matchingVectors && matchingVectors.length > 0) {
 					console.log(
-						`Found ${matchingVectors.length} vectors to delete for document: ${doc.name} (ID: ${id})`,
+						`Found ${matchingVectors.length} vectors to delete for document: ${doc.name}`,
 					);
 
 					for (const vector of matchingVectors) {
@@ -383,79 +388,23 @@ export const kbService = {
 						`Deleted ${matchingVectors.length} vectors for document: ${doc.name}`,
 					);
 				} else {
-					console.log(`No vectors found for document: ${doc.name} (ID: ${id})`);
+					console.log(`No vectors found for document: ${doc.name}`);
 				}
 			} catch (error) {
 				console.error(
 					`Failed to delete vectors for document ${doc.name}:`,
 					error,
 				);
-				// 继续处理, 不阻止文档删除
+				// 继续处理，不阻止文档删除
 			}
+
+			// Delete document
+			await db.delete(documents).where(eq(documents.id, id));
 
 			return { success: true };
 		},
 	},
 };
 
-/**
- * 处理文档内容并存储嵌入向量
- *
- * @private
- */
-async function processDocumentContent(
-	content: string,
-	knowledgeBaseId: string,
-	documentName: string,
-	userId: string,
-	documentId: string,
-) {
-	// Create document and chunk it
-	const doc = MDocument.fromText(content);
-	const chunks = await doc.chunk({
-		strategy: "recursive",
-		size: 512,
-		overlap: 50,
-		separator: "\n",
-	});
-
-	// Embed all chunks at once
-	const { embeddings: allEmbeddings } = await embedMany({
-		model: cohere.embedding("embed-multilingual-v3.0"),
-		values: chunks.map((chunk) => chunk.text),
-	});
-
-	// Get the vector store instance from Mastra
-	const vectorStore = mastra.getVector("pgVector");
-
-	// 使用单一表存储所有知识库的向量数据
-	const indexName = "kb_vectors";
-
-	// 创建索引（如果不存在）
-	try {
-		await vectorStore.createIndex({
-			indexName,
-			dimension: 1024,
-		});
-	} catch (error) {
-		// 索引可能已存在，这是正常的
-		console.log("Index may already exist:", error);
-	}
-
-	// 使用丰富的元数据存储所有嵌入，包括知识库ID作为过滤条件
-	await vectorStore.upsert({
-		indexName,
-		vectors: allEmbeddings,
-		metadata: chunks.map((chunk) => ({
-			text: chunk.text,
-			source: documentName,
-			knowledgeBaseId: knowledgeBaseId,
-			userId: userId,
-			documentId: documentId,
-			chunkIndex: chunks.indexOf(chunk),
-			timestamp: new Date().toISOString(),
-		})),
-	});
-
-	return chunks.length;
-}
+// No longer needed as it's now handled by the Trigger.dev task
+// async function processDocumentContent() { ... }

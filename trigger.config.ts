@@ -19,4 +19,7 @@ export default defineConfig({
 		},
 	},
 	dirs: ["./src/trigger"],
+	build: {
+		external: ["@mastra/rag"],
+	},
 });
