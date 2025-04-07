@@ -359,7 +359,7 @@ export const kbService = {
 				const matchingVectors = await vectorStore.query({
 					indexName,
 					queryVector: Array(1024).fill(0), // 临时查询向量
-					topK: 1000, // 获取足够多的结果
+					topK: 10,
 					filter: {
 						documentId: id,
 						userId: userId,
