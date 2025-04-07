@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { api } from "@/trpc/react";
 import { Bot, Cloud, Send, User } from "lucide-react";
 import { useState } from "react";
 
@@ -36,6 +37,34 @@ export function AgentChatDialog({
 	const [inputValue, setInputValue] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
 
+	const chatMutation = api.chat.sendMessage.useMutation({
+		onSuccess: (data) => {
+			// Create the assistant message from the API response
+			const assistantMessage: Message = {
+				id: crypto.randomUUID(),
+				content: data.response,
+				role: "assistant",
+				timestamp: new Date(),
+			};
+
+			setMessages((prev) => [...prev, assistantMessage]);
+			setIsLoading(false);
+		},
+		onError: (error) => {
+			console.error("Error sending message:", error);
+			// Add an error message
+			const errorMessage: Message = {
+				id: crypto.randomUUID(),
+				content:
+					"Sorry, there was an error processing your request. Please try again.",
+				role: "assistant",
+				timestamp: new Date(),
+			};
+			setMessages((prev) => [...prev, errorMessage]);
+			setIsLoading(false);
+		},
+	});
+
 	const handleSendMessage = async () => {
 		if (!inputValue.trim()) return;
 
@@ -51,54 +80,16 @@ export function AgentChatDialog({
 		setInputValue("");
 		setIsLoading(true);
 
-		try {
-			// Convert our messages to the format expected by the API
-			const apiMessages = messages
-				.concat(userMessage)
-				.map(({ role, content }) => ({ role, content }));
+		// Convert our messages to the format expected by the API
+		const apiMessages = messages
+			.concat(userMessage)
+			.map(({ role, content }) => ({ role, content }));
 
-			// Send the request to our API endpoint
-			const response = await fetch("/api/chat", {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify({
-					messages: apiMessages,
-					agentId, // Pass the agent ID to the API
-				}),
-			});
-
-			if (!response.ok) {
-				throw new Error(`API request failed with status ${response.status}`);
-			}
-
-			const data = await response.json();
-			const { text } = data;
-
-			// Create the assistant message from the API response
-			const assistantMessage: Message = {
-				id: crypto.randomUUID(),
-				content: text,
-				role: "assistant",
-				timestamp: new Date(),
-			};
-
-			setMessages((prev) => [...prev, assistantMessage]);
-		} catch (error) {
-			console.error("Error sending message:", error);
-			// Add an error message
-			const errorMessage: Message = {
-				id: crypto.randomUUID(),
-				content:
-					"Sorry, there was an error processing your request. Please try again.",
-				role: "assistant",
-				timestamp: new Date(),
-			};
-			setMessages((prev) => [...prev, errorMessage]);
-		} finally {
-			setIsLoading(false);
-		}
+		// Send the request using tRPC
+		chatMutation.mutate({
+			messages: apiMessages,
+			agentId, // Pass the agent ID to the API
+		});
 	};
 
 	const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
