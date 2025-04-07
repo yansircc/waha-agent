@@ -11,6 +11,9 @@
 	"linter": {
 		"enabled": true,
 		"rules": {
+			"suspicious": {
+				"noExplicitAny": "warn"
+			},
 			"nursery": {
 				"useSortedClasses": {
 					"level": "warn",

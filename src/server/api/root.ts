@@ -1,6 +1,6 @@
 import { agentsRouter } from "@/server/api/routers/agents";
 import { instancesRouter } from "@/server/api/routers/instances";
-import { knowledgeBasesRouter } from "@/server/api/routers/knowledgeBases";
+import { knowledgeBasesRouter } from "@/server/api/routers/kb";
 import { mastraAgentsRouter } from "@/server/api/routers/mastra-agents";
 import { wahaAuthRouter } from "@/server/api/routers/waha-auth";
 import { wahaChattingRouter } from "@/server/api/routers/waha-chatting";

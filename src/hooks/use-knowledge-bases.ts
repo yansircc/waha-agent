@@ -44,7 +44,11 @@ export function useKnowledgeBases({
 	}) => {
 		setIsLoading(true);
 		try {
-			const result = await createKnowledgeBaseMutation.mutateAsync(data);
+			const result = await createKnowledgeBaseMutation.mutateAsync({
+				name: data.name,
+				description: data.description,
+				// Other fields are now handled through documents
+			});
 			setIsLoading(false);
 			return result;
 		} catch (error: unknown) {

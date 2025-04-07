@@ -1,6 +1,7 @@
 "use client";
 
 import { AgentChatDialog } from "@/components/agent-chat-dialog";
+import { AgentQueryDialog } from "@/components/agent-query-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -81,7 +82,9 @@ export function AgentCard({
 				</div>
 			)}
 
-			<div className="mt-auto flex items-center justify-between pt-4">
+			<div className="mt-auto flex items-center gap-2 pt-4">
+				<AgentQueryDialog agentId={id} agentName={name} />
+
 				<Button
 					variant="outline"
 					size="sm"
@@ -91,16 +94,19 @@ export function AgentCard({
 				>
 					<MessageCircle className="h-4 w-4" /> Test Chat
 				</Button>
-				<Button
-					variant="link"
-					size="sm"
-					asChild
-					className="px-0 text-foreground/60 hover:text-foreground/80"
-				>
-					<Link href={`/agents/${id}`}>
-						Details <MoveRight className="ml-1 h-4 w-4" />
-					</Link>
-				</Button>
+
+				<div className="flex-1 text-right">
+					<Button
+						variant="link"
+						size="sm"
+						asChild
+						className="px-0 text-foreground/60 hover:text-foreground/80"
+					>
+						<Link href={`/agents/${id}`}>
+							Details <MoveRight className="ml-1 h-4 w-4" />
+						</Link>
+					</Button>
+				</div>
 			</div>
 
 			{isChatOpen && (

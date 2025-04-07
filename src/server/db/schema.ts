@@ -185,8 +185,47 @@ export const knowledgeBasesRelations = relations(
 			references: [users.id],
 		}),
 		agents: many(agentToKnowledgeBase, { relationName: "kbToAgent" }),
+		documents: many(documents),
 	}),
 );
+
+// Documents schema for storing individual documents within a knowledge base
+export const documents = createTable(
+	"document",
+	(d) => ({
+		id: d
+			.varchar({ length: 255 })
+			.notNull()
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		name: d.varchar({ length: 255 }).notNull(),
+		content: d.text().notNull(),
+		fileUrl: d.text(),
+		fileType: d.varchar({ length: 50 }),
+		fileSize: d.integer(),
+		metadata: d.jsonb(),
+		knowledgeBaseId: d
+			.varchar({ length: 255 })
+			.notNull()
+			.references(() => knowledgeBases.id, { onDelete: "cascade" }),
+		createdAt: d
+			.timestamp({ withTimezone: true })
+			.default(sql`CURRENT_TIMESTAMP`)
+			.notNull(),
+		updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+	}),
+	(t) => [
+		index("document_kb_id_idx").on(t.knowledgeBaseId),
+		index("document_name_idx").on(t.name),
+	],
+);
+
+export const documentsRelations = relations(documents, ({ one }) => ({
+	knowledgeBase: one(knowledgeBases, {
+		fields: [documents.knowledgeBaseId],
+		references: [knowledgeBases.id],
+	}),
+}));
 
 // Junction table for many-to-many relationship between agents and knowledge bases
 export const agentToKnowledgeBase = createTable(

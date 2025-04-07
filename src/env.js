@@ -21,8 +21,12 @@ export const env = createEnv({
 			.default("development"),
 		AI_HUB_MIX_API_KEY: z.string(),
 		OPENAI_API_KEY: z.string(),
+		GOOGLE_GENERATIVE_AI_API_KEY: z.string(),
+		COHERE_API_KEY: z.string(),
 		WAHA_API_KEY: z.string(),
 		MASTRA_API_URL: z.string(),
+		QDRANT_URL: z.string().url(),
+		QDRANT_API_KEY: z.string(),
 	},
 
 	/**
@@ -49,10 +53,14 @@ export const env = createEnv({
 		NODE_ENV: process.env.NODE_ENV,
 		AI_HUB_MIX_API_KEY: process.env.AI_HUB_MIX_API_KEY,
 		OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+		GOOGLE_GENERATIVE_AI_API_KEY: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+		COHERE_API_KEY: process.env.COHERE_API_KEY,
 		WAHA_API_KEY: process.env.WAHA_API_KEY,
 		NEXT_PUBLIC_WAHA_API_URL: process.env.NEXT_PUBLIC_WAHA_API_URL,
 		NEXT_PUBLIC_WEBHOOK_URL: process.env.NEXT_PUBLIC_WEBHOOK_URL,
 		MASTRA_API_URL: process.env.MASTRA_API_URL,
+		QDRANT_URL: process.env.QDRANT_URL,
+		QDRANT_API_KEY: process.env.QDRANT_API_KEY,
 	},
 	/**
 	 * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
