@@ -122,7 +122,7 @@ export const kbService = {
 			try {
 				// 获取向量存储实例
 				const vectorStore = mastra.getVector("pgVector");
-				const indexName = "kb_vectors";
+				const indexName = "wm_kb_vectors";
 
 				// 查询匹配该知识库的向量
 				const matchingVectors = await vectorStore.query({
@@ -358,7 +358,7 @@ export const kbService = {
 			try {
 				// 获取向量存储实例
 				const vectorStore = mastra.getVector("pgVector");
-				const indexName = "kb_vectors";
+				const indexName = "wm_kb_vectors";
 
 				// 查询匹配该文档的向量
 				const matchingVectors = await vectorStore.query({
