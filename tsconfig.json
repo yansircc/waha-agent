@@ -36,8 +36,8 @@
 		"**/*.tsx",
 		"**/*.cjs",
 		"**/*.js",
-    ".next/types/**/*.ts",
-    "trigger.config.ts"
+		".next/types/**/*.ts",
+		"trigger.config.ts"
 	],
 	"exclude": ["node_modules"]
 }

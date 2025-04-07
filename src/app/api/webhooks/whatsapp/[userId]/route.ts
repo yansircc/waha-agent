@@ -7,7 +7,7 @@ import { type NextRequest, NextResponse } from "next/server";
 
 export async function POST(
 	request: NextRequest,
-	{ params }: { params: { userId: string } },
+	{ params }: { params: Promise<{ userId: string }> },
 ) {
 	// 确保通过 Promise.resolve() 解析 params 对象
 	const { userId } = await Promise.resolve(params);

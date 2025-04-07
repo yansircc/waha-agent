@@ -6,6 +6,7 @@ import type {
 	SessionLogoutRequest,
 	SessionStartRequest,
 	SessionStopRequest,
+	WebhookConfig,
 } from "@/types/api-requests";
 import { SessionConfigSchema, SessionInfoSchema } from "@/types/schemas";
 import { z } from "zod";
@@ -52,38 +53,47 @@ export const wahaSessionsRouter = createTRPCRouter({
 		)
 		.mutation(async ({ input, ctx }) => {
 			try {
-				// 如果没有提供config，则创建基础config
-				const config: SessionConfig = input.config || {};
+				// 创建一个会话配置对象
+				let sessionConfig: SessionConfig | undefined;
 
-				// 如果没有提供webhook且有userId，则添加默认webhook
-				if (!config.webhooks && input.userId) {
-					// 获取当前用户ID，用于构建webhook
+				// 如果用户提供了配置，转换并使用它
+				if (input.config) {
+					sessionConfig = {
+						debug: input.config.debug,
+						proxy: input.config.proxy,
+						metadata: input.config.metadata,
+						noweb: input.config.noweb,
+						webhooks: input.config.webhooks as WebhookConfig[] | undefined,
+					};
+				} else if (input.userId) {
+					// 如果没有配置但有userId，创建带有默认webhook的配置
 					const userId = input.userId || ctx.session.user.id;
-					// 构建webhook URL，包含用户ID
 					const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/webhooks/whatsapp/${userId}`;
 
-					config.webhooks = [
-						{
-							url: webhookUrl,
-							events: ["message", "session.status"],
-							hmac: null,
-							retries: null,
-							customHeaders: null,
-						},
-					];
-
-					// 添加用户元数据
-					config.metadata = {
-						...(config.metadata || {}),
-						"user.id": userId,
+					// 创建符合WebhookConfig接口的对象
+					const webhook: WebhookConfig = {
+						url: webhookUrl,
+						events: ["message", "session.status"],
+						hmac: null,
+						retries: null,
+						customHeaders: null,
 					};
+
+					sessionConfig = {
+						debug: false,
+						webhooks: [webhook],
+						metadata: { "user.id": userId },
+					};
+				} else {
+					// 最小配置
+					sessionConfig = { debug: false };
 				}
 
-				// 使用更新后的配置创建会话
+				// 使用配置创建会话请求
 				const sessionRequest: SessionCreateRequest = {
 					name: input.name,
 					start: input.start,
-					config: config,
+					config: sessionConfig,
 				};
 
 				return await wahaApi.sessions.createSession(sessionRequest);
