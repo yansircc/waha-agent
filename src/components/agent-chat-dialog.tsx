@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { Bot, MessagesSquare, Send, User } from "lucide-react";
+import { Bot, Cloud, Send, User } from "lucide-react";
 import { useState } from "react";
 
 interface Message {
@@ -20,15 +20,15 @@ interface Message {
 }
 
 interface AgentChatDialogProps {
-	agentId: string;
-	agentName: string;
+	agentId?: string;
+	agentName?: string;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 }
 
 export function AgentChatDialog({
-	agentId,
-	agentName,
+	agentId = "weatherAgent",
+	agentName = "Weather Assistant",
 	open,
 	onOpenChange,
 }: AgentChatDialogProps) {
@@ -73,7 +73,8 @@ export function AgentChatDialog({
 				throw new Error(`API request failed with status ${response.status}`);
 			}
 
-			const { text } = await response.json();
+			const data = await response.json();
+			const { text } = data;
 
 			// Create the assistant message from the API response
 			const assistantMessage: Message = {
@@ -112,7 +113,7 @@ export function AgentChatDialog({
 			<DialogContent className="sm:max-w-[500px]">
 				<DialogHeader>
 					<DialogTitle className="flex items-center gap-2">
-						<MessagesSquare className="h-5 w-5" />
+						<Cloud className="h-5 w-5" />
 						Chat with {agentName}
 					</DialogTitle>
 				</DialogHeader>
@@ -120,10 +121,10 @@ export function AgentChatDialog({
 				<div className="flex h-[350px] flex-col gap-4 overflow-y-auto p-4">
 					{messages.length === 0 ? (
 						<div className="flex h-full flex-col items-center justify-center text-center">
-							<MessagesSquare className="mb-2 h-12 w-12 text-muted-foreground/50" />
-							<p className="font-medium text-lg">No messages yet</p>
+							<Cloud className="mb-2 h-12 w-12 text-muted-foreground/50" />
+							<p className="font-medium text-lg">Ask about the weather</p>
 							<p className="text-muted-foreground text-sm">
-								Send a message to start the conversation
+								Try "What's the weather like in Tokyo today?"
 							</p>
 						</div>
 					) : (
@@ -168,7 +169,7 @@ export function AgentChatDialog({
 
 				<div className="flex items-center gap-2">
 					<Input
-						placeholder="Type a message..."
+						placeholder="Ask about weather..."
 						value={inputValue}
 						onChange={(e) => setInputValue(e.target.value)}
 						onKeyDown={handleKeyDown}

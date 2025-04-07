@@ -1,9 +1,8 @@
+import { mastraApi } from "@/lib/mastra-api";
 import { wahaApi } from "@/lib/waha-api";
 import { db } from "@/server/db";
-import { agents } from "@/server/db/schema";
 import type { WAMessage, WebhookNotification } from "@/types/api-responses";
-import { openai } from "@ai-sdk/openai";
-import { generateText } from "ai";
+import type { MastraMessage } from "@/types/mastra-types";
 import { type NextRequest, NextResponse } from "next/server";
 
 export async function POST(
@@ -47,17 +46,31 @@ export async function POST(
 					and(eq(agent.createdById, userId), eq(agent.isActive, true)),
 			});
 
-			// 使用代理提示或默认提示
-			const systemPrompt =
-				activeAgent?.prompt ||
-				"You are a helpful WhatsApp assistant. Your responses should be concise and helpful. Don't use markdown formatting.";
+			// 从 Mastra API 获取 agentId，默认使用 weatherAgent
+			// const mastraAgentId = activeAgent?.id || "weatherAgent";
+			const mastraAgentId = "weatherAgent"; //TODO: 测试用
 
-			// 生成AI回复
-			const { text: aiResponse } = await generateText({
-				model: openai("gpt-4o-mini"),
-				system: systemPrompt,
-				messages: [{ role: "user", content: messageContent }],
+			// 创建消息格式
+			const messages: MastraMessage[] = [
+				{
+					role: "user",
+					content: messageContent,
+				},
+			];
+
+			// 创建包含用户ID的threadId和 resourceId
+			const threadId = `user-${userId}-${chatId}`;
+			const resourceId = `whatsapp-${chatId}`;
+
+			// 调用 Mastra API 生成回复
+			const response = await mastraApi.agents.generate(mastraAgentId, {
+				messages,
+				threadId, // 使用包含用户ID的threadId
+				resourceId, // 简化resourceId
 			});
+
+			// 从响应中获取生成的文本
+			const aiResponse = response.text;
 
 			console.log(`AI回复: ${aiResponse}`);
 

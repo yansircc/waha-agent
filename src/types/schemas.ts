@@ -280,3 +280,37 @@ export const MessageReplyRequestSchema = ChatRequestSchema.extend({
 	messageId: z.string(),
 	text: z.string(),
 });
+
+// Mastra API schemas
+export const MastraMessageSchema = z.object({
+	role: z.enum(["user", "assistant", "system"]),
+	content: z.string(),
+});
+
+export const MastraGenerateRequestSchema = z.object({
+	messages: z.array(MastraMessageSchema),
+	threadId: z.string().optional(),
+	resourceId: z.string().optional(),
+	runId: z.string().optional(),
+	output: z.record(z.unknown()).optional(),
+});
+
+export const MastraGenerateResponseSchema = z.object({
+	text: z.string(),
+	threadId: z.string().optional(),
+	resourceId: z.string().optional(),
+	runId: z.string().optional(),
+	metadata: z.record(z.unknown()).optional(),
+});
+
+export const WeatherInfoSchema = z.object({
+	location: z.string(),
+	temperature: z.number(),
+	condition: z.string(),
+	humidity: z.number(),
+	windSpeed: z.number(),
+});
+
+export const WeatherResponseSchema = MastraGenerateResponseSchema.extend({
+	weatherData: WeatherInfoSchema.optional(),
+});

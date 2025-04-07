@@ -22,6 +22,7 @@ export const env = createEnv({
 		AI_HUB_MIX_API_KEY: z.string(),
 		OPENAI_API_KEY: z.string(),
 		WAHA_API_KEY: z.string(),
+		MASTRA_API_URL: z.string(),
 	},
 
 	/**
@@ -51,6 +52,7 @@ export const env = createEnv({
 		WAHA_API_KEY: process.env.WAHA_API_KEY,
 		NEXT_PUBLIC_WAHA_API_URL: process.env.NEXT_PUBLIC_WAHA_API_URL,
 		NEXT_PUBLIC_WEBHOOK_URL: process.env.NEXT_PUBLIC_WEBHOOK_URL,
+		MASTRA_API_URL: process.env.MASTRA_API_URL,
 	},
 	/**
 	 * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
