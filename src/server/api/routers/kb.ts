@@ -68,12 +68,15 @@ export const kbsRouter = createTRPCRouter({
 		.input(
 			z.object({
 				name: z.string().min(1).max(255),
-				content: z.string(),
+				content: z.string().optional(),
 				kbId: z.string(),
 				fileUrl: z.string().optional(),
 				fileType: z.string().optional(),
 				fileSize: z.number().optional(),
+				mimeType: z.string().optional(),
 				metadata: z.record(z.any()).optional(),
+				// Note: File uploads can't be directly handled by tRPC
+				// We'll need a separate endpoint for file uploads
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -84,6 +87,7 @@ export const kbsRouter = createTRPCRouter({
 				fileUrl: input.fileUrl,
 				fileType: input.fileType,
 				fileSize: input.fileSize,
+				mimeType: input.mimeType,
 				metadata: input.metadata,
 				userId: ctx.session.user.id,
 			});
@@ -98,8 +102,10 @@ export const kbsRouter = createTRPCRouter({
 				fileUrl: z.string().optional(),
 				fileType: z.string().optional(),
 				fileSize: z.number().optional(),
+				mimeType: z.string().optional(),
 				metadata: z.record(z.any()).optional(),
 				kbId: z.string(),
+				// Note: File uploads need a separate endpoint
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -110,6 +116,7 @@ export const kbsRouter = createTRPCRouter({
 				fileUrl: input.fileUrl,
 				fileType: input.fileType,
 				fileSize: input.fileSize,
+				mimeType: input.mimeType,
 				metadata: input.metadata,
 				kbId: input.kbId,
 				userId: ctx.session.user.id,

@@ -1,5 +1,6 @@
-import { triggerDocumentProcessing } from "@/lib/trigger-helpers";
-import { mastra } from "@/mastra";
+import path from "node:path";
+import { kbLogger as logger } from "@/lib/logger";
+import { deleteFile, getPresignedUrl, uploadFile } from "@/lib/s3-service";
 import { db } from "@/server/db";
 import { documents, kbs } from "@/server/db/schema";
 import type {
@@ -9,6 +10,15 @@ import type {
 	UpdateKbInput,
 } from "@/types/kb";
 import { and, eq } from "drizzle-orm";
+
+// File size limits (in bytes)
+const FILE_SIZE_LIMITS = {
+	TEXT: 4 * 1024 * 1024, // 4MB for text/markdown files
+	OTHER: 1 * 1024 * 1024, // 1MB for other file types
+};
+
+// Text file types
+const TEXT_FILE_TYPES = ["text/plain", "text/markdown", "application/markdown"];
 
 /**
  * 知识库服务 - 处理知识库和文档的CRUD操作
@@ -96,12 +106,15 @@ export const kbService = {
 		},
 
 		/**
-		 * 删除知识库及其关联的向量存储数据
+		 * 删除知识库及其关联的文档
 		 */
 		delete: async (id: string, userId: string) => {
 			// Check if knowledge base exists and belongs to user
 			const kb = await db.query.kbs.findFirst({
 				where: and(eq(kbs.id, id), eq(kbs.createdById, userId)),
+				with: {
+					documents: true,
+				},
 			});
 
 			if (!kb) {
@@ -110,50 +123,21 @@ export const kbService = {
 				);
 			}
 
-			try {
-				// 获取向量存储实例
-				const vectorStore = mastra.getVector("pgVector");
-				const indexName = "wm_kb_vectors";
-
-				// 查询匹配该知识库的向量
-				const matchingVectors = await vectorStore.query({
-					indexName,
-					queryVector: Array(1024).fill(0), // 临时查询向量
-					topK: 1000, // 获取足够多的结果
-					filter: {
-						kbId: id,
-						userId,
-					},
-					includeVector: false,
-				});
-
-				// 删除匹配的向量
-				if (matchingVectors && matchingVectors.length > 0) {
-					console.log(
-						`Found ${matchingVectors.length} vectors to delete for knowledge base: ${kb.name}`,
-					);
-
-					for (const vector of matchingVectors) {
-						if (vector.id) {
-							await vectorStore.deleteIndexById(indexName, vector.id);
+			// Delete files from R2 storage
+			if (kb.documents?.length) {
+				for (const doc of kb.documents) {
+					if (doc.filePath) {
+						try {
+							await deleteFile(doc.filePath);
+						} catch (error) {
+							logger.error(`Failed to delete file: ${doc.filePath}`, error);
+							// Continue with deletion even if file deletion fails
 						}
 					}
-
-					console.log(
-						`Deleted ${matchingVectors.length} vectors for knowledge base: ${kb.name}`,
-					);
-				} else {
-					console.log(`No vectors found for knowledge base: ${kb.name}`);
 				}
-			} catch (error) {
-				console.error(
-					`Failed to delete vectors for knowledge base ${kb.name}:`,
-					error,
-				);
-				// 继续执行，不阻止知识库的删除
 			}
 
-			// Delete knowledge base (cascades to documents)
+			// Delete knowledge base (cascades to documents in the database)
 			await db.delete(kbs).where(eq(kbs.id, id));
 
 			return { success: true };
@@ -169,13 +153,24 @@ export const kbService = {
 			const {
 				name,
 				content,
-				fileUrl,
-				fileType,
-				fileSize,
+				file, // Optional File object
+				fileUrl: providedFileUrl, // Renamed to avoid conflict
+				filePath: providedFilePath, // Renamed to avoid conflict
+				fileType: providedFileType,
+				fileSize: providedFileSize,
+				mimeType: providedMimeType,
 				metadata,
 				kbId,
 				userId,
+				isText: providedIsText,
 			} = params;
+
+			logger.info("Creating document with params:", {
+				name,
+				kbId,
+				providedFilePath,
+				hasFile: !!file,
+			});
 
 			// Check if knowledge base exists and belongs to user
 			const kb = await db.query.kbs.findFirst({
@@ -188,15 +183,62 @@ export const kbService = {
 				);
 			}
 
-			// Create document first to get the ID
+			// Initialize file-related variables with provided values
+			let filePath = providedFilePath || "";
+			let fileUrl = providedFileUrl || "";
+			let fileType = providedFileType || null;
+			let fileSize = providedFileSize || null;
+			let mimeType = providedMimeType || null;
+			let isTextFile = providedIsText === undefined ? true : providedIsText;
+
+			// Only handle file upload if file is provided and no filePath exists
+			if (file && !providedFilePath) {
+				// Check file size limits
+				const isFileTextType = TEXT_FILE_TYPES.includes(file.type);
+				const sizeLimit = isFileTextType
+					? FILE_SIZE_LIMITS.TEXT
+					: FILE_SIZE_LIMITS.OTHER;
+
+				if (file.size > sizeLimit) {
+					throw new Error(
+						`File size exceeds the limit of ${isFileTextType ? "4MB" : "1MB"}`,
+					);
+				}
+
+				// Create safe filename using original name and timestamp
+				const fileExt = path.extname(file.name);
+				const safeFileName = `${Date.now()}-${(name || file.name).replace(/[^a-z0-9]/gi, "_").toLowerCase()}${fileExt}`;
+
+				// Create R2 storage path: userId/kbId/filename
+				filePath = `${userId}/${kbId}/${safeFileName}`;
+
+				// Upload file to R2
+				await uploadFile(filePath, await file.arrayBuffer(), file.type);
+
+				// Generate a URL for accessing the file (presigned URL)
+				fileUrl = await getPresignedUrl(filePath, 60 * 60 * 24 * 7); // 7-day expiry
+
+				// Set file metadata
+				fileType = file.type;
+				fileSize = file.size;
+				mimeType = file.type;
+				isTextFile = TEXT_FILE_TYPES.includes(file.type);
+			}
+
+			logger.info("Creating document with final filePath:", filePath);
+
+			// Create document in database
 			const [doc] = await db
 				.insert(documents)
 				.values({
 					name,
-					content,
+					content: content || null,
 					fileUrl,
+					filePath,
 					fileType,
 					fileSize,
+					mimeType,
+					isText: isTextFile,
 					metadata,
 					kbId,
 				})
@@ -205,20 +247,6 @@ export const kbService = {
 			if (!doc) {
 				throw new Error("Failed to create document");
 			}
-
-			// 可选的webhook URL - 用于接收处理状态的通知
-			const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/embedding`;
-
-			// 触发文档处理任务
-			// 现在文档嵌入将直接存储在数据库中，webhookUrl仅用于通知
-			await triggerDocumentProcessing({
-				content,
-				kbId,
-				documentName: name,
-				userId,
-				documentId: doc.id,
-				webhookUrl, // 可选的webhook通知
-			});
 
 			return doc;
 		},
@@ -236,6 +264,11 @@ export const kbService = {
 
 			if (!doc || doc.kb.createdById !== userId) {
 				throw new Error("Document not found or you don't have permission");
+			}
+
+			// If the document has a file and the URL has expired, generate a new one
+			if (doc.filePath) {
+				doc.fileUrl = await getPresignedUrl(doc.filePath, 60 * 60 * 24); // 1-day expiry
 			}
 
 			return doc;
@@ -260,6 +293,13 @@ export const kbService = {
 				where: eq(documents.kbId, kbId),
 			});
 
+			// Generate fresh presigned URLs for all documents
+			for (const doc of docs) {
+				if (doc.filePath) {
+					doc.fileUrl = await getPresignedUrl(doc.filePath, 60 * 60 * 24); // 1-day expiry
+				}
+			}
+
 			return docs;
 		},
 
@@ -271,14 +311,26 @@ export const kbService = {
 				id,
 				name,
 				content,
-				fileUrl,
-				fileType,
-				fileSize,
+				file,
+				fileUrl: providedFileUrl,
+				filePath: providedFilePath,
+				fileType: providedFileType,
+				fileSize: providedFileSize,
+				mimeType: providedMimeType,
 				metadata,
+				kbId,
 				userId,
+				isText: providedIsText,
 			} = params;
 
-			// Get the document with knowledge base
+			logger.info("Updating document with params:", {
+				id,
+				name,
+				providedFilePath,
+				hasFile: !!file,
+			});
+
+			// Check if document exists and belongs to user's kb
 			const doc = await db.query.documents.findFirst({
 				where: eq(documents.id, id),
 				with: {
@@ -290,103 +342,139 @@ export const kbService = {
 				throw new Error("Document not found or you don't have permission");
 			}
 
-			// If content is being updated, trigger the document processing task
-			if (content && content !== doc.content) {
-				// 可选的webhook URL
-				const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/embedding`;
+			// Initialize with provided values or existing ones
+			let filePath = providedFilePath || doc.filePath || "";
+			let fileUrl = providedFileUrl || doc.fileUrl || "";
+			let fileType = providedFileType || doc.fileType || null;
+			let fileSize = providedFileSize || doc.fileSize || null;
+			let mimeType = providedMimeType || doc.mimeType || null;
+			let isTextFile =
+				providedIsText === undefined ? doc.isText || true : providedIsText;
 
-				// 触发文档处理 - 现在直接存储到数据库
-				await triggerDocumentProcessing({
-					content,
-					kbId: doc.kbId,
-					documentName: name || doc.name,
-					userId,
-					documentId: doc.id,
-					webhookUrl, // 可选的webhook通知
-				});
+			// Only process file if provided and there's no explicitly provided filePath
+			if (file && !providedFilePath) {
+				// Check file size limits
+				const isFileTextType = TEXT_FILE_TYPES.includes(file.type);
+				const sizeLimit = isFileTextType
+					? FILE_SIZE_LIMITS.TEXT
+					: FILE_SIZE_LIMITS.OTHER;
+
+				if (file.size > sizeLimit) {
+					throw new Error(
+						`File size exceeds the limit of ${isFileTextType ? "4MB" : "1MB"}`,
+					);
+				}
+
+				// Delete old file if exists
+				if (doc.filePath) {
+					try {
+						logger.info("[KB-SERVICE] Deleting old file:", doc.filePath);
+						await deleteFile(doc.filePath);
+					} catch (error) {
+						logger.error("[KB-SERVICE] Error deleting old file:", error);
+						// Continue even if file deletion fails
+					}
+				}
+
+				// Create safe filename using original name and timestamp
+				const fileExt = path.extname(file.name);
+				const safeFileName = `${Date.now()}-${(name || file.name).replace(/[^a-z0-9]/gi, "_").toLowerCase()}${fileExt}`;
+
+				// Create R2 storage path: userId/kbId/filename
+				filePath = `${userId}/${kbId}/${safeFileName}`;
+				logger.info("[KB-SERVICE] New file path:", filePath);
+
+				// Upload file to R2
+				await uploadFile(filePath, await file.arrayBuffer(), file.type);
+
+				// Generate a URL for accessing the file (presigned URL)
+				fileUrl = await getPresignedUrl(filePath, 60 * 60 * 24 * 7); // 7-day expiry
+
+				// Update file metadata
+				fileType = file.type;
+				fileSize = file.size;
+				mimeType = file.type;
+				isTextFile = TEXT_FILE_TYPES.includes(file.type);
 			}
 
-			// Update document
+			logger.info(
+				"[KB-SERVICE] Updating document with final filePath:",
+				filePath,
+			);
+
+			// Update document in database
 			const [updatedDoc] = await db
 				.update(documents)
 				.set({
-					name: name ?? doc.name,
-					content: content ?? doc.content,
-					fileUrl: fileUrl ?? doc.fileUrl,
-					fileType: fileType ?? doc.fileType,
-					fileSize: fileSize ?? doc.fileSize,
-					metadata: metadata ?? doc.metadata,
+					name: name === undefined ? doc.name : name,
+					content: content === undefined ? doc.content : content,
+					fileUrl,
+					filePath,
+					fileType,
+					fileSize,
+					mimeType,
+					isText: isTextFile,
+					metadata: metadata || doc.metadata,
 					updatedAt: new Date(),
 				})
 				.where(eq(documents.id, id))
 				.returning();
 
+			if (!updatedDoc) {
+				throw new Error("Failed to update document");
+			}
+
 			return updatedDoc;
 		},
 
 		/**
-		 * 删除文档及其关联的向量存储数据
+		 * 删除文档及其关联的文件
 		 */
 		delete: async (id: string, userId: string) => {
-			// Get the document with knowledge base
-			const doc = await db.query.documents.findFirst({
-				where: eq(documents.id, id),
-				with: {
-					kb: true,
-				},
-			});
-
-			if (!doc || doc.kb.createdById !== userId) {
-				throw new Error("Document not found or you don't have permission");
-			}
-
 			try {
-				// 获取向量存储实例
-				const vectorStore = mastra.getVector("pgVector");
-				const indexName = "wm_kb_vectors";
-
-				// 查询匹配该文档的向量
-				const matchingVectors = await vectorStore.query({
-					indexName,
-					queryVector: Array(1024).fill(0), // 临时查询向量
-					topK: 1000, // 获取足够多的结果
-					filter: {
-						documentId: id,
-						userId,
+				// Get the document with knowledge base
+				const doc = await db.query.documents.findFirst({
+					where: eq(documents.id, id),
+					with: {
+						kb: true,
 					},
-					includeVector: false,
 				});
 
-				// 删除匹配的向量
-				if (matchingVectors && matchingVectors.length > 0) {
-					console.log(
-						`Found ${matchingVectors.length} vectors to delete for document: ${doc.name}`,
-					);
-
-					for (const vector of matchingVectors) {
-						if (vector.id) {
-							await vectorStore.deleteIndexById(indexName, vector.id);
-						}
-					}
-
-					console.log(
-						`Deleted ${matchingVectors.length} vectors for document: ${doc.name}`,
-					);
-				} else {
-					console.log(`No vectors found for document: ${doc.name}`);
+				if (!doc || doc.kb.createdById !== userId) {
+					throw new Error("Document not found or you don't have permission");
 				}
+
+				logger.info(`Deleting document: id=${id}, name=${doc.name}`);
+
+				// Delete file from R2 if filePath exists
+				if (doc.filePath) {
+					try {
+						logger.info(`Deleting file from R2: ${doc.filePath}`);
+						await deleteFile(doc.filePath);
+						logger.info(`R2 file deleted successfully: ${doc.filePath}`);
+					} catch (fileError) {
+						logger.error("Failed to delete file from R2:", fileError);
+						logger.info(
+							"No filePath associated with document, skipping file deletion",
+						);
+						// Continue with database deletion even if file deletion fails
+					}
+				} else {
+					logger.info(
+						"No filePath associated with document, skipping file deletion",
+					);
+				}
+
+				// Delete document from database
+				logger.info(`Deleting document from database: ${id}`);
+				await db.delete(documents).where(eq(documents.id, id));
+				logger.info(`Document deleted successfully from database: ${id}`);
+
+				return { success: true };
 			} catch (error) {
-				console.error(
-					`Failed to delete vectors for document ${doc.name}:`,
-					error,
-				);
-				// 继续处理，不阻止文档删除
+				logger.error("Error deleting document:", error);
+				throw error;
 			}
-
-			// Delete document
-			await db.delete(documents).where(eq(documents.id, id));
-
-			return { success: true };
 		},
 	},
 };

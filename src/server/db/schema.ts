@@ -8,7 +8,7 @@ import type { AdapterAccount } from "next-auth/adapters";
  *
  * @see https://orm.drizzle.team/docs/goodies#multi-project-schema
  */
-export const createTable = pgTableCreator((name) => `wm_${name}`);
+export const createTable = pgTableCreator((name) => `waha_${name}`);
 
 export const users = createTable("user", (d) => ({
 	id: d
@@ -165,10 +165,13 @@ export const documents = createTable(
 			.primaryKey()
 			.$defaultFn(() => crypto.randomUUID()),
 		name: d.varchar({ length: 255 }).notNull(),
-		content: d.text().notNull(),
-		fileUrl: d.text(),
+		content: d.text(), // Content may be null now since we're storing files in R2
+		fileUrl: d.text(), // S3/R2 URL for the file
+		filePath: d.text(), // Path in the storage bucket (userId/kbId/filename)
 		fileType: d.varchar({ length: 50 }),
 		fileSize: d.integer(),
+		mimeType: d.varchar({ length: 100 }), // Store the MIME type
+		isText: d.boolean().default(false), // Flag for text files (e.g., md, txt)
 		metadata: d.jsonb(),
 		kbId: d
 			.varchar({ length: 255 })

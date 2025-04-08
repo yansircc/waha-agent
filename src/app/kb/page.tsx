@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { useDocuments } from "@/hooks/use-documents";
 import { useKbs } from "@/hooks/use-kbs";
 import type { Kb } from "@/types/kb";
@@ -36,8 +35,6 @@ export default function KnowledgePage() {
 
 	// Document state
 	const [isAddDocOpen, setIsAddDocOpen] = useState(false);
-	const [docName, setDocName] = useState("");
-	const [docContent, setDocContent] = useState("");
 	const [dragActive, setDragActive] = useState(false);
 	const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
@@ -91,8 +88,6 @@ export default function KnowledgePage() {
 	};
 
 	const resetDocForm = () => {
-		setDocName("");
-		setDocContent("");
 		setUploadedFile(null);
 	};
 
@@ -114,17 +109,6 @@ export default function KnowledgePage() {
 		if (e.dataTransfer.files?.[0]) {
 			const file = e.dataTransfer.files[0];
 			setUploadedFile(file);
-
-			// For text files, automatically load the content
-			if (file.type === "text/plain") {
-				const reader = new FileReader();
-				reader.onload = (event) => {
-					if (event.target?.result) {
-						setDocContent(event.target.result as string);
-					}
-				};
-				reader.readAsText(file);
-			}
 		}
 	};
 
@@ -132,40 +116,44 @@ export default function KnowledgePage() {
 		if (e.target.files?.[0]) {
 			const file = e.target.files[0];
 			setUploadedFile(file);
-
-			// For text files, automatically load the content
-			if (file.type === "text/plain") {
-				const reader = new FileReader();
-				reader.onload = (event) => {
-					if (event.target?.result) {
-						setDocContent(event.target.result as string);
-					}
-				};
-				reader.readAsText(file);
-			}
 		}
 	};
 
 	const handleSubmitDoc = async (e: React.FormEvent) => {
 		e.preventDefault();
 
-		if (!selectedKb) return;
+		if (!selectedKb || !uploadedFile) return;
 
-		const fileType = uploadedFile?.type || "text/plain";
-		const fileSize = uploadedFile?.size;
+		try {
+			// Check file size limits
+			const isTextFile = [
+				"text/plain",
+				"text/markdown",
+				"application/markdown",
+			].includes(uploadedFile.type);
+			const sizeLimit = isTextFile ? 4 * 1024 * 1024 : 1 * 1024 * 1024; // 4MB for text, 1MB for others
 
-		await createDocument({
-			name: docName,
-			content: docContent,
-			kbId: selectedKb.id,
-			fileType,
-			fileSize,
-			// In a real implementation, the file would be uploaded to a storage service
-			// and the URL would be returned, but for now we'll just use a placeholder
-			fileUrl: uploadedFile ? `file://${uploadedFile.name}` : undefined,
-		});
+			if (uploadedFile.size > sizeLimit) {
+				alert(`File size exceeds the limit of ${isTextFile ? "4MB" : "1MB"}`);
+				return;
+			}
 
-		handleCloseAddDocDialog();
+			// Use the file name as the document name
+			const fileName = uploadedFile.name;
+
+			await createDocument({
+				name: fileName,
+				kbId: selectedKb.id,
+				file: uploadedFile,
+			});
+
+			handleCloseAddDocDialog();
+		} catch (error) {
+			console.error("Error creating document:", error);
+			alert(
+				`Failed to create document. ${error instanceof Error ? error.message : ""}`,
+			);
+		}
 	};
 
 	const handleDeleteDocument = async (id: string) => {
@@ -350,9 +338,9 @@ export default function KnowledgePage() {
 											</CardHeader>
 											<CardContent>
 												<div className="mb-2 text-muted-foreground text-sm">
-													{doc.content.length > 150
+													{doc.content && doc.content.length > 150
 														? `${doc.content.substring(0, 150)}...`
-														: doc.content}
+														: doc.content || "No text content"}
 												</div>
 
 												<div className="flex items-center justify-between text-xs">
@@ -427,27 +415,16 @@ export default function KnowledgePage() {
 			<Dialog open={isAddDocOpen} onOpenChange={setIsAddDocOpen}>
 				<DialogContent className="sm:max-w-[600px]">
 					<DialogHeader>
-						<DialogTitle>Add Document</DialogTitle>
+						<DialogTitle>Upload Document</DialogTitle>
 					</DialogHeader>
 					<form onSubmit={handleSubmitDoc}>
 						<div className="grid gap-6 py-4">
-							<div className="grid gap-2">
-								<Label htmlFor="doc-name">Document Name</Label>
-								<Input
-									id="doc-name"
-									value={docName}
-									onChange={(e) => setDocName(e.target.value)}
-									placeholder="Product Specifications"
-									required
-								/>
-							</div>
-
 							<div className="grid gap-2">
 								<Label>Upload File</Label>
 								{/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus */}
 								<button
 									type="button"
-									className={`flex min-h-[150px] w-full cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed p-6 text-left transition-colors ${
+									className={`flex min-h-[200px] w-full cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed p-6 text-left transition-colors ${
 										dragActive ? "border-primary bg-primary/10" : "border-muted"
 									}`}
 									onDragEnter={handleDrag}
@@ -485,18 +462,6 @@ export default function KnowledgePage() {
 									)}
 								</button>
 							</div>
-
-							<div className="grid gap-2">
-								<Label htmlFor="doc-content">Content</Label>
-								<Textarea
-									id="doc-content"
-									value={docContent}
-									onChange={(e) => setDocContent(e.target.value)}
-									placeholder="Enter text content or paste information here..."
-									className="min-h-[200px]"
-									required={!uploadedFile}
-								/>
-							</div>
 						</div>
 
 						<DialogFooter>
@@ -507,11 +472,8 @@ export default function KnowledgePage() {
 							>
 								Cancel
 							</Button>
-							<Button
-								type="submit"
-								disabled={!docName || (!docContent && !uploadedFile)}
-							>
-								Add Document
+							<Button type="submit" disabled={!uploadedFile}>
+								Upload Document
 							</Button>
 						</DialogFooter>
 					</form>

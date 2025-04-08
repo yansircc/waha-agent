@@ -42,22 +42,46 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 		},
 	});
 
+	// Create document with file upload support - only supports file uploads now
 	const createDocument = async (data: {
 		name: string;
-		content: string;
 		kbId: string;
-		fileUrl?: string;
-		fileType?: string;
-		fileSize?: number;
-		metadata?: Record<string, unknown>;
+		file: File;
 	}) => {
 		setIsLoading(true);
+
 		try {
-			const result = await createDocumentMutation.mutateAsync(data);
+			const formData = new FormData();
+			formData.append("name", data.name);
+			formData.append("kbId", data.kbId);
+			formData.append("file", data.file);
+
+			const response = await fetch("/api/kb/upload", {
+				method: "POST",
+				body: formData,
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.error || "Failed to upload file");
+			}
+
+			const result = await response.json();
 			setIsLoading(false);
+
+			// Invalidate queries
+			if (result?.kbId) {
+				utils.kbs.getDocuments.invalidate({
+					kbId: result.kbId,
+				});
+			}
+			utils.kbs.getAll.invalidate();
+			onSuccess?.();
+
 			return result;
 		} catch (error: unknown) {
 			setIsLoading(false);
+			onError?.(error as TRPCClientErrorLike<AppRouter>);
 			throw error;
 		}
 	};
@@ -78,23 +102,48 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 		},
 	});
 
+	// Update document with file upload support
 	const updateDocument = async (data: {
 		id: string;
-		name?: string;
-		content?: string;
 		kbId: string;
-		fileUrl?: string;
-		fileType?: string;
-		fileSize?: number;
-		metadata?: Record<string, unknown>;
+		file: File;
 	}) => {
 		setIsLoading(true);
+
 		try {
-			const result = await updateDocumentMutation.mutateAsync(data);
+			const formData = new FormData();
+			formData.append("id", data.id);
+			formData.append("kbId", data.kbId);
+			formData.append("file", data.file);
+
+			const response = await fetch("/api/kb/upload", {
+				method: "PUT",
+				body: formData,
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(
+					errorData.error || "Failed to update document with file",
+				);
+			}
+
+			const result = await response.json();
 			setIsLoading(false);
+
+			// Invalidate queries
+			if (result?.kbId) {
+				utils.kbs.getDocuments.invalidate({
+					kbId: result.kbId,
+				});
+			}
+			utils.kbs.getAll.invalidate();
+			onSuccess?.();
+
 			return result;
 		} catch (error: unknown) {
 			setIsLoading(false);
+			onError?.(error as TRPCClientErrorLike<AppRouter>);
 			throw error;
 		}
 	};

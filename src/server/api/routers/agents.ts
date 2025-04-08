@@ -1,4 +1,3 @@
-import { mastra } from "@/mastra";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { agentToKb, agents } from "@/server/db/schema";
 import { eq } from "drizzle-orm";
@@ -207,70 +206,6 @@ export const agentsRouter = createTRPCRouter({
 				.returning();
 
 			return result[0];
-		}),
-
-	// 使用agent查询知识库
-	queryWithAgent: protectedProcedure
-		.input(
-			z.object({
-				agentId: z.string(),
-				question: z.string().min(1),
-				kbIds: z.array(z.string()).optional(),
-			}),
-		)
-		.mutation(async ({ ctx, input }) => {
-			// 验证agent归属权
-			const agent = await ctx.db.query.agents.findFirst({
-				where: (agent, { eq, and }) =>
-					and(
-						eq(agent.id, input.agentId),
-						eq(agent.createdById, ctx.session.user.id),
-					),
-				with: {
-					kbs: {
-						with: {
-							kb: true,
-						},
-					},
-				},
-			});
-
-			if (!agent) {
-				throw new Error(
-					"Agent not found or you don't have permission to use it",
-				);
-			}
-
-			try {
-				// 使用mastra创建一个agent实例
-				const mastraAgent = mastra.getAgent("researchAgent");
-
-				// 确定使用哪些知识库
-				const kbIds = input.kbIds || agent.kbs.map((rel) => rel.kb.id);
-
-				// 如果没有指定知识库，则使用agent绑定的所有知识库
-				const kbContext =
-					kbIds.length > 0 ? `[使用知识库IDs: ${kbIds.join(", ")}] ` : "";
-
-				// 构建包含知识库上下文的查询
-				const enhancedQuestion = `${kbContext}${input.question}`;
-
-				// 添加提示词
-				const fullPrompt = `${agent.prompt}\n\n用户问题: ${enhancedQuestion}`;
-
-				// 生成回复
-				const response = await mastraAgent.generate(fullPrompt);
-
-				return {
-					answer: response.text,
-					sources: [], // 当前版本不返回来源
-					agentId: agent.id,
-					agentName: agent.name,
-				};
-			} catch (error) {
-				console.error("Error querying with agent:", error);
-				throw new Error(`查询失败: ${(error as Error).message}`);
-			}
 		}),
 
 	getKbs: protectedProcedure

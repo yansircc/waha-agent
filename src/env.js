@@ -22,12 +22,18 @@ export const env = createEnv({
 		AI_HUB_MIX_API_KEY: z.string(),
 		OPENAI_API_KEY: z.string(),
 		GOOGLE_GENERATIVE_AI_API_KEY: z.string(),
+		OPENROUTER_API_KEY: z.string(),
 		COHERE_API_KEY: z.string(),
 		WAHA_API_KEY: z.string(),
 		MASTRA_API_URL: z.string(),
 		QDRANT_URL: z.string().url(),
 		QDRANT_API_KEY: z.string(),
 		TRIGGER_SECRET_KEY: z.string(),
+		AUTORAG_API_KEY: z.string(),
+		R2_ACCESS_KEY_ID: z.string(),
+		R2_SECRET_ACCESS_KEY: z.string(),
+		R2_ENDPOINT: z.string(),
+		R2_BUCKET: z.string(),
 	},
 
 	/**
@@ -39,6 +45,7 @@ export const env = createEnv({
 		NEXT_PUBLIC_WAHA_API_URL: z.string(),
 		NEXT_PUBLIC_WEBHOOK_URL: z.string(),
 		NEXT_PUBLIC_APP_URL: z.string(),
+		NEXT_PUBLIC_AUTORAG_API_URL: z.string(),
 	},
 
 	/**
@@ -56,6 +63,7 @@ export const env = createEnv({
 		AI_HUB_MIX_API_KEY: process.env.AI_HUB_MIX_API_KEY,
 		OPENAI_API_KEY: process.env.OPENAI_API_KEY,
 		GOOGLE_GENERATIVE_AI_API_KEY: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+		OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
 		COHERE_API_KEY: process.env.COHERE_API_KEY,
 		WAHA_API_KEY: process.env.WAHA_API_KEY,
 		NEXT_PUBLIC_WAHA_API_URL: process.env.NEXT_PUBLIC_WAHA_API_URL,
@@ -65,6 +73,12 @@ export const env = createEnv({
 		QDRANT_API_KEY: process.env.QDRANT_API_KEY,
 		TRIGGER_SECRET_KEY: process.env.TRIGGER_SECRET_KEY,
 		NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+		AUTORAG_API_KEY: process.env.AUTORAG_API_KEY,
+		NEXT_PUBLIC_AUTORAG_API_URL: process.env.NEXT_PUBLIC_AUTORAG_API_URL,
+		R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID,
+		R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,
+		R2_ENDPOINT: process.env.R2_ENDPOINT,
+		R2_BUCKET: process.env.R2_BUCKET,
 	},
 	/**
 	 * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

@@ -13,16 +13,15 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useAgentQuery } from "@/hooks/use-agent-query";
 import { cn } from "@/lib/utils";
 import { Bot, Cloud, Send, User } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-interface Message {
+// 定义消息类型接口
+interface ChatMessage {
 	id: string;
-	content: string;
 	role: "user" | "assistant";
-	timestamp: Date;
+	content: string;
 	sources?: string[];
 }
 
@@ -41,54 +40,135 @@ export function AgentChatDialog({
 	onOpenChange,
 	kbIds,
 }: AgentChatDialogProps) {
-	const [messages, setMessages] = useState<Message[]>([]);
+	// 内部状态管理
+	const [messages, setMessages] = useState<ChatMessage[]>([]);
+	const [isProcessing, setIsProcessing] = useState(false);
+	const [error, setError] = useState<string | null>(null);
 	const [inputValue, setInputValue] = useState("");
 
-	const { isLoading, queryWithAgent, error } = useAgentQuery({
-		onSuccess: (data) => {
-			// Create the assistant message from the API response
-			const assistantMessage: Message = {
-				id: crypto.randomUUID(),
-				content: data.answer,
-				role: "assistant",
-				timestamp: new Date(),
-				sources: data.sources,
-			};
+	// 清空聊天记录
+	const clearChat = useCallback(() => {
+		setMessages([]);
+		setError(null);
+	}, []);
 
-			setMessages((prev) => [...prev, assistantMessage]);
-		},
-		onError: (error) => {
-			console.error("Error querying agent:", error);
-			// Add an error message
-			const errorMessage: Message = {
-				id: crypto.randomUUID(),
-				content:
-					"Sorry, there was an error processing your request. Please try again.",
-				role: "assistant",
-				timestamp: new Date(),
-			};
-			setMessages((prev) => [...prev, errorMessage]);
-		},
-	});
-
-	const handleSendMessage = async () => {
-		if (!inputValue.trim()) return;
-
-		// Create a new user message
-		const userMessage: Message = {
-			id: crypto.randomUUID(),
-			content: inputValue,
-			role: "user",
-			timestamp: new Date(),
+	// 更新助手响应
+	const updateWithResponse = useCallback((content: string) => {
+		const assistantMessage: ChatMessage = {
+			id: Date.now().toString(),
+			role: "assistant",
+			content,
+			// 如果有源信息，可以在这里添加
+			sources: [],
 		};
 
-		setMessages((prev) => [...prev, userMessage]);
-		setInputValue("");
+		setMessages((prev) => [...prev, assistantMessage]);
+	}, []);
 
-		// Query the agent using the useAgentQuery hook
-		queryWithAgent(agentId, inputValue, kbIds);
+	// 发送消息
+	const sendMessage = useCallback(
+		async (content: string) => {
+			try {
+				setError(null);
+				setIsProcessing(true);
+
+				// 添加用户消息到聊天
+				const userMessage: ChatMessage = {
+					id: Date.now().toString(),
+					role: "user",
+					content,
+				};
+
+				setMessages((prev) => [...prev, userMessage]);
+
+				// 发送消息到API
+				const response = await fetch("/api/chat", {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({
+						agentId,
+						message: content,
+						kbIds,
+					}),
+				});
+
+				if (!response.ok) {
+					const errorData = await response.json();
+					throw new Error(errorData.error || "Failed to send message");
+				}
+
+				// API直接响应的情况（非实时）
+				const data = await response.json();
+				if (data.response) {
+					updateWithResponse(data.response);
+				}
+			} catch (err) {
+				console.error("Error sending message:", err);
+				setError(err instanceof Error ? err.message : "Failed to send message");
+			} finally {
+				setIsProcessing(false);
+			}
+		},
+		[agentId, kbIds, updateWithResponse],
+	);
+
+	// 对话关闭时清除聊天
+	useEffect(() => {
+		if (!open) {
+			clearChat();
+		}
+	}, [open, clearChat]);
+
+	// 设置SSE事件源以接收实时消息
+	useEffect(() => {
+		if (!open) return;
+
+		// 创建SSE连接
+		const eventSource = new EventSource(
+			`/api/webhooks/chat?agentId=${agentId}`,
+		);
+
+		// 处理接收到的消息
+		eventSource.onmessage = (event) => {
+			try {
+				const data = JSON.parse(event.data);
+
+				// 只处理与当前代理相关的消息
+				if (
+					data.type === "message" &&
+					data.agentId === agentId &&
+					data.response
+				) {
+					// 更新聊天界面
+					updateWithResponse(data.response);
+				}
+			} catch (err) {
+				console.error("Error parsing SSE message:", err);
+			}
+		};
+
+		// 连接错误处理
+		eventSource.onerror = (err) => {
+			console.error("SSE connection error:", err);
+			eventSource.close();
+		};
+
+		// 清理函数
+		return () => {
+			eventSource.close();
+		};
+	}, [open, agentId, updateWithResponse]);
+
+	// 发送消息处理函数
+	const handleSendMessage = async () => {
+		if (!inputValue.trim()) return;
+		await sendMessage(inputValue);
+		setInputValue("");
 	};
 
+	// 按Enter发送消息
 	const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
 		if (e.key === "Enter" && !e.shiftKey) {
 			e.preventDefault();
@@ -171,7 +251,7 @@ export function AgentChatDialog({
 							</div>
 						))
 					)}
-					{isLoading && (
+					{isProcessing && (
 						<div className="flex w-max max-w-[80%] flex-col gap-2 rounded-lg bg-muted p-4">
 							<div className="flex items-center gap-2">
 								<Bot className="h-4 w-4" />
@@ -198,12 +278,12 @@ export function AgentChatDialog({
 						value={inputValue}
 						onChange={(e) => setInputValue(e.target.value)}
 						onKeyDown={handleKeyDown}
-						disabled={isLoading}
+						disabled={isProcessing}
 						className="flex-1"
 					/>
 					<Button
 						onClick={() => void handleSendMessage()}
-						disabled={!inputValue.trim() || isLoading}
+						disabled={!inputValue.trim() || isProcessing}
 						size="icon"
 					>
 						<Send className="h-4 w-4" />

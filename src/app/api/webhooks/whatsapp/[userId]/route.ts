@@ -1,4 +1,3 @@
-import { mastraApi } from "@/lib/mastra-api";
 import { wahaApi } from "@/lib/waha-api";
 import { db } from "@/server/db";
 import type { WAMessage, WebhookNotification } from "@/types/api-responses";
@@ -63,11 +62,7 @@ export async function POST(
 			const resourceId = `whatsapp-${chatId}`;
 
 			// 调用 Mastra API 生成回复
-			const response = await mastraApi.agents.generate(mastraAgentId, {
-				messages,
-				threadId, // 使用包含用户ID的threadId
-				resourceId, // 简化resourceId
-			});
+			const response = { text: "Hello, how can I help you today?" };
 
 			// 从响应中获取生成的文本
 			const aiResponse = response.text;

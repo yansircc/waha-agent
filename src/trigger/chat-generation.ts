@@ -1,4 +1,6 @@
-import { mastra } from "@/mastra";
+import { env } from "@/env";
+import { wahaAgent } from "@/lib/waha-agent";
+import { db } from "@/server/db";
 import { logger, task } from "@trigger.dev/sdk/v3";
 
 interface ChatGenerationPayload {
@@ -26,7 +28,7 @@ export const chatGenerationTask = task({
 		});
 
 		try {
-			// 获取最后一条用户消息作为查询内容
+			// Get the last user message as query content
 			const lastMessage = messages[messages.length - 1];
 			if (!lastMessage || lastMessage.role !== "user" || !lastMessage.content) {
 				throw new Error(
@@ -34,31 +36,67 @@ export const chatGenerationTask = task({
 				);
 			}
 
-			// 默认使用研究型agent，如果提供了自定义agentId则使用指定的
-			// const mastraAgentId = agentId || "researchAgent";
-			const mastraAgentId = "researchAgent"; // TODO: 测试用
-
-			// 使用mastra库生成回复
-			const mastraAgent = mastra.getAgent(mastraAgentId);
-
-			logger.log("Generating response with agent", {
-				agentId: mastraAgentId,
+			logger.log("Generating response with Waha Agent", {
+				agentId: agentId || "default",
 				messageContent: `${lastMessage.content.substring(0, 100)}...`,
 			});
 
-			const response = await mastraAgent.generate(lastMessage.content);
+			// Fetch agent configuration if agentId is provided
+			let agentConfig = {
+				apiKey: env.OPENROUTER_API_KEY,
+				model: "openai/gpt-4o-mini",
+				prompt:
+					"You are a helpful assistant that provides accurate information based on the documents provided. If the information is not in the documents, say so.",
+				documentId: "default",
+			};
 
-			logger.log("Response generated successfully", {
-				responseLength: response.text.length,
+			if (agentId) {
+				const agent = await db.query.agents.findFirst({
+					where: (a, { eq, and }) =>
+						and(eq(a.id, agentId), eq(a.createdById, userId)),
+				});
+
+				if (!agent) {
+					throw new Error(
+						"Agent not found or you don't have permission to use it",
+					);
+				}
+
+				agentConfig = {
+					apiKey: env.OPENROUTER_API_KEY,
+					model: "openai/gpt-4o-mini",
+					prompt: agent.prompt || agentConfig.prompt,
+					documentId: agent.id,
+				};
+			}
+
+			// Use wahaAgent to generate response
+			const result = await wahaAgent({
+				...agentConfig,
+				prompt: `${agentConfig.prompt}\n\nUser query: ${lastMessage.content}`,
 			});
 
-			// 构建包含新助手回复的完整消息列表
+			if (!result.success) {
+				throw new Error(result.message || "Failed to generate response");
+			}
+
+			const responseText = result.response;
+
+			logger.log("Response generated successfully", {
+				responseLength: responseText?.length || 0,
+				usedDocuments: result.documents?.length || 0,
+			});
+
+			// Build complete message list with new assistant reply
 			const updatedMessages = [
 				...messages,
-				{ role: "assistant" as const, content: response.text },
+				{
+					role: "assistant" as const,
+					content: responseText || "No response generated",
+				},
 			];
 
-			// 如果提供了webhook URL，通知结果
+			// If webhook URL is provided, notify results
 			if (webhookUrl) {
 				await fetch(webhookUrl, {
 					method: "POST",
@@ -67,10 +105,11 @@ export const chatGenerationTask = task({
 					},
 					body: JSON.stringify({
 						success: true,
-						response: response.text,
+						response: responseText,
+						documents: result.documents || [],
 						messages: updatedMessages,
 						userId,
-						agentId: mastraAgentId,
+						agentId, // Pass original agentId, webhook will check validity
 						conversationId,
 					}),
 				});
@@ -80,7 +119,8 @@ export const chatGenerationTask = task({
 
 			return {
 				success: true,
-				response: response.text,
+				response: responseText,
+				documents: result.documents || [],
 				messages: updatedMessages,
 			};
 		} catch (error) {
@@ -89,7 +129,7 @@ export const chatGenerationTask = task({
 				error: error instanceof Error ? error.message : String(error),
 			});
 
-			// 如果提供了webhook URL，通知失败
+			// If webhook URL is provided, notify failure
 			if (webhookUrl) {
 				await fetch(webhookUrl, {
 					method: "POST",
@@ -100,7 +140,7 @@ export const chatGenerationTask = task({
 						success: false,
 						error: error instanceof Error ? error.message : String(error),
 						userId,
-						agentId: agentId || "researchAgent",
+						agentId,
 						conversationId,
 					}),
 				});

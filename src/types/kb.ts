@@ -15,10 +15,13 @@ export interface Kb {
 export interface Document {
 	id: string;
 	name: string;
-	content: string;
+	content: string | null;
 	fileUrl: string | null;
+	filePath: string | null;
 	fileType: string | null;
 	fileSize: number | null;
+	mimeType: string | null;
+	isText: boolean | null;
 	metadata: unknown;
 	kbId: string;
 	createdAt: string | Date;
@@ -41,10 +44,14 @@ export interface UpdateKbInput {
 
 export interface CreateDocumentInput {
 	name: string;
-	content: string;
+	content?: string;
+	file?: File;
 	fileUrl?: string;
+	filePath?: string;
 	fileType?: string;
 	fileSize?: number;
+	mimeType?: string;
+	isText?: boolean;
 	metadata?: Record<string, unknown>;
 	kbId: string;
 	userId: string;
@@ -54,9 +61,13 @@ export interface UpdateDocumentInput {
 	id: string;
 	name?: string;
 	content?: string;
+	file?: File;
 	fileUrl?: string;
+	filePath?: string;
 	fileType?: string;
 	fileSize?: number;
+	mimeType?: string;
+	isText?: boolean;
 	metadata?: Record<string, unknown>;
 	kbId: string;
 	userId: string;

@@ -7,6 +7,7 @@ import { wahaChattingRouter } from "@/server/api/routers/waha-chatting";
 import { wahaProfileRouter } from "@/server/api/routers/waha-profile";
 import { wahaSessionsRouter } from "@/server/api/routers/waha-sessions";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
+import { s3Router } from "./routers/s3";
 
 /**
  * This is the primary router for your server.
@@ -22,6 +23,7 @@ export const appRouter = createTRPCRouter({
 	wahaProfile: wahaProfileRouter,
 	wahaChatting: wahaChattingRouter,
 	chat: chatRouter,
+	s3: s3Router,
 });
 
 // export type definition of API
