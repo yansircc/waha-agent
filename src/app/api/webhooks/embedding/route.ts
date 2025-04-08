@@ -8,7 +8,7 @@ import { type NextRequest, NextResponse } from "next/server";
 export async function POST(req: NextRequest) {
 	try {
 		const data = await req.json();
-		const { success, documentId, knowledgeBaseId, message, error } = data;
+		const { success, documentId, kbId, message, error } = data;
 
 		if (!success) {
 			console.error(
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
 		}
 
 		// 验证必要数据是否存在
-		if (!documentId || !knowledgeBaseId) {
+		if (!documentId || !kbId) {
 			return NextResponse.json(
 				{ success: false, error: "Missing required data" },
 				{ status: 400 },

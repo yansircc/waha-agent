@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CheckIcon, X } from "lucide-react";
 import { useState } from "react";
 
-interface KnowledgeBase {
+interface Kb {
 	id: string;
 	name: string;
 }
@@ -27,14 +27,14 @@ interface AgentConfigDialogProps {
 		id?: string;
 		name: string;
 		prompt: string;
-		knowledgeBaseIds: string[];
+		kbIds: string[];
 	}) => void;
-	knowledgeBases?: KnowledgeBase[];
+	kbs?: Kb[];
 	defaultValues?: {
 		id: string;
 		name: string;
 		prompt: string;
-		knowledgeBaseIds: string[];
+		kbIds: string[];
 	};
 	mode?: "create" | "edit";
 }
@@ -43,15 +43,15 @@ export function AgentConfigDialog({
 	open,
 	onOpenChange,
 	onSubmit,
-	knowledgeBases = [],
+	kbs = [],
 	defaultValues,
 	mode = "create",
 }: AgentConfigDialogProps) {
 	const [name, setName] = useState(defaultValues?.name || "");
 	const [prompt, setPrompt] = useState(defaultValues?.prompt || "");
-	const [selectedKnowledgeBaseIds, setSelectedKnowledgeBaseIds] = useState<
-		string[]
-	>(defaultValues?.knowledgeBaseIds || []);
+	const [selectedKbIds, setSelectedKbIds] = useState<string[]>(
+		defaultValues?.kbIds || [],
+	);
 	const [isLoading, setIsLoading] = useState(false);
 
 	const handleSubmit = async (e: React.FormEvent) => {
@@ -63,15 +63,15 @@ export function AgentConfigDialog({
 				id: defaultValues?.id,
 				name,
 				prompt,
-				knowledgeBaseIds: selectedKnowledgeBaseIds,
+				kbIds: selectedKbIds,
 			});
 		} finally {
 			setIsLoading(false);
 		}
 	};
 
-	const toggleKnowledgeBase = (kbId: string) => {
-		setSelectedKnowledgeBaseIds((prev) =>
+	const toggleKb = (kbId: string) => {
+		setSelectedKbIds((prev) =>
 			prev.includes(kbId) ? prev.filter((id) => id !== kbId) : [...prev, kbId],
 		);
 	};
@@ -110,23 +110,21 @@ export function AgentConfigDialog({
 							/>
 						</div>
 
-						{knowledgeBases.length > 0 && (
+						{kbs.length > 0 && (
 							<div className="grid gap-2">
 								<Label>Knowledge Bases</Label>
 								<div className="flex flex-wrap gap-2">
-									{knowledgeBases.map((kb) => (
+									{kbs.map((kb) => (
 										<Badge
 											key={kb.id}
 											variant={
-												selectedKnowledgeBaseIds.includes(kb.id)
-													? "default"
-													: "outline"
+												selectedKbIds.includes(kb.id) ? "default" : "outline"
 											}
 											className="cursor-pointer"
-											onClick={() => toggleKnowledgeBase(kb.id)}
+											onClick={() => toggleKb(kb.id)}
 										>
 											{kb.name}
-											{selectedKnowledgeBaseIds.includes(kb.id) && (
+											{selectedKbIds.includes(kb.id) && (
 												<CheckIcon className="ml-1 h-3 w-3" />
 											)}
 										</Badge>

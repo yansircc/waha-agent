@@ -4,7 +4,7 @@ import { AgentCard } from "@/components/agent-card";
 import { AgentConfigDialog } from "@/components/agent-config-dialog";
 import { Button } from "@/components/ui/button";
 import { useAgents } from "@/hooks/use-agents";
-import { useKnowledgeBases } from "@/hooks/use-knowledge-bases";
+import { useKbs } from "@/hooks/use-kbs";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 
@@ -14,7 +14,7 @@ export default function AgentsPage() {
 
 	const { agents, isLoadingAgents, createAgent, updateAgent, deleteAgent } =
 		useAgents();
-	const { knowledgeBases } = useKnowledgeBases();
+	const { kbs } = useKbs();
 
 	const handleOpenCreateDialog = () => {
 		setIsCreatingAgent(true);
@@ -33,21 +33,21 @@ export default function AgentsPage() {
 		id?: string;
 		name: string;
 		prompt: string;
-		knowledgeBaseIds: string[];
+		kbIds: string[];
 	}) => {
 		if (data.id) {
 			updateAgent({
 				id: data.id,
 				name: data.name,
 				prompt: data.prompt,
-				knowledgeBaseIds: data.knowledgeBaseIds,
+				kbIds: data.kbIds,
 				isActive: editingAgent?.isActive ?? false,
 			});
 		} else {
 			createAgent({
 				name: data.name,
 				prompt: data.prompt,
-				knowledgeBaseIds: data.knowledgeBaseIds,
+				kbIds: data.kbIds,
 				isActive: false,
 			});
 		}
@@ -69,7 +69,7 @@ export default function AgentsPage() {
 				id: editingAgent.id,
 				name: editingAgent.name,
 				prompt: editingAgent.prompt,
-				knowledgeBaseIds: editingAgent.knowledgeBaseIds || [],
+				kbIds: editingAgent.kbIds || [],
 			}
 		: undefined;
 
@@ -115,7 +115,7 @@ export default function AgentsPage() {
 							id={agent.id}
 							name={agent.name}
 							prompt={agent.prompt}
-							knowledgeBases={agent.knowledgeBases}
+							kbs={agent.kbs}
 							isActive={agent.isActive}
 							onEdit={() => handleOpenEditDialog(agent.id)}
 							createdAt={agent.createdAt}
@@ -130,7 +130,7 @@ export default function AgentsPage() {
 					open={isCreatingAgent || !!editingAgentId}
 					onOpenChange={handleCloseDialog}
 					onSubmit={handleSubmit}
-					knowledgeBases={knowledgeBases}
+					kbs={kbs}
 					defaultValues={formDefaultValues}
 					mode={editingAgentId ? "edit" : "create"}
 				/>

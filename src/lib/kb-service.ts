@@ -1,12 +1,12 @@
 import { triggerDocumentProcessing } from "@/lib/trigger-helpers";
 import { mastra } from "@/mastra";
 import { db } from "@/server/db";
-import { documents, knowledgeBases } from "@/server/db/schema";
+import { documents, kbs } from "@/server/db/schema";
 import type {
 	CreateDocumentInput,
-	CreateKnowledgeBaseInput,
+	CreateKbInput,
 	UpdateDocumentInput,
-	UpdateKnowledgeBaseInput,
+	UpdateKbInput,
 } from "@/types/kb";
 import { and, eq } from "drizzle-orm";
 
@@ -15,16 +15,16 @@ import { and, eq } from "drizzle-orm";
  */
 export const kbService = {
 	// 知识库(Knowledge Base)操作
-	knowledgeBases: {
+	kbs: {
 		/**
 		 * 创建新知识库
 		 */
-		create: async (params: CreateKnowledgeBaseInput) => {
+		create: async (params: CreateKbInput) => {
 			const { name, description, userId } = params;
 
 			// Create knowledge base
 			const [kb] = await db
-				.insert(knowledgeBases)
+				.insert(kbs)
 				.values({
 					name,
 					description,
@@ -40,11 +40,8 @@ export const kbService = {
 		 * 根据ID获取知识库
 		 */
 		getById: async (id: string, userId: string) => {
-			const kb = await db.query.knowledgeBases.findFirst({
-				where: and(
-					eq(knowledgeBases.id, id),
-					eq(knowledgeBases.createdById, userId),
-				),
+			const kb = await db.query.kbs.findFirst({
+				where: and(eq(kbs.id, id), eq(kbs.createdById, userId)),
 				with: {
 					documents: true,
 				},
@@ -57,28 +54,25 @@ export const kbService = {
 		 * 获取用户的所有知识库
 		 */
 		getByUserId: async (userId: string) => {
-			const kbs = await db.query.knowledgeBases.findMany({
-				where: eq(knowledgeBases.createdById, userId),
+			const _kbs = await db.query.kbs.findMany({
+				where: eq(kbs.createdById, userId),
 				with: {
 					documents: true,
 				},
 			});
 
-			return kbs;
+			return _kbs;
 		},
 
 		/**
 		 * 更新知识库
 		 */
-		update: async (params: UpdateKnowledgeBaseInput) => {
+		update: async (params: UpdateKbInput) => {
 			const { id, name, description, userId } = params;
 
 			// Check if knowledge base exists and belongs to user
-			const kb = await db.query.knowledgeBases.findFirst({
-				where: and(
-					eq(knowledgeBases.id, id),
-					eq(knowledgeBases.createdById, userId),
-				),
+			const kb = await db.query.kbs.findFirst({
+				where: and(eq(kbs.id, id), eq(kbs.createdById, userId)),
 			});
 
 			if (!kb) {
@@ -89,13 +83,13 @@ export const kbService = {
 
 			// Update knowledge base
 			const [updatedKb] = await db
-				.update(knowledgeBases)
+				.update(kbs)
 				.set({
 					name: name ?? kb.name,
 					description: description ?? kb.description,
 					updatedAt: new Date(),
 				})
-				.where(eq(knowledgeBases.id, id))
+				.where(eq(kbs.id, id))
 				.returning();
 
 			return updatedKb;
@@ -106,11 +100,8 @@ export const kbService = {
 		 */
 		delete: async (id: string, userId: string) => {
 			// Check if knowledge base exists and belongs to user
-			const kb = await db.query.knowledgeBases.findFirst({
-				where: and(
-					eq(knowledgeBases.id, id),
-					eq(knowledgeBases.createdById, userId),
-				),
+			const kb = await db.query.kbs.findFirst({
+				where: and(eq(kbs.id, id), eq(kbs.createdById, userId)),
 			});
 
 			if (!kb) {
@@ -130,7 +121,7 @@ export const kbService = {
 					queryVector: Array(1024).fill(0), // 临时查询向量
 					topK: 1000, // 获取足够多的结果
 					filter: {
-						knowledgeBaseId: id,
+						kbId: id,
 						userId,
 					},
 					includeVector: false,
@@ -163,7 +154,7 @@ export const kbService = {
 			}
 
 			// Delete knowledge base (cascades to documents)
-			await db.delete(knowledgeBases).where(eq(knowledgeBases.id, id));
+			await db.delete(kbs).where(eq(kbs.id, id));
 
 			return { success: true };
 		},
@@ -182,16 +173,13 @@ export const kbService = {
 				fileType,
 				fileSize,
 				metadata,
-				knowledgeBaseId,
+				kbId,
 				userId,
 			} = params;
 
 			// Check if knowledge base exists and belongs to user
-			const kb = await db.query.knowledgeBases.findFirst({
-				where: and(
-					eq(knowledgeBases.id, knowledgeBaseId),
-					eq(knowledgeBases.createdById, userId),
-				),
+			const kb = await db.query.kbs.findFirst({
+				where: and(eq(kbs.id, kbId), eq(kbs.createdById, userId)),
 			});
 
 			if (!kb) {
@@ -210,7 +198,7 @@ export const kbService = {
 					fileType,
 					fileSize,
 					metadata,
-					knowledgeBaseId,
+					kbId,
 				})
 				.returning();
 
@@ -225,7 +213,7 @@ export const kbService = {
 			// 现在文档嵌入将直接存储在数据库中，webhookUrl仅用于通知
 			await triggerDocumentProcessing({
 				content,
-				knowledgeBaseId,
+				kbId,
 				documentName: name,
 				userId,
 				documentId: doc.id,
@@ -242,11 +230,11 @@ export const kbService = {
 			const doc = await db.query.documents.findFirst({
 				where: eq(documents.id, id),
 				with: {
-					knowledgeBase: true,
+					kb: true,
 				},
 			});
 
-			if (!doc || doc.knowledgeBase.createdById !== userId) {
+			if (!doc || doc.kb.createdById !== userId) {
 				throw new Error("Document not found or you don't have permission");
 			}
 
@@ -256,13 +244,10 @@ export const kbService = {
 		/**
 		 * 获取知识库中的所有文档
 		 */
-		getByKnowledgeBaseId: async (knowledgeBaseId: string, userId: string) => {
+		getByKbId: async (kbId: string, userId: string) => {
 			// Check if knowledge base exists and belongs to user
-			const kb = await db.query.knowledgeBases.findFirst({
-				where: and(
-					eq(knowledgeBases.id, knowledgeBaseId),
-					eq(knowledgeBases.createdById, userId),
-				),
+			const kb = await db.query.kbs.findFirst({
+				where: and(eq(kbs.id, kbId), eq(kbs.createdById, userId)),
 			});
 
 			if (!kb) {
@@ -272,7 +257,7 @@ export const kbService = {
 			}
 
 			const docs = await db.query.documents.findMany({
-				where: eq(documents.knowledgeBaseId, knowledgeBaseId),
+				where: eq(documents.kbId, kbId),
 			});
 
 			return docs;
@@ -297,11 +282,11 @@ export const kbService = {
 			const doc = await db.query.documents.findFirst({
 				where: eq(documents.id, id),
 				with: {
-					knowledgeBase: true,
+					kb: true,
 				},
 			});
 
-			if (!doc || doc.knowledgeBase.createdById !== userId) {
+			if (!doc || doc.kb.createdById !== userId) {
 				throw new Error("Document not found or you don't have permission");
 			}
 
@@ -313,7 +298,7 @@ export const kbService = {
 				// 触发文档处理 - 现在直接存储到数据库
 				await triggerDocumentProcessing({
 					content,
-					knowledgeBaseId: doc.knowledgeBaseId,
+					kbId: doc.kbId,
 					documentName: name || doc.name,
 					userId,
 					documentId: doc.id,
@@ -347,11 +332,11 @@ export const kbService = {
 			const doc = await db.query.documents.findFirst({
 				where: eq(documents.id, id),
 				with: {
-					knowledgeBase: true,
+					kb: true,
 				},
 			});
 
-			if (!doc || doc.knowledgeBase.createdById !== userId) {
+			if (!doc || doc.kb.createdById !== userId) {
 				throw new Error("Document not found or you don't have permission");
 			}
 

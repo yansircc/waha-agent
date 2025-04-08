@@ -13,8 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useDocuments } from "@/hooks/use-documents";
-import { useKnowledgeBases } from "@/hooks/use-knowledge-bases";
-import type { KnowledgeBase } from "@/types/kb";
+import { useKbs } from "@/hooks/use-kbs";
+import type { Kb } from "@/types/kb";
 import {
 	ChevronRight,
 	Database,
@@ -32,7 +32,7 @@ export default function KnowledgePage() {
 	const [isAddKbOpen, setIsAddKbOpen] = useState(false);
 	const [kbName, setKbName] = useState("");
 	const [kbDescription, setKbDescription] = useState("");
-	const [selectedKb, setSelectedKb] = useState<KnowledgeBase | null>(null);
+	const [selectedKb, setSelectedKb] = useState<Kb | null>(null);
 
 	// Document state
 	const [isAddDocOpen, setIsAddDocOpen] = useState(false);
@@ -45,15 +45,9 @@ export default function KnowledgePage() {
 	const [tab, setTab] = useState<"list" | "detail">("list");
 
 	// Hooks
-	const {
-		knowledgeBases,
-		isLoadingKnowledgeBases,
-		createKnowledgeBase,
-		deleteKnowledgeBase,
-	} = useKnowledgeBases();
+	const { kbs, isLoadingKbs, createKb, deleteKb } = useKbs();
 
-	const { createDocument, deleteDocument, getDocumentsByKnowledgeBaseId } =
-		useDocuments();
+	const { createDocument, deleteDocument, getDocumentsByKbId } = useDocuments();
 
 	// Knowledge base handlers
 	const handleOpenAddKbDialog = () => setIsAddKbOpen(true);
@@ -70,7 +64,7 @@ export default function KnowledgePage() {
 	const handleSubmitKb = async (e: React.FormEvent) => {
 		e.preventDefault();
 
-		await createKnowledgeBase({
+		await createKb({
 			name: kbName,
 			description: kbDescription,
 			content: "", // Empty content, managed through documents
@@ -79,9 +73,9 @@ export default function KnowledgePage() {
 		handleCloseAddKbDialog();
 	};
 
-	const handleDeleteKnowledgeBase = async (id: string) => {
+	const handleDeleteKb = async (id: string) => {
 		if (confirm("Are you sure you want to delete this knowledge base?")) {
-			await deleteKnowledgeBase(id);
+			await deleteKb(id);
 			if (selectedKb?.id === id) {
 				setSelectedKb(null);
 				setTab("list");
@@ -163,7 +157,7 @@ export default function KnowledgePage() {
 		await createDocument({
 			name: docName,
 			content: docContent,
-			knowledgeBaseId: selectedKb.id,
+			kbId: selectedKb.id,
 			fileType,
 			fileSize,
 			// In a real implementation, the file would be uploaded to a storage service
@@ -180,7 +174,7 @@ export default function KnowledgePage() {
 		}
 	};
 
-	const handleSelectKnowledgeBase = (kb: KnowledgeBase) => {
+	const handleSelectKb = (kb: Kb) => {
 		setSelectedKb(kb);
 		setTab("detail");
 	};
@@ -198,7 +192,7 @@ export default function KnowledgePage() {
 	];
 
 	// Get documents for the selected knowledge base
-	const docsQuery = getDocumentsByKnowledgeBaseId(selectedKb?.id);
+	const docsQuery = getDocumentsByKbId(selectedKb?.id);
 
 	const documents = docsQuery.data || [];
 	const isLoadingDocuments = docsQuery.isLoading || false;
@@ -214,7 +208,7 @@ export default function KnowledgePage() {
 						</Button>
 					</div>
 
-					{isLoadingKnowledgeBases ? (
+					{isLoadingKbs ? (
 						<div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
 							{loadingPlaceholderIds.map((id) => (
 								<div
@@ -223,7 +217,7 @@ export default function KnowledgePage() {
 								/>
 							))}
 						</div>
-					) : knowledgeBases.length === 0 ? (
+					) : kbs.length === 0 ? (
 						<div className="flex flex-col items-center justify-center rounded-lg border bg-background p-12 text-center">
 							<Database className="mb-2 h-12 w-12 text-muted-foreground" />
 							<h2 className="mb-2 font-semibold text-xl">
@@ -239,15 +233,15 @@ export default function KnowledgePage() {
 						</div>
 					) : (
 						<div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-							{knowledgeBases.map((kb) => (
+							{kbs.map((kb) => (
 								<div
 									key={kb.id}
 									className="group relative flex cursor-pointer flex-col overflow-hidden rounded-lg border bg-background p-6 shadow transition-all hover:shadow-md"
-									onClick={() => handleSelectKnowledgeBase(kb)}
+									onClick={() => handleSelectKb(kb)}
 									onKeyDown={(e) => {
 										if (e.key === "Enter" || e.key === " ") {
 											e.preventDefault();
-											handleSelectKnowledgeBase(kb);
+											handleSelectKb(kb);
 										}
 									}}
 								>
@@ -264,7 +258,7 @@ export default function KnowledgePage() {
 											className="opacity-0 group-hover:opacity-100"
 											onClick={(e) => {
 												e.stopPropagation();
-												handleDeleteKnowledgeBase(kb.id);
+												handleDeleteKb(kb.id);
 											}}
 										>
 											<Trash2 className="h-4 w-4" />

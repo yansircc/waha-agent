@@ -89,7 +89,7 @@ export const agents = createTable(
 			.$defaultFn(() => crypto.randomUUID()),
 		name: d.varchar({ length: 255 }).notNull(),
 		prompt: d.text().notNull(),
-		knowledgeBaseIds: d.text().array(), // Array of knowledge base IDs
+		kbIds: d.text().array(), // Array of knowledge base IDs
 		isActive: d.boolean().default(false).notNull(),
 		createdById: d
 			.varchar({ length: 255 })
@@ -110,13 +110,13 @@ export const agents = createTable(
 export const agentsRelations = relations(agents, ({ one, many }) => ({
 	user: one(users, { fields: [agents.createdById], references: [users.id] }),
 	instances: many(instances),
-	knowledgeBases: many(agentToKnowledgeBase, {
-		relationName: "agentToKnowledgeBase",
+	kbs: many(agentToKb, {
+		relationName: "agentToKb",
 	}),
 }));
 
 // Knowledge Base schema
-export const knowledgeBases = createTable(
+export const kbs = createTable(
 	"kb",
 	(d) => ({
 		id: d
@@ -146,17 +146,14 @@ export const knowledgeBases = createTable(
 	],
 );
 
-export const knowledgeBasesRelations = relations(
-	knowledgeBases,
-	({ one, many }) => ({
-		user: one(users, {
-			fields: [knowledgeBases.createdById],
-			references: [users.id],
-		}),
-		agents: many(agentToKnowledgeBase, { relationName: "kbToAgent" }),
-		documents: many(documents),
+export const kbsRelations = relations(kbs, ({ one, many }) => ({
+	user: one(users, {
+		fields: [kbs.createdById],
+		references: [users.id],
 	}),
-);
+	agents: many(agentToKb, { relationName: "kbToAgent" }),
+	documents: many(documents),
+}));
 
 // Documents schema for storing individual documents within a knowledge base
 export const documents = createTable(
@@ -173,10 +170,10 @@ export const documents = createTable(
 		fileType: d.varchar({ length: 50 }),
 		fileSize: d.integer(),
 		metadata: d.jsonb(),
-		knowledgeBaseId: d
+		kbId: d
 			.varchar({ length: 255 })
 			.notNull()
-			.references(() => knowledgeBases.id, { onDelete: "cascade" }),
+			.references(() => kbs.id, { onDelete: "cascade" }),
 		createdAt: d
 			.timestamp({ withTimezone: true })
 			.default(sql`CURRENT_TIMESTAMP`)
@@ -184,54 +181,51 @@ export const documents = createTable(
 		updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
 	}),
 	(t) => [
-		index("document_kb_id_idx").on(t.knowledgeBaseId),
+		index("document_kb_id_idx").on(t.kbId),
 		index("document_name_idx").on(t.name),
 	],
 );
 
 export const documentsRelations = relations(documents, ({ one }) => ({
-	knowledgeBase: one(knowledgeBases, {
-		fields: [documents.knowledgeBaseId],
-		references: [knowledgeBases.id],
+	kb: one(kbs, {
+		fields: [documents.kbId],
+		references: [kbs.id],
 	}),
 }));
 
 // Junction table for many-to-many relationship between agents and knowledge bases
-export const agentToKnowledgeBase = createTable(
+export const agentToKb = createTable(
 	"agent_to_kb",
 	(d) => ({
 		agentId: d
 			.varchar({ length: 255 })
 			.notNull()
 			.references(() => agents.id, { onDelete: "cascade" }),
-		knowledgeBaseId: d
+		kbId: d
 			.varchar({ length: 255 })
 			.notNull()
-			.references(() => knowledgeBases.id, { onDelete: "cascade" }),
+			.references(() => kbs.id, { onDelete: "cascade" }),
 	}),
 	(t) => [
-		primaryKey({ columns: [t.agentId, t.knowledgeBaseId] }),
+		primaryKey({ columns: [t.agentId, t.kbId] }),
 		index("idx_agent_to_kb_agent").on(t.agentId),
-		index("idx_agent_to_kb_kb").on(t.knowledgeBaseId),
+		index("idx_agent_to_kb_kb").on(t.kbId),
 	],
 );
 
 // Define relations for the junction table
-export const agentToKnowledgeBaseRelations = relations(
-	agentToKnowledgeBase,
-	({ one }) => ({
-		agent: one(agents, {
-			fields: [agentToKnowledgeBase.agentId],
-			references: [agents.id],
-			relationName: "agentToKnowledgeBase",
-		}),
-		knowledgeBase: one(knowledgeBases, {
-			fields: [agentToKnowledgeBase.knowledgeBaseId],
-			references: [knowledgeBases.id],
-			relationName: "kbToAgent",
-		}),
+export const agentToKbRelations = relations(agentToKb, ({ one }) => ({
+	agent: one(agents, {
+		fields: [agentToKb.agentId],
+		references: [agents.id],
+		relationName: "agentToKb",
 	}),
-);
+	kb: one(kbs, {
+		fields: [agentToKb.kbId],
+		references: [kbs.id],
+		relationName: "kbToAgent",
+	}),
+}));
 
 // WhatsApp Instance schema
 export const instances = createTable(

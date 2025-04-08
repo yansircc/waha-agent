@@ -35,7 +35,7 @@ export function useAgentQuery({ onSuccess, onError }: UseAgentQueryProps = {}) {
 	const queryWithAgent = async (
 		agentId: string,
 		question: string,
-		knowledgeBaseIds?: string[],
+		kbIds?: string[],
 	) => {
 		setIsLoading(true);
 		setAnswer(null);
@@ -46,7 +46,7 @@ export function useAgentQuery({ onSuccess, onError }: UseAgentQueryProps = {}) {
 			const result = await queryMutation.mutateAsync({
 				agentId,
 				question,
-				knowledgeBaseIds,
+				kbIds,
 			});
 			setIsLoading(false);
 			return result;

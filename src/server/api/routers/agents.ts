@@ -1,6 +1,6 @@
 import { mastra } from "@/mastra";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
-import { agentToKnowledgeBase, agents } from "@/server/db/schema";
+import { agentToKb, agents } from "@/server/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -10,20 +10,18 @@ export const agentsRouter = createTRPCRouter({
 			where: (agent, { eq }) => eq(agent.createdById, ctx.session.user.id),
 			orderBy: (agent, { desc }) => [desc(agent.createdAt)],
 			with: {
-				knowledgeBases: {
+				kbs: {
 					with: {
-						knowledgeBase: true,
+						kb: true,
 					},
 				},
 			},
 		});
 
-		// Transform the result to include knowledgeBase objects
+		// Transform the result to include kb objects
 		return result.map((agent) => ({
 			...agent,
-			knowledgeBases: agent.knowledgeBases.map(
-				(relation) => relation.knowledgeBase,
-			),
+			kbs: agent.kbs.map((relation) => relation.kb),
 		}));
 	}),
 
@@ -37,9 +35,9 @@ export const agentsRouter = createTRPCRouter({
 						eq(agent.createdById, ctx.session.user.id),
 					),
 				with: {
-					knowledgeBases: {
+					kbs: {
 						with: {
-							knowledgeBase: true,
+							kb: true,
 						},
 					},
 				},
@@ -47,12 +45,10 @@ export const agentsRouter = createTRPCRouter({
 
 			if (!result) return null;
 
-			// Transform the result to include knowledgeBase objects
+			// Transform the result to include kb objects
 			return {
 				...result,
-				knowledgeBases: result.knowledgeBases.map(
-					(relation) => relation.knowledgeBase,
-				),
+				kbs: result.kbs.map((relation) => relation.kb),
 			};
 		}),
 
@@ -61,7 +57,7 @@ export const agentsRouter = createTRPCRouter({
 			z.object({
 				name: z.string().min(1).max(255),
 				prompt: z.string(),
-				knowledgeBaseIds: z.array(z.string()).optional(),
+				kbIds: z.array(z.string()).optional(),
 				isActive: z.boolean().optional(),
 			}),
 		)
@@ -70,7 +66,7 @@ export const agentsRouter = createTRPCRouter({
 			const agentData = {
 				name: input.name,
 				prompt: input.prompt,
-				knowledgeBaseIds: input.knowledgeBaseIds || null,
+				kbIds: input.kbIds || null,
 				isActive: input.isActive ?? false,
 				createdById: ctx.session.user.id,
 			};
@@ -87,11 +83,11 @@ export const agentsRouter = createTRPCRouter({
 			const agentId = insertResult[0].id;
 
 			// If knowledge base IDs are provided, create the relationships
-			if (input.knowledgeBaseIds?.length) {
-				await ctx.db.insert(agentToKnowledgeBase).values(
-					input.knowledgeBaseIds.map((kbId) => ({
+			if (input.kbIds?.length) {
+				await ctx.db.insert(agentToKb).values(
+					input.kbIds.map((kbId) => ({
 						agentId,
-						knowledgeBaseId: kbId,
+						kbId: kbId,
 					})),
 				);
 			}
@@ -105,7 +101,7 @@ export const agentsRouter = createTRPCRouter({
 				id: z.string(),
 				name: z.string().min(1).max(255).optional(),
 				prompt: z.string().optional(),
-				knowledgeBaseIds: z.array(z.string()).optional(),
+				kbIds: z.array(z.string()).optional(),
 				isActive: z.boolean().optional(),
 			}),
 		)
@@ -128,8 +124,7 @@ export const agentsRouter = createTRPCRouter({
 			const updateData: Record<string, unknown> = {};
 			if (input.name !== undefined) updateData.name = input.name;
 			if (input.prompt !== undefined) updateData.prompt = input.prompt;
-			if (input.knowledgeBaseIds !== undefined)
-				updateData.knowledgeBaseIds = input.knowledgeBaseIds;
+			if (input.kbIds !== undefined) updateData.kbIds = input.kbIds;
 			if (input.isActive !== undefined) updateData.isActive = input.isActive;
 
 			// Update the agent
@@ -144,18 +139,16 @@ export const agentsRouter = createTRPCRouter({
 			}
 
 			// If knowledge base IDs are provided, update the relationships
-			if (input.knowledgeBaseIds !== undefined) {
+			if (input.kbIds !== undefined) {
 				// Delete existing relationships
-				await ctx.db
-					.delete(agentToKnowledgeBase)
-					.where(eq(agentToKnowledgeBase.agentId, input.id));
+				await ctx.db.delete(agentToKb).where(eq(agentToKb.agentId, input.id));
 
 				// Create new relationships
-				if (input.knowledgeBaseIds.length > 0) {
-					await ctx.db.insert(agentToKnowledgeBase).values(
-						input.knowledgeBaseIds.map((kbId) => ({
+				if (input.kbIds.length > 0) {
+					await ctx.db.insert(agentToKb).values(
+						input.kbIds.map((kbId) => ({
 							agentId: input.id,
-							knowledgeBaseId: kbId,
+							kbId: kbId,
 						})),
 					);
 				}
@@ -222,7 +215,7 @@ export const agentsRouter = createTRPCRouter({
 			z.object({
 				agentId: z.string(),
 				question: z.string().min(1),
-				knowledgeBaseIds: z.array(z.string()).optional(),
+				kbIds: z.array(z.string()).optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -234,9 +227,9 @@ export const agentsRouter = createTRPCRouter({
 						eq(agent.createdById, ctx.session.user.id),
 					),
 				with: {
-					knowledgeBases: {
+					kbs: {
 						with: {
-							knowledgeBase: true,
+							kb: true,
 						},
 					},
 				},
@@ -253,9 +246,7 @@ export const agentsRouter = createTRPCRouter({
 				const mastraAgent = mastra.getAgent("researchAgent");
 
 				// 确定使用哪些知识库
-				const kbIds =
-					input.knowledgeBaseIds ||
-					agent.knowledgeBases.map((rel) => rel.knowledgeBase.id);
+				const kbIds = input.kbIds || agent.kbs.map((rel) => rel.kb.id);
 
 				// 如果没有指定知识库，则使用agent绑定的所有知识库
 				const kbContext =
@@ -282,15 +273,15 @@ export const agentsRouter = createTRPCRouter({
 			}
 		}),
 
-	getKnowledgeBases: protectedProcedure
+	getKbs: protectedProcedure
 		.input(
 			z.object({
 				agentId: z.string(),
 			}),
 		)
 		.query(async ({ ctx, input }) => {
-			const result = await ctx.db.query.agentToKnowledgeBase.findMany({
-				where: eq(agentToKnowledgeBase.agentId, input.agentId),
+			const result = await ctx.db.query.agentToKb.findMany({
+				where: eq(agentToKb.agentId, input.agentId),
 			});
 
 			return result;

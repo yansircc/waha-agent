@@ -6,7 +6,7 @@ import { embedMany } from "ai";
 
 interface ProcessDocumentPayload {
 	content: string;
-	knowledgeBaseId: string;
+	kbId: string;
 	documentName: string;
 	userId: string;
 	documentId: string;
@@ -18,16 +18,10 @@ export const processDocumentTask = task({
 	maxDuration: 600, // 10 minutes max duration
 
 	run: async (payload: ProcessDocumentPayload) => {
-		const {
-			content,
-			knowledgeBaseId,
-			documentName,
-			userId,
-			documentId,
-			webhookUrl,
-		} = payload;
+		const { content, kbId, documentName, userId, documentId, webhookUrl } =
+			payload;
 
-		logger.log("Starting document processing", { documentId, knowledgeBaseId });
+		logger.log("Starting document processing", { documentId, kbId });
 
 		try {
 			// Create document and chunk it
@@ -75,7 +69,7 @@ export const processDocumentTask = task({
 			const chunksMetadata = chunks.map((chunk, index) => ({
 				text: chunk.text,
 				source: documentName,
-				knowledgeBaseId,
+				kbId,
 				userId,
 				documentId,
 				chunkIndex: index,
@@ -104,7 +98,7 @@ export const processDocumentTask = task({
 					body: JSON.stringify({
 						success: true,
 						documentId,
-						knowledgeBaseId,
+						kbId,
 						message: `Processed and stored ${chunks.length} embeddings for document ${documentName}`,
 					}),
 				});
@@ -134,7 +128,7 @@ export const processDocumentTask = task({
 					body: JSON.stringify({
 						success: false,
 						documentId,
-						knowledgeBaseId,
+						kbId,
 						error: error instanceof Error ? error.message : String(error),
 					}),
 				});

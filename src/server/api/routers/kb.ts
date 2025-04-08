@@ -2,15 +2,15 @@ import { kbService } from "@/lib/kb-service";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { z } from "zod";
 
-export const knowledgeBasesRouter = createTRPCRouter({
+export const kbsRouter = createTRPCRouter({
 	getAll: protectedProcedure.query(async ({ ctx }) => {
-		return kbService.knowledgeBases.getByUserId(ctx.session.user.id);
+		return kbService.kbs.getByUserId(ctx.session.user.id);
 	}),
 
 	getById: protectedProcedure
 		.input(z.object({ id: z.string() }))
 		.query(async ({ ctx, input }) => {
-			return kbService.knowledgeBases.getById(input.id, ctx.session.user.id);
+			return kbService.kbs.getById(input.id, ctx.session.user.id);
 		}),
 
 	create: protectedProcedure
@@ -21,7 +21,7 @@ export const knowledgeBasesRouter = createTRPCRouter({
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
-			return kbService.knowledgeBases.create({
+			return kbService.kbs.create({
 				name: input.name,
 				description: input.description,
 				userId: ctx.session.user.id,
@@ -37,7 +37,7 @@ export const knowledgeBasesRouter = createTRPCRouter({
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
-			return kbService.knowledgeBases.update({
+			return kbService.kbs.update({
 				id: input.id,
 				name: input.name,
 				description: input.description,
@@ -48,17 +48,14 @@ export const knowledgeBasesRouter = createTRPCRouter({
 	delete: protectedProcedure
 		.input(z.object({ id: z.string() }))
 		.mutation(async ({ ctx, input }) => {
-			return kbService.knowledgeBases.delete(input.id, ctx.session.user.id);
+			return kbService.kbs.delete(input.id, ctx.session.user.id);
 		}),
 
 	// Document related procedures
 	getDocuments: protectedProcedure
-		.input(z.object({ knowledgeBaseId: z.string() }))
+		.input(z.object({ kbId: z.string() }))
 		.query(async ({ ctx, input }) => {
-			return kbService.documents.getByKnowledgeBaseId(
-				input.knowledgeBaseId,
-				ctx.session.user.id,
-			);
+			return kbService.documents.getByKbId(input.kbId, ctx.session.user.id);
 		}),
 
 	getDocumentById: protectedProcedure
@@ -72,7 +69,7 @@ export const knowledgeBasesRouter = createTRPCRouter({
 			z.object({
 				name: z.string().min(1).max(255),
 				content: z.string(),
-				knowledgeBaseId: z.string(),
+				kbId: z.string(),
 				fileUrl: z.string().optional(),
 				fileType: z.string().optional(),
 				fileSize: z.number().optional(),
@@ -83,7 +80,7 @@ export const knowledgeBasesRouter = createTRPCRouter({
 			return kbService.documents.create({
 				name: input.name,
 				content: input.content,
-				knowledgeBaseId: input.knowledgeBaseId,
+				kbId: input.kbId,
 				fileUrl: input.fileUrl,
 				fileType: input.fileType,
 				fileSize: input.fileSize,
@@ -102,7 +99,7 @@ export const knowledgeBasesRouter = createTRPCRouter({
 				fileType: z.string().optional(),
 				fileSize: z.number().optional(),
 				metadata: z.record(z.any()).optional(),
-				knowledgeBaseId: z.string(),
+				kbId: z.string(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -114,7 +111,7 @@ export const knowledgeBasesRouter = createTRPCRouter({
 				fileType: input.fileType,
 				fileSize: input.fileSize,
 				metadata: input.metadata,
-				knowledgeBaseId: input.knowledgeBaseId,
+				kbId: input.kbId,
 				userId: ctx.session.user.id,
 			});
 		}),

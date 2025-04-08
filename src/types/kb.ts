@@ -1,4 +1,4 @@
-export interface KnowledgeBase {
+export interface Kb {
 	id: string;
 	name: string;
 	description: string | null;
@@ -20,19 +20,19 @@ export interface Document {
 	fileType: string | null;
 	fileSize: number | null;
 	metadata: unknown;
-	knowledgeBaseId: string;
+	kbId: string;
 	createdAt: string | Date;
 	updatedAt: string | Date | null;
 }
 
-export interface CreateKnowledgeBaseInput {
+export interface CreateKbInput {
 	name: string;
 	description?: string;
 	content?: string;
 	userId: string;
 }
 
-export interface UpdateKnowledgeBaseInput {
+export interface UpdateKbInput {
 	id: string;
 	name?: string;
 	description?: string;
@@ -46,7 +46,7 @@ export interface CreateDocumentInput {
 	fileType?: string;
 	fileSize?: number;
 	metadata?: Record<string, unknown>;
-	knowledgeBaseId: string;
+	kbId: string;
 	userId: string;
 }
 
@@ -58,6 +58,6 @@ export interface UpdateDocumentInput {
 	fileType?: string;
 	fileSize?: number;
 	metadata?: Record<string, unknown>;
-	knowledgeBaseId: string;
+	kbId: string;
 	userId: string;
 }

@@ -31,7 +31,7 @@ interface AgentChatDialogProps {
 	agentName: string;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	knowledgeBaseIds?: string[];
+	kbIds?: string[];
 }
 
 export function AgentChatDialog({
@@ -39,7 +39,7 @@ export function AgentChatDialog({
 	agentName,
 	open,
 	onOpenChange,
-	knowledgeBaseIds,
+	kbIds,
 }: AgentChatDialogProps) {
 	const [messages, setMessages] = useState<Message[]>([]);
 	const [inputValue, setInputValue] = useState("");
@@ -86,7 +86,7 @@ export function AgentChatDialog({
 		setInputValue("");
 
 		// Query the agent using the useAgentQuery hook
-		queryWithAgent(agentId, inputValue, knowledgeBaseIds);
+		queryWithAgent(agentId, inputValue, kbIds);
 	};
 
 	const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

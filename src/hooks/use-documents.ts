@@ -13,30 +13,28 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 	const utils = api.useUtils();
 
 	// Get documents by knowledge base ID
-	const getDocumentsByKnowledgeBaseId = (
-		knowledgeBaseId: string | undefined,
-	) => {
-		return api.knowledgeBases.getDocuments.useQuery(
-			{ knowledgeBaseId: knowledgeBaseId || "" },
-			{ enabled: !!knowledgeBaseId },
+	const getDocumentsByKbId = (kbId: string | undefined) => {
+		return api.kbs.getDocuments.useQuery(
+			{ kbId: kbId || "" },
+			{ enabled: !!kbId },
 		);
 	};
 
 	// Get document by ID
 	const getDocumentById = (id: string) => {
-		return api.knowledgeBases.getDocumentById.useQuery({ id });
+		return api.kbs.getDocumentById.useQuery({ id });
 	};
 
 	// Create a new document
-	const createDocumentMutation = api.knowledgeBases.createDocument.useMutation({
+	const createDocumentMutation = api.kbs.createDocument.useMutation({
 		onSuccess: (data) => {
 			// Invalidate the specific documents query for this knowledge base
-			if (data?.knowledgeBaseId) {
-				utils.knowledgeBases.getDocuments.invalidate({
-					knowledgeBaseId: data.knowledgeBaseId,
+			if (data?.kbId) {
+				utils.kbs.getDocuments.invalidate({
+					kbId: data.kbId,
 				});
 			}
-			utils.knowledgeBases.getAll.invalidate();
+			utils.kbs.getAll.invalidate();
 			onSuccess?.();
 		},
 		onError: (error) => {
@@ -47,7 +45,7 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 	const createDocument = async (data: {
 		name: string;
 		content: string;
-		knowledgeBaseId: string;
+		kbId: string;
 		fileUrl?: string;
 		fileType?: string;
 		fileSize?: number;
@@ -65,14 +63,14 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 	};
 
 	// Update a document
-	const updateDocumentMutation = api.knowledgeBases.updateDocument.useMutation({
+	const updateDocumentMutation = api.kbs.updateDocument.useMutation({
 		onSuccess: (data) => {
-			if (data?.knowledgeBaseId) {
-				utils.knowledgeBases.getDocuments.invalidate({
-					knowledgeBaseId: data.knowledgeBaseId,
+			if (data?.kbId) {
+				utils.kbs.getDocuments.invalidate({
+					kbId: data.kbId,
 				});
 			}
-			utils.knowledgeBases.getAll.invalidate();
+			utils.kbs.getAll.invalidate();
 			onSuccess?.();
 		},
 		onError: (error) => {
@@ -84,7 +82,7 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 		id: string;
 		name?: string;
 		content?: string;
-		knowledgeBaseId: string;
+		kbId: string;
 		fileUrl?: string;
 		fileType?: string;
 		fileSize?: number;
@@ -102,11 +100,11 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 	};
 
 	// Delete a document
-	const deleteDocumentMutation = api.knowledgeBases.deleteDocument.useMutation({
+	const deleteDocumentMutation = api.kbs.deleteDocument.useMutation({
 		onSuccess: (_data, variables, context) => {
 			// When we delete a document, we have its ID but we don't know its KB ID
 			// So we just invalidate all document queries
-			utils.knowledgeBases.invalidate();
+			utils.kbs.invalidate();
 			onSuccess?.();
 		},
 		onError: (error) => {
@@ -127,7 +125,7 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 	};
 
 	return {
-		getDocumentsByKnowledgeBaseId,
+		getDocumentsByKbId,
 		getDocumentById,
 		createDocument,
 		updateDocument,

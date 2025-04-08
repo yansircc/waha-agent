@@ -23,7 +23,7 @@ interface AgentCardProps {
 	id: string;
 	name: string;
 	prompt: string;
-	knowledgeBases?: {
+	kbs?: {
 		id: string;
 		name: string;
 	}[];
@@ -37,7 +37,7 @@ export function AgentCard({
 	id,
 	name,
 	prompt,
-	knowledgeBases = [],
+	kbs = [],
 	isActive = false,
 	onEdit,
 	createdAt,
@@ -51,7 +51,7 @@ export function AgentCard({
 	};
 
 	// Extract knowledge base IDs for use with the chat dialog
-	const knowledgeBaseIds = knowledgeBases.map((kb) => kb.id);
+	const kbIds = kbs.map((kb) => kb.id);
 
 	return (
 		<div className="group relative flex flex-col overflow-hidden rounded-lg border bg-background p-6 shadow transition-all hover:shadow-md">
@@ -82,9 +82,9 @@ export function AgentCard({
 				{prompt}
 			</p>
 
-			{knowledgeBases.length > 0 && (
+			{kbs.length > 0 && (
 				<div className="mb-6 flex flex-wrap gap-2">
-					{knowledgeBases.map((kb) => (
+					{kbs.map((kb) => (
 						<Badge key={kb.id} variant="secondary">
 							{kb.name}
 						</Badge>
@@ -149,7 +149,7 @@ export function AgentCard({
 					agentName={name}
 					open={isChatOpen}
 					onOpenChange={setIsChatOpen}
-					knowledgeBaseIds={knowledgeBaseIds}
+					kbIds={kbIds}
 				/>
 			)}
 		</div>

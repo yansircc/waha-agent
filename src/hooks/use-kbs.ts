@@ -3,30 +3,27 @@ import { api } from "@/utils/api";
 import type { TRPCClientErrorLike } from "@trpc/client";
 import { useState } from "react";
 
-interface UseKnowledgeBasesProps {
+interface UseKbsProps {
 	onSuccess?: () => void;
 	onError?: (error: TRPCClientErrorLike<AppRouter>) => void;
 }
 
-export function useKnowledgeBases({
-	onSuccess,
-	onError,
-}: UseKnowledgeBasesProps = {}) {
+export function useKbs({ onSuccess, onError }: UseKbsProps = {}) {
 	const [isLoading, setIsLoading] = useState(false);
 	const utils = api.useUtils();
 
 	// Get all knowledge bases
-	const knowledgeBasesQuery = api.knowledgeBases.getAll.useQuery();
+	const kbsQuery = api.kbs.getAll.useQuery();
 
 	// Get knowledge base by ID
-	const getKnowledgeBaseById = (id: string) => {
-		return api.knowledgeBases.getById.useQuery({ id });
+	const getKbById = (id: string) => {
+		return api.kbs.getById.useQuery({ id });
 	};
 
 	// Create a new knowledge base
-	const createKnowledgeBaseMutation = api.knowledgeBases.create.useMutation({
+	const createKbMutation = api.kbs.create.useMutation({
 		onSuccess: () => {
-			utils.knowledgeBases.getAll.invalidate();
+			utils.kbs.getAll.invalidate();
 			onSuccess?.();
 		},
 		onError: (error) => {
@@ -34,7 +31,7 @@ export function useKnowledgeBases({
 		},
 	});
 
-	const createKnowledgeBase = async (data: {
+	const createKb = async (data: {
 		name: string;
 		description?: string;
 		content: string;
@@ -44,7 +41,7 @@ export function useKnowledgeBases({
 	}) => {
 		setIsLoading(true);
 		try {
-			const result = await createKnowledgeBaseMutation.mutateAsync({
+			const result = await createKbMutation.mutateAsync({
 				name: data.name,
 				description: data.description,
 				// Other fields are now handled through documents
@@ -58,9 +55,9 @@ export function useKnowledgeBases({
 	};
 
 	// Update a knowledge base
-	const updateKnowledgeBaseMutation = api.knowledgeBases.update.useMutation({
+	const updateKbMutation = api.kbs.update.useMutation({
 		onSuccess: () => {
-			utils.knowledgeBases.getAll.invalidate();
+			utils.kbs.getAll.invalidate();
 			onSuccess?.();
 		},
 		onError: (error) => {
@@ -68,7 +65,7 @@ export function useKnowledgeBases({
 		},
 	});
 
-	const updateKnowledgeBase = async (data: {
+	const updateKb = async (data: {
 		id: string;
 		name?: string;
 		description?: string;
@@ -79,7 +76,7 @@ export function useKnowledgeBases({
 	}) => {
 		setIsLoading(true);
 		try {
-			const result = await updateKnowledgeBaseMutation.mutateAsync(data);
+			const result = await updateKbMutation.mutateAsync(data);
 			setIsLoading(false);
 			return result;
 		} catch (error: unknown) {
@@ -89,9 +86,9 @@ export function useKnowledgeBases({
 	};
 
 	// Delete a knowledge base
-	const deleteKnowledgeBaseMutation = api.knowledgeBases.delete.useMutation({
+	const deleteKbMutation = api.kbs.delete.useMutation({
 		onSuccess: () => {
-			utils.knowledgeBases.getAll.invalidate();
+			utils.kbs.getAll.invalidate();
 			onSuccess?.();
 		},
 		onError: (error) => {
@@ -99,10 +96,10 @@ export function useKnowledgeBases({
 		},
 	});
 
-	const deleteKnowledgeBase = async (id: string) => {
+	const deleteKb = async (id: string) => {
 		setIsLoading(true);
 		try {
-			const result = await deleteKnowledgeBaseMutation.mutateAsync({ id });
+			const result = await deleteKbMutation.mutateAsync({ id });
 			setIsLoading(false);
 			return result;
 		} catch (error: unknown) {
@@ -112,12 +109,12 @@ export function useKnowledgeBases({
 	};
 
 	return {
-		knowledgeBases: knowledgeBasesQuery.data || [],
-		isLoadingKnowledgeBases: knowledgeBasesQuery.isLoading,
-		getKnowledgeBaseById,
-		createKnowledgeBase,
-		updateKnowledgeBase,
-		deleteKnowledgeBase,
+		kbs: kbsQuery.data || [],
+		isLoadingKbs: kbsQuery.isLoading,
+		getKbById,
+		createKb,
+		updateKb,
+		deleteKb,
 		isLoading,
 	};
 }

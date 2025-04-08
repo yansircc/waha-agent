@@ -3,7 +3,7 @@ export type Agent = {
 	name: string;
 	prompt: string;
 	isActive: boolean;
-	knowledgeBaseIds: string[] | null;
+	kbIds: string[] | null;
 	createdAt: Date | null;
 	updatedAt: Date | null;
 };

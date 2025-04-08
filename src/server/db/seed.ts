@@ -1,8 +1,8 @@
 import { db } from "./index";
-import { knowledgeBases } from "./schema";
+import { kbs } from "./schema";
 
 // Sample knowledge base data
-const knowledgeBaseData = [
+const kbData = [
 	{
 		name: "WhatsApp FAQ",
 		description: "Common questions and answers about WhatsApp",
@@ -64,11 +64,11 @@ const knowledgeBaseData = [
 ];
 
 // Function to seed knowledge base data
-export async function seedKnowledgeBase(userId: string) {
+export async function seedKb(userId: string) {
 	console.log("Seeding knowledge base data...");
 
-	for (const kb of knowledgeBaseData) {
-		await db.insert(knowledgeBases).values({
+	for (const kb of kbData) {
+		await db.insert(kbs).values({
 			name: kb.name,
 			description: kb.description,
 			content: kb.content,
@@ -87,7 +87,7 @@ export async function seed(userId: string) {
 		process.exit(1);
 	}
 
-	await seedKnowledgeBase(userId);
+	await seedKb(userId);
 	console.log("All seed operations completed successfully!");
 }
 

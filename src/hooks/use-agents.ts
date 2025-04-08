@@ -35,7 +35,7 @@ export function useAgents({ onSuccess, onError }: UseAgentsProps = {}) {
 	const createAgent = async (data: {
 		name: string;
 		prompt: string;
-		knowledgeBaseIds?: string[];
+		kbIds?: string[];
 		isActive?: boolean;
 	}) => {
 		setIsLoading(true);
@@ -64,7 +64,7 @@ export function useAgents({ onSuccess, onError }: UseAgentsProps = {}) {
 		id: string;
 		name?: string;
 		prompt?: string;
-		knowledgeBaseIds?: string[];
+		kbIds?: string[];
 		isActive?: boolean;
 	}) => {
 		setIsLoading(true);

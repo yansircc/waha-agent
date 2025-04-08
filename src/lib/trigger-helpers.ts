@@ -9,14 +9,14 @@ import { processDocumentTask } from "@/trigger/embedding";
  */
 export async function triggerDocumentProcessing({
 	content,
-	knowledgeBaseId,
+	kbId,
 	documentName,
 	userId,
 	documentId,
 	webhookUrl,
 }: {
 	content: string;
-	knowledgeBaseId: string;
+	kbId: string;
 	documentName: string;
 	userId: string;
 	documentId: string;
@@ -25,7 +25,7 @@ export async function triggerDocumentProcessing({
 	// 触发任务并返回句柄
 	const handle = await processDocumentTask.trigger({
 		content,
-		knowledgeBaseId,
+		kbId,
 		documentName,
 		userId,
 		documentId,
