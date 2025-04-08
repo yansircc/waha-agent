@@ -4,6 +4,7 @@ import { S3Client } from "@aws-sdk/client-s3";
 import {
 	DeleteObjectCommand,
 	GetObjectCommand,
+	type GetObjectCommandInput,
 	HeadObjectCommand,
 	PutObjectCommand,
 } from "@aws-sdk/client-s3";
@@ -196,13 +197,13 @@ export async function getPresignedUrl(
 		| "bucket-owner-full-control"
 		| "log-delivery-write" = "public-read",
 ): Promise<string> {
-	const command = new GetObjectCommand({
+	const commandInput: GetObjectCommandInput & { ACL?: string } = {
 		Bucket: s3Config.bucket,
 		Key: key,
-	});
+		ACL: acl,
+	};
 
-	// Add ACL to command parameters
-	(command.input as any).ACL = acl;
+	const command = new GetObjectCommand(commandInput);
 
 	return getSignedUrl(s3Client, command, { expiresIn });
 }
