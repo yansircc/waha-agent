@@ -2,7 +2,6 @@ import { agentsRouter } from "@/server/api/routers/agents";
 import { chatRouter } from "@/server/api/routers/chat";
 import { instancesRouter } from "@/server/api/routers/instances";
 import { kbsRouter } from "@/server/api/routers/kb";
-import { mastraAgentsRouter } from "@/server/api/routers/mastra-agents";
 import { wahaAuthRouter } from "@/server/api/routers/waha-auth";
 import { wahaChattingRouter } from "@/server/api/routers/waha-chatting";
 import { wahaProfileRouter } from "@/server/api/routers/waha-profile";
@@ -22,7 +21,6 @@ export const appRouter = createTRPCRouter({
 	wahaAuth: wahaAuthRouter,
 	wahaProfile: wahaProfileRouter,
 	wahaChatting: wahaChattingRouter,
-	mastraAgents: mastraAgentsRouter,
 	chat: chatRouter,
 });
 
