@@ -1,4 +1,4 @@
-import { mastraClient } from "@/lib/mastra";
+import { mastra } from "@/lib/mastra";
 import { logger, task } from "@trigger.dev/sdk/v3";
 
 interface AgentChatPayload {
@@ -58,19 +58,19 @@ export const agentChat = task({
 
 		try {
 			// Get the RAG agent
-			const agent = mastraClient.getAgent("ragAgent");
+			const agent = mastra.getAgent("ragAgent");
 
 			if (!agent) {
 				throw new Error("Agent not found");
 			}
 
 			// Generate response
-			const result = await agent.generate({
-				messages: messages.map((message) => ({
+			const result = await agent.generate(
+				messages.map((message) => ({
 					role: message.role,
 					content: message.content,
 				})),
-			});
+			);
 
 			// Prepare webhook response
 			const webhookData: WebhookResponse = {
