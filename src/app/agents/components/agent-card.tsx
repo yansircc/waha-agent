@@ -1,6 +1,5 @@
 "use client";
 
-import { AgentChatDialog } from "@/components/agent-chat-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,9 +14,10 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useAgents } from "@/hooks/use-agents";
-import { InfoIcon, MessageCircle, MoveRight, PenIcon } from "lucide-react";
+import { InfoIcon, MessageCircle, PenIcon } from "lucide-react";
 import { useState } from "react";
+import { useAgents } from "../hooks/use-agents";
+import { AgentChatDialog } from "./agent-chat-dialog";
 
 interface AgentCardProps {
 	id: string;

@@ -1,53 +1,6 @@
-import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
 import { type NextRequest, NextResponse } from "next/server";
-
-// Store the SSE clients
-type Client = {
-	id: string;
-	agentId: string;
-	controller: ReadableStreamController<Uint8Array>;
-};
-
-const clients = new Map<string, Client>();
-
-// Create a server-sent events endpoint
-export async function GET(req: NextRequest) {
-	const url = new URL(req.url);
-	const agentId = url.searchParams.get("agentId");
-
-	if (!agentId) {
-		return new Response("Agent ID is required", { status: 400 });
-	}
-
-	// Create a new client ID
-	const clientId = nanoid();
-
-	// Set up Server-Sent Events
-	const stream = new ReadableStream({
-		start(controller) {
-			clients.set(clientId, { id: clientId, agentId, controller });
-
-			// Send a connection established event
-			const data = `data: ${JSON.stringify({ type: "connected", clientId })}\n\n`;
-			controller.enqueue(new TextEncoder().encode(data));
-
-			console.log(`[SSE] Client connected: ${clientId} for agent: ${agentId}`);
-		},
-		cancel() {
-			clients.delete(clientId);
-			console.log(`[SSE] Client disconnected: ${clientId}`);
-		},
-	});
-
-	return new Response(stream, {
-		headers: {
-			"Content-Type": "text/event-stream",
-			"Cache-Control": "no-cache",
-			Connection: "keep-alive",
-		},
-	});
-}
+import { storeResponse } from "../../chat/status/route";
 
 /**
  * 聊天生成 Webhook 端点
@@ -65,6 +18,7 @@ export async function POST(req: NextRequest) {
 			userId,
 			agentId,
 			conversationId,
+			messageId,
 		} = data;
 
 		console.log("[Webhook] Received chat response:", {
@@ -72,8 +26,8 @@ export async function POST(req: NextRequest) {
 			userId,
 			agentId,
 			conversationId,
+			messageId,
 			messageCount: messages?.length,
-			messages,
 		});
 
 		if (!success) {
@@ -81,59 +35,44 @@ export async function POST(req: NextRequest) {
 				`[Webhook] Chat generation failed for user ${userId}:`,
 				error,
 			);
+
+			// 存储错误信息，包含消息ID
+			if (conversationId) {
+				storeResponse(conversationId, "", error, messageId);
+			}
+
 			return NextResponse.json({ success: false, error }, { status: 500 });
 		}
 
 		// 验证必要数据是否存在
 		if (!response || !messages || !userId) {
+			const missingDataError = "Missing required data";
 			console.error("[Webhook] Missing required data:", {
 				response,
 				messages,
 				userId,
 			});
+
+			// 存储错误信息，包含消息ID
+			if (conversationId) {
+				storeResponse(conversationId, "", missingDataError, messageId);
+			}
+
 			return NextResponse.json(
-				{ success: false, error: "Missing required data" },
+				{ success: false, error: missingDataError },
 				{ status: 400 },
 			);
 		}
 
 		console.log(
-			`Chat generation completed for user ${userId} with agent ${agentId || "default"}`,
+			`[Webhook] Chat generation completed for user ${userId} with agent ${agentId || "default"}`,
 		);
 
-		// 向所有与该agentId相关的客户端发送消息更新
-		if (agentId) {
-			let messagesSent = 0;
-			// 找到所有相关客户端并发送消息
-			for (const [_, client] of clients) {
-				if (client.agentId === agentId) {
-					try {
-						const event = {
-							type: "message",
-							agentId,
-							response,
-							messages,
-							userId,
-							conversationId,
-							timestamp: new Date().toISOString(),
-						};
-
-						const message = `data: ${JSON.stringify(event)}\n\n`;
-						client.controller.enqueue(new TextEncoder().encode(message));
-						messagesSent++;
-					} catch (err) {
-						console.error("[SSE] Error sending message to client:", {
-							clientId: client.id,
-							error: err instanceof Error ? err.message : String(err),
-						});
-						// 移除断开连接的客户端
-						clients.delete(client.id);
-					}
-				}
-			}
-
+		// 存储响应以供轮询获取，并包含消息ID
+		if (conversationId) {
+			storeResponse(conversationId, response, undefined, messageId);
 			console.log(
-				`[SSE] Messages sent to ${messagesSent} clients for agent ${agentId}`,
+				`[Webhook] Stored response for conversationId: ${conversationId}, messageId: ${messageId || "not provided"}`,
 			);
 		}
 
@@ -149,13 +88,12 @@ export async function POST(req: NextRequest) {
 			userId,
 			agentId,
 			conversationId,
+			messageId,
 		});
 
 		return NextResponse.json({
 			success: true,
 			message: "Chat response processed successfully",
-			response,
-			messages,
 		});
 	} catch (error) {
 		console.error("[Webhook] Error processing request:", {

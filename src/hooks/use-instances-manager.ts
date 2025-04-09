@@ -1,6 +1,6 @@
 "use client";
 
-import { useAgents } from "@/hooks/use-agents";
+import { useAgents } from "@/app/agents/hooks/use-agents";
 import { useInstances } from "@/hooks/use-instances";
 import { useInstancesApi } from "@/hooks/use-instances-api";
 import { useQRCode } from "@/hooks/use-qr-code";

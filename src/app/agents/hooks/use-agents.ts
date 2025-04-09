@@ -1,5 +1,4 @@
 import type { AppRouter } from "@/server/api/root";
-import type { agents } from "@/server/db/schema";
 import { api } from "@/utils/api";
 import type { TRPCClientErrorLike } from "@trpc/client";
 import { useState } from "react";

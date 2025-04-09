@@ -1,7 +1,7 @@
 import { mastra } from "@/lib/mastra";
 import { logger, task } from "@trigger.dev/sdk/v3";
 
-interface AgentChatPayload {
+export interface AgentChatPayload {
 	messages: Array<{
 		role: "user" | "assistant";
 		content: string;
@@ -10,6 +10,7 @@ interface AgentChatPayload {
 	agentId: string;
 	conversationId: string;
 	webhookUrl: string;
+	messageId?: string;
 }
 
 interface WebhookResponse {
@@ -23,6 +24,7 @@ interface WebhookResponse {
 	userId: string;
 	agentId: string;
 	conversationId: string;
+	messageId?: string;
 }
 
 async function sendWebhookResponse(
@@ -54,7 +56,8 @@ async function sendWebhookResponse(
 export const agentChat = task({
 	id: "agent-chat",
 	run: async (payload: AgentChatPayload) => {
-		const { messages, userId, agentId, conversationId, webhookUrl } = payload;
+		const { messages, userId, agentId, conversationId, webhookUrl, messageId } =
+			payload;
 
 		try {
 			// Get the RAG agent
@@ -63,6 +66,15 @@ export const agentChat = task({
 			if (!agent) {
 				throw new Error("Agent not found");
 			}
+
+			// Log start of processing
+			logger.info("Starting chat generation", {
+				userId,
+				agentId,
+				conversationId,
+				messageId,
+				messageCount: messages.length,
+			});
 
 			// Generate response
 			const result = await agent.generate(
@@ -80,6 +92,7 @@ export const agentChat = task({
 				userId,
 				agentId,
 				conversationId,
+				messageId,
 			};
 
 			// Log success
@@ -87,6 +100,7 @@ export const agentChat = task({
 				userId,
 				agentId,
 				conversationId,
+				messageId,
 				messageCount: messages.length,
 			});
 
@@ -104,6 +118,7 @@ export const agentChat = task({
 				userId,
 				agentId,
 				conversationId,
+				messageId,
 			};
 
 			// Log error
@@ -112,6 +127,7 @@ export const agentChat = task({
 				userId,
 				agentId,
 				conversationId,
+				messageId,
 			});
 
 			// Send error webhook response

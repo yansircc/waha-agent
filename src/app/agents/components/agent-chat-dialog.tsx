@@ -8,21 +8,16 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { Bot, Cloud, Send, User } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // 定义消息类型接口
 interface ChatMessage {
 	id: string;
 	role: "user" | "assistant";
 	content: string;
-	sources?: string[];
+	messageId?: string; // 服务器端消息ID
 }
 
 interface AgentChatDialogProps {
@@ -45,25 +40,112 @@ export function AgentChatDialog({
 	const [isProcessing, setIsProcessing] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [inputValue, setInputValue] = useState("");
+	const [conversationId, setConversationId] = useState<string | null>(null);
+	const [currentMessageId, setCurrentMessageId] = useState<string | null>(null);
+
+	// 轮询定时器
+	const pollingInterval = useRef<NodeJS.Timeout | null>(null);
 
 	// 清空聊天记录
 	const clearChat = useCallback(() => {
 		setMessages([]);
 		setError(null);
+		setConversationId(null);
+		setCurrentMessageId(null);
+
+		// 确保停止轮询
+		if (pollingInterval.current) {
+			clearInterval(pollingInterval.current);
+			pollingInterval.current = null;
+		}
 	}, []);
 
-	// 更新助手响应
-	const updateWithResponse = useCallback((content: string) => {
-		const assistantMessage: ChatMessage = {
-			id: Date.now().toString(),
-			role: "assistant",
-			content,
-			// 如果有源信息，可以在这里添加
-			sources: [],
+	// 轮询消息更新
+	const startPolling = useCallback(() => {
+		// 如果没有对话ID或者不在处理中，则不需要轮询
+		if (!conversationId || !isProcessing || !currentMessageId) return;
+
+		// 避免创建多个轮询
+		if (pollingInterval.current) {
+			clearInterval(pollingInterval.current);
+			pollingInterval.current = null;
+		}
+
+		console.log(
+			`Starting polling for conversation ${conversationId}, messageId ${currentMessageId}`,
+		);
+
+		const checkStatus = async () => {
+			try {
+				const response = await fetch(
+					`/api/chat/status?conversationId=${conversationId}&messageId=${currentMessageId}`,
+				);
+
+				if (!response.ok) return;
+
+				const data = await response.json();
+
+				// 如果响应已完成
+				if (data.status === "completed") {
+					// 有错误信息
+					if (data.error) {
+						setError(data.error);
+						setIsProcessing(false);
+						setCurrentMessageId(null);
+
+						// 停止轮询
+						if (pollingInterval.current) {
+							clearInterval(pollingInterval.current);
+							pollingInterval.current = null;
+						}
+						return;
+					}
+
+					// 有响应消息
+					if (data.response) {
+						console.log(
+							`Received response for messageId ${currentMessageId}:`,
+							`${data.response.substring(0, 50)}...`,
+						);
+
+						// 添加助手响应
+						const assistantMessage: ChatMessage = {
+							id: Date.now().toString(),
+							role: "assistant",
+							content: data.response,
+							messageId: data.messageId,
+						};
+
+						setMessages((prev) => [...prev, assistantMessage]);
+						setIsProcessing(false);
+						setCurrentMessageId(null);
+
+						// 停止轮询
+						if (pollingInterval.current) {
+							clearInterval(pollingInterval.current);
+							pollingInterval.current = null;
+						}
+					}
+				}
+			} catch (error) {
+				console.error("Error polling for updates:", error);
+			}
 		};
 
-		setMessages((prev) => [...prev, assistantMessage]);
-	}, []);
+		// 立即执行一次
+		void checkStatus();
+
+		// 设置轮询 - 每3秒检查一次
+		pollingInterval.current = setInterval(checkStatus, 3000);
+
+		// 清理函数
+		return () => {
+			if (pollingInterval.current) {
+				clearInterval(pollingInterval.current);
+				pollingInterval.current = null;
+			}
+		};
+	}, [conversationId, isProcessing, currentMessageId]);
 
 	// 发送消息
 	const sendMessage = useCallback(
@@ -72,25 +154,62 @@ export function AgentChatDialog({
 				setError(null);
 				setIsProcessing(true);
 
-				// 添加用户消息到聊天
-				const userMessage: ChatMessage = {
-					id: Date.now().toString(),
-					role: "user",
-					content,
-				};
+				// 创建对话ID（如果不存在）
+				const dialogConversationId = conversationId || `conv-${Date.now()}`;
+				if (!conversationId) {
+					setConversationId(dialogConversationId);
+				}
 
-				setMessages((prev) => [...prev, userMessage]);
-
-				// 发送消息到API
-				const response = await fetch("/api/chat", {
+				// 首先，在API中注册这个新的用户消息
+				const registerResponse = await fetch("/api/chat/register", {
 					method: "POST",
 					headers: {
 						"Content-Type": "application/json",
 					},
 					body: JSON.stringify({
-						agentId,
+						conversationId: dialogConversationId,
 						message: content,
-						kbIds,
+					}),
+				});
+
+				if (!registerResponse.ok) {
+					throw new Error("Failed to register message");
+				}
+
+				const { messageId } = await registerResponse.json();
+				console.log(`User message registered with ID: ${messageId}`);
+
+				// 设置当前消息ID用于轮询
+				setCurrentMessageId(messageId);
+
+				// 添加用户消息到聊天
+				const userMessage: ChatMessage = {
+					id: Date.now().toString(),
+					role: "user",
+					content,
+					messageId,
+				};
+
+				setMessages((prev) => [...prev, userMessage]);
+
+				// 准备发送到API的消息格式 - 包含所有对话历史
+				const apiMessages = messages.concat(userMessage).map((msg) => ({
+					role: msg.role,
+					content: msg.content,
+				}));
+
+				// 发送消息到触发器API
+				const response = await fetch("/api/trigger/chat", {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({
+						messages: apiMessages,
+						agentId,
+						conversationId: dialogConversationId,
+						webhookUrl: `${window.location.origin}/api/webhooks/chat`,
+						messageId, // 发送消息ID到触发器
 					}),
 				});
 
@@ -99,19 +218,16 @@ export function AgentChatDialog({
 					throw new Error(errorData.error || "Failed to send message");
 				}
 
-				// API直接响应的情况（非实时）
-				const data = await response.json();
-				if (data.response) {
-					updateWithResponse(data.response);
-				}
+				// 响应成功，开始轮询
+				startPolling();
 			} catch (err) {
 				console.error("Error sending message:", err);
 				setError(err instanceof Error ? err.message : "Failed to send message");
-			} finally {
 				setIsProcessing(false);
+				setCurrentMessageId(null);
 			}
 		},
-		[agentId, kbIds, updateWithResponse],
+		[agentId, conversationId, messages, startPolling],
 	);
 
 	// 对话关闭时清除聊天
@@ -121,49 +237,24 @@ export function AgentChatDialog({
 		}
 	}, [open, clearChat]);
 
-	// 设置SSE事件源以接收实时消息
+	// 当isProcessing状态改变时，管理轮询
 	useEffect(() => {
-		if (!open) return;
-
-		// 创建SSE连接
-		const eventSource = new EventSource(
-			`/api/webhooks/chat?agentId=${agentId}`,
-		);
-
-		// 处理接收到的消息
-		eventSource.onmessage = (event) => {
-			try {
-				const data = JSON.parse(event.data);
-
-				// 只处理与当前代理相关的消息
-				if (
-					data.type === "message" &&
-					data.agentId === agentId &&
-					data.response
-				) {
-					// 更新聊天界面
-					updateWithResponse(data.response);
-				}
-			} catch (err) {
-				console.error("Error parsing SSE message:", err);
-			}
-		};
-
-		// 连接错误处理
-		eventSource.onerror = (err) => {
-			console.error("SSE connection error:", err);
-			eventSource.close();
-		};
+		if (isProcessing && conversationId && currentMessageId) {
+			startPolling();
+		}
 
 		// 清理函数
 		return () => {
-			eventSource.close();
+			if (pollingInterval.current) {
+				clearInterval(pollingInterval.current);
+				pollingInterval.current = null;
+			}
 		};
-	}, [open, agentId, updateWithResponse]);
+	}, [isProcessing, conversationId, currentMessageId, startPolling]);
 
 	// 发送消息处理函数
 	const handleSendMessage = async () => {
-		if (!inputValue.trim()) return;
+		if (!inputValue.trim() || isProcessing) return;
 		await sendMessage(inputValue);
 		setInputValue("");
 	};
@@ -192,7 +283,7 @@ export function AgentChatDialog({
 							<Cloud className="mb-2 h-12 w-12 text-muted-foreground/50" />
 							<p className="font-medium text-lg">Ask me anything</p>
 							<p className="text-muted-foreground text-sm">
-								Try asking a question about your knowledge base
+								Try asking a question about this agent
 							</p>
 						</div>
 					) : (
@@ -217,37 +308,6 @@ export function AgentChatDialog({
 									</span>
 								</div>
 								<p className="text-sm">{message.content}</p>
-
-								{message.sources && message.sources.length > 0 && (
-									<div className="mt-2">
-										<Tooltip>
-											<TooltipTrigger asChild>
-												<Button
-													variant="link"
-													size="sm"
-													className="h-auto p-0 text-xs"
-												>
-													Sources: {message.sources.length}
-												</Button>
-											</TooltipTrigger>
-											<TooltipContent>
-												<div className="max-w-xs">
-													<p className="mb-1 font-medium text-xs">Sources:</p>
-													<ul className="list-disc pl-4 text-xs">
-														{message.sources.map((source, index) => (
-															<li
-																key={`${message.id}-source-${index}`}
-																className="mb-1"
-															>
-																{source}
-															</li>
-														))}
-													</ul>
-												</div>
-											</TooltipContent>
-										</Tooltip>
-									</div>
-								)}
 							</div>
 						))
 					)}

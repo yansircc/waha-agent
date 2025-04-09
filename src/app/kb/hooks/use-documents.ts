@@ -291,7 +291,7 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 			startPolling([data.documentId]);
 
 			// 调用向量化API
-			await fetch("/api/trigger", {
+			await fetch("/api/trigger/doc", {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
