@@ -7,5 +7,8 @@ export interface Document {
 	createdAt: Date | null;
 	updatedAt: Date | null;
 	fileSize: number | null;
-	vectorizationStatus: "pending" | "processing" | "completed" | "failed";
+	vectorizationStatus: string;
+	fileUrl?: string | null;
+	mimeType?: string | null;
+	filePath?: string | null;
 }

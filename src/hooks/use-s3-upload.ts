@@ -4,8 +4,15 @@ import { api } from "@/utils/api";
 import { useState } from "react";
 
 export interface UseS3UploadOptions {
-	onSuccess?: (url: string) => void;
+	onSuccess?: (fileInfo: { fileUrl: string; longLivedUrl?: string }) => void;
 	onError?: (error: Error) => void;
+}
+
+export interface UploadResult {
+	key: string;
+	fileUrl: string;
+	longLivedUrl?: string;
+	expiresAt?: string;
 }
 
 export function useS3Upload(options: UseS3UploadOptions = {}) {
@@ -14,8 +21,9 @@ export function useS3Upload(options: UseS3UploadOptions = {}) {
 	const [error, setError] = useState<Error | null>(null);
 
 	const uploadMutation = api.s3.getUploadUrl.useMutation();
+	const longLivedUrlMutation = api.s3.getLongLivedUrl.useMutation();
 
-	const upload = async (file: File): Promise<string> => {
+	const upload = async (file: File): Promise<UploadResult> => {
 		setIsUploading(true);
 		setProgress(0);
 		setError(null);
@@ -45,14 +53,19 @@ export function useS3Upload(options: UseS3UploadOptions = {}) {
 			});
 
 			// Send the request using XMLHttpRequest for progress tracking
-			const result = await new Promise<any>((resolve, reject) => {
+			const result = await new Promise<UploadResult>((resolve, reject) => {
 				xhr.open("POST", "/api/upload/proxy");
 
 				xhr.onload = () => {
 					if (xhr.status >= 200 && xhr.status < 300) {
 						try {
 							const response = JSON.parse(xhr.responseText);
-							resolve(response);
+							resolve({
+								key: response.key,
+								fileUrl: response.fileUrl,
+								longLivedUrl: response.longLivedUrl,
+								expiresAt: response.expiresAt,
+							});
 						} catch (e) {
 							reject(new Error("Invalid response from server"));
 						}
@@ -76,9 +89,12 @@ export function useS3Upload(options: UseS3UploadOptions = {}) {
 			});
 
 			// Handle success
-			options.onSuccess?.(result.fileUrl);
+			options.onSuccess?.({
+				fileUrl: result.fileUrl,
+				longLivedUrl: result.longLivedUrl,
+			});
 			setProgress(100);
-			return key;
+			return result;
 		} catch (err) {
 			console.error("Upload error:", err);
 			const uploadError =
@@ -91,8 +107,24 @@ export function useS3Upload(options: UseS3UploadOptions = {}) {
 		}
 	};
 
+	/**
+	 * 获取文件的长期访问链接（7天有效）
+	 * 适用于已经上传的文件
+	 */
+	const getLongLivedUrl = async (key: string): Promise<string> => {
+		try {
+			return await longLivedUrlMutation.mutateAsync({ key });
+		} catch (err) {
+			console.error("Error getting long-lived URL:", err);
+			const urlError =
+				err instanceof Error ? err : new Error("Failed to get long-lived URL");
+			throw urlError;
+		}
+	};
+
 	return {
 		upload,
+		getLongLivedUrl,
 		isUploading,
 		progress,
 		error,

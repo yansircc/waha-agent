@@ -1,5 +1,5 @@
 import { relations, sql } from "drizzle-orm";
-import { index, pgEnum, pgTableCreator, primaryKey } from "drizzle-orm/pg-core";
+import { index, pgTableCreator, primaryKey } from "drizzle-orm/pg-core";
 import type { AdapterAccount } from "next-auth/adapters";
 
 /**
@@ -9,8 +9,6 @@ import type { AdapterAccount } from "next-auth/adapters";
  * @see https://orm.drizzle.team/docs/goodies#multi-project-schema
  */
 export const createTable = pgTableCreator((name) => `waha_${name}`);
-
-export const rolesEnum = pgEnum("roles", ["guest", "user", "admin"]);
 
 export const users = createTable("user", (d) => ({
 	id: d
@@ -27,7 +25,6 @@ export const users = createTable("user", (d) => ({
 		})
 		.default(sql`CURRENT_TIMESTAMP`),
 	image: d.varchar({ length: 255 }),
-	role: rolesEnum("guest"),
 }));
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -158,14 +155,6 @@ export const kbsRelations = relations(kbs, ({ one, many }) => ({
 	documents: many(documents),
 }));
 
-// 创建向量化状态枚举
-export const vectorizationStatus = pgEnum("vectorization_status", [
-	"pending",
-	"processing",
-	"completed",
-	"failed",
-]);
-
 // Documents schema for storing individual documents within a knowledge base
 export const documents = createTable(
 	"document",
@@ -184,7 +173,7 @@ export const documents = createTable(
 		mimeType: d.varchar({ length: 100 }), // Store the MIME type
 		isText: d.boolean().default(false), // Flag for text files (e.g., md, txt)
 		metadata: d.jsonb(),
-		vectorizationStatus: vectorizationStatus("pending").notNull(),
+		vectorizationStatus: d.varchar({ length: 20 }).default("pending").notNull(),
 		kbId: d
 			.varchar({ length: 255 })
 			.notNull()

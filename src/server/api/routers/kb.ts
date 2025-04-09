@@ -132,4 +132,26 @@ export const kbsRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			return kbService.documents.delete(input.id, ctx.session.user.id);
 		}),
+
+	// 更新文档向量化状态
+	updateDocumentStatus: protectedProcedure
+		.input(
+			z.object({
+				id: z.string(),
+				status: z.string(),
+				errorMessage: z.string().optional(),
+				kbId: z.string(),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			return kbService.documents.update({
+				id: input.id,
+				vectorizationStatus: input.status,
+				metadata: input.errorMessage
+					? { vectorizationError: input.errorMessage }
+					: undefined,
+				userId: ctx.session.user.id,
+				kbId: input.kbId,
+			});
+		}),
 });

@@ -10,6 +10,11 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
+// 一周的秒数
+export const ONE_WEEK_IN_SECONDS = 7 * 24 * 60 * 60; // 7天
+// 最长有效期 - AWS 限制为7天
+export const MAX_PRESIGNED_URL_EXPIRY = ONE_WEEK_IN_SECONDS;
+
 interface S3Config {
 	accessKeyId: string;
 	secretAccessKey: string;
@@ -192,7 +197,7 @@ export async function deleteFile(key: string): Promise<void> {
 /**
  * Generate a presigned URL for downloading a file
  * @param key - The file path/name in S3
- * @param expiresIn - Time in seconds until the URL expires (default: 1 hour)
+ * @param expiresIn - Time in seconds until the URL expires (default: 1 hour, max: 7 days)
  * @param acl - Access control list for the file
  * @returns Promise with the presigned URL for downloading
  */
@@ -210,6 +215,9 @@ export async function getPresignedUrl(
 		| "log-delivery-write" = "public-read",
 ): Promise<string> {
 	try {
+		// 确保过期时间不超过最大值（7天）
+		const validExpiresIn = Math.min(expiresIn, MAX_PRESIGNED_URL_EXPIRY);
+
 		const commandInput: GetObjectCommandInput & { ACL?: string } = {
 			Bucket: s3Config.bucket,
 			Key: key,
@@ -218,11 +226,32 @@ export async function getPresignedUrl(
 
 		const command = new GetObjectCommand(commandInput);
 
-		return getSignedUrl(s3Client, command, { expiresIn });
+		return getSignedUrl(s3Client, command, { expiresIn: validExpiresIn });
 	} catch (error) {
 		logger.error(`Error generating presigned URL for ${key}:`, error);
 		throw new Error(
 			`Failed to generate download URL: ${error instanceof Error ? error.message : "Unknown error"}`,
+		);
+	}
+}
+
+/**
+ * Generate a long-lived presigned URL (7 days) for downloading a file
+ * 适合生成较长时间有效的分享链接
+ *
+ * @param key - The file path/name in S3
+ * @returns Promise with the presigned URL that is valid for 7 days
+ */
+export async function getLongLivedPresignedUrl(key: string): Promise<string> {
+	try {
+		return await getPresignedUrl(key, ONE_WEEK_IN_SECONDS);
+	} catch (error) {
+		logger.error(
+			`Error generating long-lived presigned URL for ${key}:`,
+			error,
+		);
+		throw new Error(
+			`Failed to generate 7-day access URL: ${error instanceof Error ? error.message : "Unknown error"}`,
 		);
 	}
 }
@@ -259,6 +288,39 @@ export async function getUploadPresignedUrl(
 		logger.error(`Error generating upload URL for ${fileName}:`, error);
 		throw new Error(
 			`Failed to generate upload URL: ${error instanceof Error ? error.message : "Unknown error"}`,
+		);
+	}
+}
+
+/**
+ * 上传文件并返回持久访问链接
+ * 上传后自动生成7天有效的访问链接
+ *
+ * @param key - 文件路径/名称
+ * @param data - 文件内容
+ * @param contentType - 内容类型
+ * @returns 包含上传结果和访问链接的Promise
+ */
+export async function uploadFileAndGetLink(
+	key: string,
+	data: string | Uint8Array | ArrayBuffer | Blob | Response | Request,
+	contentType?: string,
+): Promise<{ bytesWritten: number; fileUrl: string }> {
+	try {
+		// 上传文件
+		const bytesWritten = await uploadFile(key, data, contentType);
+
+		// 生成7天访问链接
+		const fileUrl = await getLongLivedPresignedUrl(key);
+
+		return {
+			bytesWritten,
+			fileUrl,
+		};
+	} catch (error) {
+		logger.error(`Error in uploadFileAndGetLink for ${key}:`, error);
+		throw new Error(
+			`Failed to upload file and generate link: ${error instanceof Error ? error.message : "Unknown error"}`,
 		);
 	}
 }

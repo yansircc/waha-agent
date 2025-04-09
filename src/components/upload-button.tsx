@@ -7,7 +7,10 @@ import { Button } from "./ui/button";
 import { Progress } from "./ui/progress";
 
 interface UploadButtonProps {
-	onUploadComplete?: (url: string) => void;
+	onUploadComplete?: (fileInfo: {
+		fileUrl: string;
+		longLivedUrl?: string;
+	}) => void;
 	onUploadError?: (error: Error) => void;
 	className?: string;
 	accept?: string;

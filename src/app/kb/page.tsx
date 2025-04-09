@@ -70,28 +70,29 @@ export default function KnowledgePage() {
 		});
 	};
 
-	const handleDeleteDocument = async (id: string) => {
+	const handleDeleteDocument = async (id: string, kbId: string) => {
 		if (confirm("Are you sure you want to delete this document?")) {
-			await deleteDocument(id);
+			await deleteDocument(id, kbId);
 		}
 	};
 
 	const handleVectorizeDocument = async (documentId: string) => {
 		if (!selectedKb) return;
 
-		// Find the document in the documents array
-		const document = documents.find((doc) => doc.id === documentId);
-		if (!document?.fileUrl) {
-			console.error("Document URL not found");
-			return;
-		}
+		try {
+			// 通过API触发向量化
+			await vectorizeDocument({
+				kbId: selectedKb.id,
+				documentId,
+				collectionName: "waha", // 使用固定的集合名称
+				url: "", // 文档URL现在从后端获取
+			});
 
-		await vectorizeDocument({
-			kbId: selectedKb.id,
-			documentId,
-			collectionName: "waha",
-			url: document.fileUrl,
-		});
+			// 重新加载文档列表，以获取更新的状态
+			await docsQuery.refetch();
+		} catch (error) {
+			console.error("Failed to vectorize document:", error);
+		}
 	};
 
 	const handleSelectKb = (kb: Kb) => {
@@ -136,7 +137,7 @@ export default function KnowledgePage() {
 						isLoading={isLoadingDocuments}
 						onBack={handleBackToList}
 						onAddDocument={handleOpenAddDocDialog}
-						onDeleteDocument={handleDeleteDocument}
+						onDeleteDocument={(id) => handleDeleteDocument(id, selectedKb.id)}
 						onVectorizeDocument={handleVectorizeDocument}
 					/>
 				)

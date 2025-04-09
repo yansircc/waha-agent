@@ -1,3 +1,4 @@
+import { getLongLivedPresignedUrl } from "@/lib/s3-service";
 import { auth } from "@/server/auth";
 import { type NextRequest, NextResponse } from "next/server";
 
@@ -57,13 +58,26 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
-		// Generate the file URL
-		const fileUrl = `${process.env.NEXT_PUBLIC_STORAGE_URL}/${key}`;
+		// 生成临时URL (使用存储配置的URL)
+		const tempFileUrl = `${process.env.NEXT_PUBLIC_STORAGE_URL}/${key}`;
+
+		// 生成7天长期访问链接
+		const longLivedUrl = await getLongLivedPresignedUrl(key);
+
+		// 记录到控制台，方便调试
+		console.log("File uploaded successfully:", {
+			key,
+			tempFileUrl,
+			longLivedUrl,
+			expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+		});
 
 		return NextResponse.json({
 			success: true,
 			key,
-			fileUrl,
+			fileUrl: tempFileUrl, // 保持向后兼容
+			longLivedUrl, // 新增7天链接
+			expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
 		});
 	} catch (error) {
 		console.error("Proxy upload error:", error);

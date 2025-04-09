@@ -2,14 +2,16 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 
-// 使用 Bun 的 S3 客户端和工具函数
 import {
+	ONE_WEEK_IN_SECONDS,
 	deleteFile,
 	fileExists,
 	getFile,
+	getLongLivedPresignedUrl,
 	getPresignedUrl,
 	getUploadPresignedUrl,
 	uploadFile,
+	uploadFileAndGetLink,
 } from "@/lib/s3-service";
 
 /**
@@ -89,6 +91,28 @@ export const s3Router = createTRPCRouter({
 		}),
 
 	/**
+	 * 获取长期预签名URL (7天)，用于分享文件
+	 */
+	getLongLivedUrl: protectedProcedure
+		.input(
+			z.object({
+				bucket: z.string().optional(),
+				key: z.string(),
+			}),
+		)
+		.mutation(async ({ input }) => {
+			try {
+				return getLongLivedPresignedUrl(input.key);
+			} catch (error) {
+				throw new TRPCError({
+					code: "INTERNAL_SERVER_ERROR",
+					message: "Failed to generate long-lived URL",
+					cause: error,
+				});
+			}
+		}),
+
+	/**
 	 * 删除文件
 	 */
 	deleteFile: protectedProcedure
@@ -157,6 +181,56 @@ export const s3Router = createTRPCRouter({
 		}),
 
 	/**
+	 * 上传文件并生成长期访问链接
+	 * 适合上传后需要立即获得7天有效链接的场景
+	 */
+	uploadWithLongLivedUrl: protectedProcedure
+		.input(
+			z.object({
+				bucket: z.string().optional(),
+				key: z.string(),
+				content: z.string(),
+				contentType: z.string().optional(),
+				maxSizeBytes: z.number().optional(),
+			}),
+		)
+		.mutation(async ({ input }) => {
+			try {
+				const contentBytes = Buffer.from(input.content, "utf-8");
+
+				if (input.maxSizeBytes && contentBytes.length > input.maxSizeBytes) {
+					throw new TRPCError({
+						code: "PAYLOAD_TOO_LARGE",
+						message: `Content exceeds maximum size of ${input.maxSizeBytes / 1024 / 1024}MB`,
+					});
+				}
+
+				const result = await uploadFileAndGetLink(
+					input.key,
+					input.content,
+					input.contentType || "text/plain",
+				);
+
+				return {
+					success: true,
+					bytesWritten: result.bytesWritten,
+					fileUrl: result.fileUrl,
+					expiresAt: new Date(
+						Date.now() + ONE_WEEK_IN_SECONDS * 1000,
+					).toISOString(),
+				};
+			} catch (error) {
+				if (error instanceof TRPCError) throw error;
+
+				throw new TRPCError({
+					code: "INTERNAL_SERVER_ERROR",
+					message: "Failed to upload and generate link",
+					cause: error,
+				});
+			}
+		}),
+
+	/**
 	 * 上传文件 - 二进制内容
 	 * 注意：这个端点仅用于小型二进制内容，大文件应通过专门的上传API端点处理
 	 */
@@ -197,6 +271,55 @@ export const s3Router = createTRPCRouter({
 				throw new TRPCError({
 					code: "INTERNAL_SERVER_ERROR",
 					message: "Failed to upload binary content",
+					cause: error,
+				});
+			}
+		}),
+
+	/**
+	 * 上传二进制内容并生成长期访问链接
+	 */
+	uploadBinaryWithLongLivedUrl: protectedProcedure
+		.input(
+			z.object({
+				bucket: z.string().optional(),
+				key: z.string(),
+				base64: z.string(),
+				contentType: z.string().optional(),
+				maxSizeBytes: z.number().optional(),
+			}),
+		)
+		.mutation(async ({ input }) => {
+			try {
+				const buffer = Buffer.from(input.base64, "base64");
+
+				if (input.maxSizeBytes && buffer.length > input.maxSizeBytes) {
+					throw new TRPCError({
+						code: "PAYLOAD_TOO_LARGE",
+						message: `Content exceeds maximum size of ${input.maxSizeBytes / 1024 / 1024}MB`,
+					});
+				}
+
+				const result = await uploadFileAndGetLink(
+					input.key,
+					buffer,
+					input.contentType || "application/octet-stream",
+				);
+
+				return {
+					success: true,
+					bytesWritten: result.bytesWritten,
+					fileUrl: result.fileUrl,
+					expiresAt: new Date(
+						Date.now() + ONE_WEEK_IN_SECONDS * 1000,
+					).toISOString(),
+				};
+			} catch (error) {
+				if (error instanceof TRPCError) throw error;
+
+				throw new TRPCError({
+					code: "INTERNAL_SERVER_ERROR",
+					message: "Failed to upload binary and generate link",
 					cause: error,
 				});
 			}

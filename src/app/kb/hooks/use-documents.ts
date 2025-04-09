@@ -5,7 +5,7 @@ import { useS3Upload } from "@/hooks/use-s3-upload";
 import type { AppRouter } from "@/server/api/root";
 import { api } from "@/utils/api";
 import type { TRPCClientErrorLike } from "@trpc/client";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface UseDocumentsProps {
 	onSuccess?: () => void;
@@ -16,6 +16,8 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 	const [isLoading, setIsLoading] = useState(false);
 	const [isProcessing, setIsProcessing] = useState(false);
 	const utils = api.useUtils();
+	const pollingRef = useRef<NodeJS.Timeout | null>(null);
+	const processingDocumentsRef = useRef(new Set<string>());
 
 	// Use the centralized S3 upload hook
 	const { upload } = useS3Upload();
@@ -27,6 +29,93 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 			{ enabled: !!kbId },
 		);
 	};
+
+	// Poll for document status updates
+	const startPolling = useCallback(
+		(documentIds: string[]) => {
+			// Clear any existing polling
+			if (pollingRef.current) {
+				clearInterval(pollingRef.current);
+			}
+
+			if (documentIds.length === 0) return;
+
+			// Track the processing documents
+			for (const id of documentIds) {
+				processingDocumentsRef.current.add(id);
+			}
+
+			// Start polling
+			pollingRef.current = setInterval(async () => {
+				try {
+					// Only poll if we have processing documents
+					if (processingDocumentsRef.current.size === 0) {
+						if (pollingRef.current) {
+							clearInterval(pollingRef.current);
+							pollingRef.current = null;
+						}
+						return;
+					}
+
+					const response = await fetch(
+						`/api/document-updates?documentIds=${Array.from(processingDocumentsRef.current).join(",")}`,
+					);
+
+					if (!response.ok) {
+						console.error(
+							"Failed to fetch document updates:",
+							response.statusText,
+						);
+						return;
+					}
+
+					const data = await response.json();
+
+					if (data.success && data.documents) {
+						let shouldRefresh = false;
+
+						// Check if any document has changed from processing status
+						for (const doc of data.documents) {
+							if (doc.status !== "processing") {
+								processingDocumentsRef.current.delete(doc.documentId);
+								shouldRefresh = true;
+							}
+						}
+
+						// If any document status changed, invalidate queries to refresh UI
+						if (shouldRefresh) {
+							// Invalidate all document queries
+							for (const doc of data.documents) {
+								if (doc.kbId) {
+									await utils.kbs.getDocuments.invalidate({ kbId: doc.kbId });
+								}
+							}
+
+							// If there are no more processing documents, stop polling
+							if (processingDocumentsRef.current.size === 0) {
+								if (pollingRef.current) {
+									clearInterval(pollingRef.current);
+									pollingRef.current = null;
+								}
+							}
+						}
+					}
+				} catch (error) {
+					console.error("Error polling for document updates:", error);
+				}
+			}, 3000); // Poll every 3 seconds
+		},
+		[utils.kbs.getDocuments],
+	);
+
+	// Clean up polling on unmount
+	useEffect(() => {
+		return () => {
+			if (pollingRef.current) {
+				clearInterval(pollingRef.current);
+			}
+		};
+	}, []);
 
 	// Get document by ID
 	const getDocumentById = (id: string) => {
@@ -50,24 +139,29 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 			});
 
 			// Upload file using the centralized hook
-			const key = await upload(data.file);
+			const result = await upload(data.file);
+
+			// Extract key and URLs from the upload result
+			const key = result.key;
+			const fileUrl = result.longLivedUrl || result.fileUrl;
 
 			// Create document record
-			const result = await utils.client.kbs.createDocument.mutate({
+			const docResult = await utils.client.kbs.createDocument.mutate({
 				name: data.name,
 				kbId: data.kbId,
 				fileType: data.file.type,
 				fileSize: data.file.size,
 				filePath: key,
 				mimeType: data.file.type,
+				fileUrl: fileUrl, // Save the long-lived URL to database
 			});
 
 			setIsLoading(false);
 
 			// Invalidate queries
-			if (result?.kbId) {
+			if (docResult?.kbId) {
 				await utils.kbs.getDocuments.invalidate({
-					kbId: result.kbId,
+					kbId: docResult.kbId,
 				});
 			}
 			await utils.kbs.getAll.invalidate();
@@ -75,7 +169,7 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 			setIsProcessing(false);
 			onSuccess?.();
 
-			return result;
+			return docResult;
 		} catch (error: unknown) {
 			setIsLoading(false);
 			setIsProcessing(false);
@@ -103,30 +197,35 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 
 		try {
 			// Upload file using the centralized hook
-			const key = await upload(data.file);
+			const result = await upload(data.file);
+
+			// Extract key and URLs from the upload result
+			const key = result.key;
+			const fileUrl = result.longLivedUrl || result.fileUrl;
 
 			// Update document record
-			const result = await utils.client.kbs.updateDocument.mutate({
+			const docResult = await utils.client.kbs.updateDocument.mutate({
 				id: data.id,
 				kbId: data.kbId,
 				fileType: data.file.type,
 				fileSize: data.file.size,
 				filePath: key,
 				mimeType: data.file.type,
+				fileUrl: fileUrl, // Save the long-lived URL to database
 			});
 
 			setIsLoading(false);
 
 			// Invalidate queries
-			if (result?.kbId) {
+			if (docResult?.kbId) {
 				utils.kbs.getDocuments.invalidate({
-					kbId: result.kbId,
+					kbId: docResult.kbId,
 				});
 			}
 			utils.kbs.getAll.invalidate();
 			onSuccess?.();
 
-			return result;
+			return docResult;
 		} catch (error: unknown) {
 			setIsLoading(false);
 			onError?.(error as TRPCClientErrorLike<AppRouter>);
@@ -134,14 +233,25 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 		}
 	};
 
-	const deleteDocument = async (id: string) => {
+	const deleteDocument = async (id: string, kbId?: string) => {
 		setIsLoading(true);
 		try {
 			const result = await utils.client.kbs.deleteDocument.mutate({ id });
+
+			// 使相关查询缓存失效
+			if (kbId) {
+				await utils.kbs.getDocuments.invalidate({
+					kbId,
+				});
+			}
+			await utils.kbs.getAll.invalidate();
+			onSuccess?.();
+
 			setIsLoading(false);
 			return result;
 		} catch (error: unknown) {
 			setIsLoading(false);
+			onError?.(error as TRPCClientErrorLike<AppRouter>);
 			throw error;
 		}
 	};
@@ -151,10 +261,36 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 		kbId: string;
 		documentId: string;
 		collectionName: string;
-		url: string;
+		url?: string;
 	}) => {
 		setIsProcessing(true);
 		try {
+			// 如果没有提供URL，尝试获取文档以获取URL
+			let documentUrl = data.url;
+			if (!documentUrl) {
+				// 直接使用API客户端获取文档，而不是使用hook
+				const docResponse = await utils.client.kbs.getDocumentById.query({
+					id: data.documentId,
+				});
+
+				if (!docResponse?.fileUrl) {
+					throw new Error("Document URL not found");
+				}
+
+				documentUrl = docResponse.fileUrl;
+			}
+
+			// 首先更新文档状态为处理中
+			await utils.client.kbs.updateDocumentStatus.mutate({
+				id: data.documentId,
+				status: "processing",
+				kbId: data.kbId,
+			});
+
+			// Start polling for updates to this document
+			startPolling([data.documentId]);
+
+			// 调用向量化API
 			await fetch("/api/trigger", {
 				method: "POST",
 				headers: {
@@ -162,11 +298,19 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 				},
 				body: JSON.stringify({
 					...data,
+					url: documentUrl,
 					webhookUrl: `${env.NEXT_PUBLIC_APP_URL}/api/webhooks/doc`,
 				}),
 			});
+
+			// 立即刷新文档列表
+			await utils.kbs.getDocuments.invalidate({
+				kbId: data.kbId,
+			});
+
 			onSuccess?.();
 		} catch (error) {
+			console.error("Vectorize document error:", error);
 			onError?.(error as TRPCClientErrorLike<AppRouter>);
 			throw error;
 		} finally {

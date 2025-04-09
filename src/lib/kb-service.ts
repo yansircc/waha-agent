@@ -322,6 +322,7 @@ export const kbService = {
 				kbId,
 				userId,
 				isText: providedIsText,
+				vectorizationStatus,
 			} = params;
 
 			logger.info("Updating document with params:", {
@@ -416,6 +417,7 @@ export const kbService = {
 					mimeType,
 					isText: isTextFile,
 					metadata: metadata || doc.metadata,
+					vectorizationStatus: vectorizationStatus || doc.vectorizationStatus,
 					updatedAt: new Date(),
 				})
 				.where(eq(documents.id, id))

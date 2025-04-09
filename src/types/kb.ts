@@ -26,6 +26,7 @@ export interface Document {
 	kbId: string;
 	createdAt: string | Date;
 	updatedAt: string | Date | null;
+	vectorizationStatus?: string;
 }
 
 export interface CreateKbInput {
@@ -69,6 +70,7 @@ export interface UpdateDocumentInput {
 	mimeType?: string;
 	isText?: boolean;
 	metadata?: Record<string, unknown>;
+	vectorizationStatus?: string;
 	kbId: string;
 	userId: string;
 }

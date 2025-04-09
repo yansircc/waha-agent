@@ -8,13 +8,30 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { formatFileSize } from "@/lib/utils";
 import type { Document } from "@/types/document";
-import { Link, Loader2, Trash2, Wand2 } from "lucide-react";
+import {
+	Check,
+	ExternalLink,
+	FileDown,
+	Link,
+	Loader2,
+	Trash2,
+	Wand2,
+	XCircle,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 interface DocumentCardProps {
 	document: Document;
-	onDelete: (id: string) => void;
+	onDelete: (id: string, kbId: string) => void;
 	onVectorize: (id: string) => void;
 }
 
@@ -23,14 +40,83 @@ export function DocumentCard({
 	onDelete,
 	onVectorize,
 }: DocumentCardProps) {
-	const isProcessing = document.vectorizationStatus === "processing";
-	const isPending = document.vectorizationStatus === "pending";
+	const [isLocalProcessing, setIsLocalProcessing] = useState(false);
+
+	// Reset local processing state when document status changes
+	useEffect(() => {
+		if (
+			document.vectorizationStatus === "completed" ||
+			document.vectorizationStatus === "failed"
+		) {
+			setIsLocalProcessing(false);
+		}
+	}, [document.vectorizationStatus]);
+
+	// Vectorization status
+	const isProcessing =
+		isLocalProcessing || document.vectorizationStatus === "processing";
+	const isPending =
+		document.vectorizationStatus === "pending" || !document.vectorizationStatus;
 	const isFailed = document.vectorizationStatus === "failed";
+	const isCompleted = document.vectorizationStatus === "completed";
+
+	// Status label
+	const statusLabel = isProcessing
+		? "处理中"
+		: isCompleted
+			? "已完成"
+			: isFailed
+				? "处理失败"
+				: "待处理";
+
+	// Handle vectorization request
+	const handleVectorize = async () => {
+		setIsLocalProcessing(true);
+		try {
+			await onVectorize(document.id);
+			// The UI will immediately update to processing state, actual status updates via polling
+		} catch (error) {
+			toast.error("Vectorization request failed, please try again later");
+			setIsLocalProcessing(false);
+		}
+	};
+
+	// Copy file link
+	const copyFileLink = () => {
+		if (document.fileUrl) {
+			navigator.clipboard.writeText(document.fileUrl);
+			toast.success("File link copied to clipboard");
+		} else {
+			toast.error("File link not available");
+		}
+	};
+
+	// Open file
+	const openFile = () => {
+		if (document.fileUrl) {
+			window.open(document.fileUrl, "_blank");
+		} else {
+			toast.error("File link not available");
+		}
+	};
 
 	return (
 		<Card>
 			<CardHeader className="flex flex-row items-center justify-between pb-2">
 				<CardTitle className="font-medium text-base">{document.name}</CardTitle>
+				<div
+					className={`rounded-full px-2 py-1 text-xs ${
+						isProcessing
+							? "bg-blue-100 text-blue-800"
+							: isCompleted
+								? "bg-green-100 text-green-800"
+								: isFailed
+									? "bg-red-100 text-red-800"
+									: "bg-gray-100 text-gray-800"
+					}`}
+				>
+					{statusLabel}
+				</div>
 			</CardHeader>
 			<CardContent>
 				<div className="flex items-center justify-between text-sm">
@@ -46,33 +132,88 @@ export function DocumentCard({
 			</CardContent>
 			<CardFooter className="flex justify-between gap-2">
 				<div className="flex gap-2">
-					<Button
-						variant="outline"
-						size="sm"
-						disabled={!isPending && !isFailed}
-						onClick={() => onVectorize(document.id)}
-					>
-						{isProcessing ? (
-							<>
-								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-								处理中
-							</>
-						) : (
-							<>
-								<Wand2 className="mr-2 h-4 w-4" />
-								{isPending ? "向量化" : isFailed ? "重试" : "已完成"}
-							</>
-						)}
-					</Button>
-					<Button variant="outline" size="sm">
-						<Link className="mr-2 h-4 w-4" />
-						临时链接
-					</Button>
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									variant={
+										isCompleted
+											? "default"
+											: isFailed
+												? "destructive"
+												: "outline"
+									}
+									size="sm"
+									disabled={isProcessing || isCompleted}
+									onClick={handleVectorize}
+								>
+									{isProcessing ? (
+										<>
+											<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+											处理中
+										</>
+									) : isCompleted ? (
+										<>
+											<Check className="mr-2 h-4 w-4" />
+											已完成
+										</>
+									) : isFailed ? (
+										<>
+											<XCircle className="mr-2 h-4 w-4" />
+											重试
+										</>
+									) : (
+										<>
+											<Wand2 className="mr-2 h-4 w-4" />
+											向量化
+										</>
+									)}
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								{isProcessing
+									? "Document is being processed, please wait"
+									: isCompleted
+										? "Document has been vectorized, can be used for knowledge base query"
+										: isFailed
+											? "Processing failed, click retry"
+											: "Vectorize document to support knowledge base query"}
+							</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
+
+					{document.fileUrl && (
+						<TooltipProvider>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button variant="outline" size="sm" onClick={openFile}>
+										<ExternalLink className="mr-2 h-4 w-4" />
+										Preview
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent>Open file in new window</TooltipContent>
+							</Tooltip>
+						</TooltipProvider>
+					)}
+
+					{document.fileUrl && (
+						<TooltipProvider>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button variant="outline" size="sm" onClick={copyFileLink}>
+										<Link className="mr-2 h-4 w-4" />
+										Copy link
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent>Copy file link to clipboard</TooltipContent>
+							</Tooltip>
+						</TooltipProvider>
+					)}
 				</div>
 				<Button
 					variant="ghost"
 					size="sm"
-					onClick={() => onDelete(document.id)}
+					onClick={() => document.kbId && onDelete(document.id, document.kbId)}
 					className="text-destructive hover:text-destructive"
 				>
 					<Trash2 className="h-4 w-4" />
