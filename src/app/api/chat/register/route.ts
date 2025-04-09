@@ -1,5 +1,5 @@
+import { storeUserMessage } from "@/lib/chat-store";
 import { type NextRequest, NextResponse } from "next/server";
-import { storeUserMessage } from "../status/route";
 
 /**
  * 消息注册API - 为用户消息创建唯一ID并跟踪对话

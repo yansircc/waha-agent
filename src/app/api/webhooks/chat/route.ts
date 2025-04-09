@@ -1,6 +1,6 @@
+import { storeResponse } from "@/lib/chat-store";
 import { revalidatePath } from "next/cache";
 import { type NextRequest, NextResponse } from "next/server";
-import { storeResponse } from "../../chat/status/route";
 
 /**
  * 聊天生成 Webhook 端点
