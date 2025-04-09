@@ -43,8 +43,8 @@ export const chatGenerationTask = task({
 
 			// Fetch agent configuration if agentId is provided
 			let agentConfig = {
-				apiKey: env.OPENROUTER_API_KEY,
-				model: "openai/gpt-4o-mini",
+				apiKey: env.OPENAI_API_KEY,
+				model: "gpt-4o-mini",
 				prompt:
 					"You are a helpful assistant that provides accurate information based on the documents provided. If the information is not in the documents, say so.",
 				documentId: "default",
@@ -63,8 +63,8 @@ export const chatGenerationTask = task({
 				}
 
 				agentConfig = {
-					apiKey: env.OPENROUTER_API_KEY,
-					model: "openai/gpt-4o-mini",
+					apiKey: env.OPENAI_API_KEY,
+					model: "gpt-4o-mini",
 					prompt: agent.prompt || agentConfig.prompt,
 					documentId: agent.id,
 				};
