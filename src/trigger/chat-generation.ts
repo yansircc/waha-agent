@@ -85,6 +85,7 @@ export const chatGenerationTask = task({
 			logger.log("Response generated successfully", {
 				responseLength: responseText?.length || 0,
 				usedDocuments: result.documents?.length || 0,
+				responseText,
 			});
 
 			// Build complete message list with new assistant reply

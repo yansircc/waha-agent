@@ -34,6 +34,7 @@ export const env = createEnv({
 		R2_SECRET_ACCESS_KEY: z.string(),
 		R2_ENDPOINT: z.string(),
 		R2_BUCKET: z.string(),
+		MARKITDOWN_API_URL: z.string(),
 	},
 
 	/**
@@ -79,6 +80,7 @@ export const env = createEnv({
 		R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,
 		R2_ENDPOINT: process.env.R2_ENDPOINT,
 		R2_BUCKET: process.env.R2_BUCKET,
+		MARKITDOWN_API_URL: process.env.MARKITDOWN_API_URL,
 	},
 	/**
 	 * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
