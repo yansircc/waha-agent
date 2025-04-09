@@ -1,5 +1,4 @@
 import { kbService } from "@/lib/kb-service";
-import { publishDocumentUpdate } from "@/lib/redis";
 import { db } from "@/server/db";
 import { documents } from "@/server/db/schema";
 import { eq } from "drizzle-orm";
@@ -110,9 +109,6 @@ export async function POST(request: NextRequest) {
 			status,
 			timestamp: Date.now(),
 		});
-
-		// Publish the document update to Redis
-		await publishDocumentUpdate(documentId, kbId);
 
 		// Revalidate the /kb route and all its sub-routes
 		revalidatePath("/kb");
