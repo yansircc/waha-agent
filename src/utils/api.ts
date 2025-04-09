@@ -1,13 +1,6 @@
 import type { AppRouter } from "@/server/api/root";
-import { QueryClient } from "@tanstack/react-query";
+import { createQueryClient } from "@/trpc/query-client";
 import { createTRPCReact } from "@trpc/react-query";
 
 export const api = createTRPCReact<AppRouter>();
-
-export const queryClient = new QueryClient({
-	defaultOptions: {
-		queries: {
-			refetchOnWindowFocus: false,
-		},
-	},
-});
+export const queryClient = createQueryClient();

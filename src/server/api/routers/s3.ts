@@ -8,6 +8,7 @@ import {
 	fileExists,
 	getFile,
 	getPresignedUrl,
+	getUploadPresignedUrl,
 	uploadFile,
 } from "@/lib/s3-service";
 
@@ -229,6 +230,33 @@ export const s3Router = createTRPCRouter({
 				throw new TRPCError({
 					code: "INTERNAL_SERVER_ERROR",
 					message: "Failed to initialize user bucket",
+					cause: error,
+				});
+			}
+		}),
+
+	/**
+	 * 获取上传文件的预签名URL
+	 */
+	getUploadUrl: protectedProcedure
+		.input(
+			z.object({
+				fileName: z.string(),
+				fileType: z.string(),
+				expiresIn: z.number().default(300), // 5 minutes default
+			}),
+		)
+		.mutation(async ({ input }) => {
+			try {
+				return await getUploadPresignedUrl(
+					input.fileName,
+					input.fileType,
+					input.expiresIn,
+				);
+			} catch (error) {
+				throw new TRPCError({
+					code: "INTERNAL_SERVER_ERROR",
+					message: "Failed to generate upload URL",
 					cause: error,
 				});
 			}

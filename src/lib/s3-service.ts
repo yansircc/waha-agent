@@ -77,19 +77,26 @@ export async function uploadFile(
 		ContentType: contentType,
 	});
 
-	await s3Client.send(command);
+	try {
+		await s3Client.send(command);
 
-	// Return approximate data size
-	if (typeof body === "string") {
-		return Buffer.byteLength(body);
+		// Return approximate data size
+		if (typeof body === "string") {
+			return Buffer.byteLength(body);
+		}
+
+		if (body instanceof Blob) {
+			return body.size;
+		}
+
+		// Must be Buffer at this point
+		return body.length;
+	} catch (error) {
+		logger.error(`Error uploading file to S3 (key: ${key}):`, error);
+		throw new Error(
+			`Failed to upload file: ${error instanceof Error ? error.message : "Unknown error"}`,
+		);
 	}
-
-	if (body instanceof Blob) {
-		return body.size;
-	}
-
-	// Must be Buffer at this point
-	return body.length;
 }
 
 /**
@@ -126,7 +133,9 @@ export async function getFile<T = unknown>(
 		return Buffer.from(data) as unknown as T;
 	} catch (error) {
 		logger.error(`Error getting file ${key}:`, error);
-		throw error;
+		throw new Error(
+			`Failed to get file: ${error instanceof Error ? error.message : "Unknown error"}`,
+		);
 	}
 }
 
@@ -145,6 +154,7 @@ export async function fileExists(key: string): Promise<boolean> {
 		await s3Client.send(command);
 		return true;
 	} catch (error) {
+		// No need to log this error as it's expected when file doesn't exist
 		return false;
 	}
 }
@@ -173,16 +183,18 @@ export async function deleteFile(key: string): Promise<void> {
 		logger.info(`File deleted successfully: ${key}`);
 	} catch (error) {
 		logger.error(`Error deleting file: ${key}`, error);
-		throw error;
+		throw new Error(
+			`Failed to delete file: ${error instanceof Error ? error.message : "Unknown error"}`,
+		);
 	}
 }
 
 /**
- * Generate a presigned URL for a file
+ * Generate a presigned URL for downloading a file
  * @param key - The file path/name in S3
  * @param expiresIn - Time in seconds until the URL expires (default: 1 hour)
  * @param acl - Access control list for the file
- * @returns Promise with the presigned URL
+ * @returns Promise with the presigned URL for downloading
  */
 export async function getPresignedUrl(
 	key: string,
@@ -197,15 +209,58 @@ export async function getPresignedUrl(
 		| "bucket-owner-full-control"
 		| "log-delivery-write" = "public-read",
 ): Promise<string> {
-	const commandInput: GetObjectCommandInput & { ACL?: string } = {
-		Bucket: s3Config.bucket,
-		Key: key,
-		ACL: acl,
-	};
+	try {
+		const commandInput: GetObjectCommandInput & { ACL?: string } = {
+			Bucket: s3Config.bucket,
+			Key: key,
+			ACL: acl,
+		};
 
-	const command = new GetObjectCommand(commandInput);
+		const command = new GetObjectCommand(commandInput);
 
-	return getSignedUrl(s3Client, command, { expiresIn });
+		return getSignedUrl(s3Client, command, { expiresIn });
+	} catch (error) {
+		logger.error(`Error generating presigned URL for ${key}:`, error);
+		throw new Error(
+			`Failed to generate download URL: ${error instanceof Error ? error.message : "Unknown error"}`,
+		);
+	}
+}
+
+/**
+ * Generate a presigned URL for uploading a file
+ * @param fileName - Original file name
+ * @param contentType - The content type of the file
+ * @param expiresIn - Time in seconds until the URL expires (default: 5 minutes)
+ * @returns Promise with the presigned URL for uploading and the file key
+ */
+export async function getUploadPresignedUrl(
+	fileName: string,
+	contentType: string,
+	expiresIn = 300, // 5 minutes default
+): Promise<{ url: string; key: string }> {
+	try {
+		// Generate a unique key for the file
+		const key = `uploads/${Date.now()}-${fileName}`;
+
+		const command = new PutObjectCommand({
+			Bucket: s3Config.bucket,
+			Key: key,
+			ContentType: contentType,
+		});
+
+		const url = await getSignedUrl(s3Client, command, { expiresIn });
+
+		return {
+			url,
+			key,
+		};
+	} catch (error) {
+		logger.error(`Error generating upload URL for ${fileName}:`, error);
+		throw new Error(
+			`Failed to generate upload URL: ${error instanceof Error ? error.message : "Unknown error"}`,
+		);
+	}
 }
 
 /**
@@ -229,7 +284,9 @@ export async function getFileStats(key: string) {
 		};
 	} catch (error) {
 		logger.error(`Error getting stats for file ${key}:`, error);
-		throw error;
+		throw new Error(
+			`Failed to get file stats: ${error instanceof Error ? error.message : "Unknown error"}`,
+		);
 	}
 }
 

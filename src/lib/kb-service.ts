@@ -241,6 +241,7 @@ export const kbService = {
 					isText: isTextFile,
 					metadata,
 					kbId,
+					vectorizationStatus: "pending",
 				})
 				.returning();
 

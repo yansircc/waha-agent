@@ -9,7 +9,7 @@ import { embedMany } from "ai";
 
 const qdrant = new QdrantVector(env.QDRANT_URL, env.QDRANT_API_KEY);
 
-interface HandleDocPayload {
+export interface HandleDocPayload {
 	url: string;
 	webhookUrl: string;
 	userId: string;
@@ -144,13 +144,22 @@ export const handleDoc = task({
 				isMarkdownOrText: isMarkdownOrTextFile(url),
 			});
 
-			// 2. Split document into chunks
+			// // 2. Split document into chunks
 			const docFromText = MDocument.fromText(content);
 			const chunks = await docFromText.chunk({
 				strategy: "recursive",
 				size: 512,
 				overlap: 50,
 			});
+
+			// const chunks = [
+			// 	{
+			// 		text: content,
+			// 		metadata: {
+			// 			source: url,
+			// 		},
+			// 	},
+			// ]; // TODO: split text manually
 
 			if (!chunks || chunks.length === 0) {
 				logger.error("Failed to chunk document", { url });

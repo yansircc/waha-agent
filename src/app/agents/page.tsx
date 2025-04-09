@@ -1,10 +1,10 @@
 "use client";
 
+import { useKbs } from "@/app/kb/hooks/use-kbs";
 import { AgentCard } from "@/components/agent-card";
 import { AgentConfigDialog } from "@/components/agent-config-dialog";
 import { Button } from "@/components/ui/button";
 import { useAgents } from "@/hooks/use-agents";
-import { useKbs } from "@/hooks/use-kbs";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 

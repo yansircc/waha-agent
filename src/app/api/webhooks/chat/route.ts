@@ -5,6 +5,7 @@ import { type NextRequest, NextResponse } from "next/server";
 // Store the SSE clients
 type Client = {
 	id: string;
+	agentId: string;
 	controller: ReadableStreamController<Uint8Array>;
 };
 
@@ -25,14 +26,17 @@ export async function GET(req: NextRequest) {
 	// Set up Server-Sent Events
 	const stream = new ReadableStream({
 		start(controller) {
-			clients.set(clientId, { id: clientId, controller });
+			clients.set(clientId, { id: clientId, agentId, controller });
 
 			// Send a connection established event
 			const data = `data: ${JSON.stringify({ type: "connected", clientId })}\n\n`;
 			controller.enqueue(new TextEncoder().encode(data));
+
+			console.log(`[SSE] Client connected: ${clientId} for agent: ${agentId}`);
 		},
 		cancel() {
 			clients.delete(clientId);
+			console.log(`[SSE] Client disconnected: ${clientId}`);
 		},
 	});
 
@@ -63,13 +67,30 @@ export async function POST(req: NextRequest) {
 			conversationId,
 		} = data;
 
+		console.log("[Webhook] Received chat response:", {
+			success,
+			userId,
+			agentId,
+			conversationId,
+			messageCount: messages?.length,
+			messages,
+		});
+
 		if (!success) {
-			console.error(`Chat generation failed for user ${userId}:`, error);
+			console.error(
+				`[Webhook] Chat generation failed for user ${userId}:`,
+				error,
+			);
 			return NextResponse.json({ success: false, error }, { status: 500 });
 		}
 
 		// 验证必要数据是否存在
 		if (!response || !messages || !userId) {
+			console.error("[Webhook] Missing required data:", {
+				response,
+				messages,
+				userId,
+			});
 			return NextResponse.json(
 				{ success: false, error: "Missing required data" },
 				{ status: 400 },
@@ -82,24 +103,38 @@ export async function POST(req: NextRequest) {
 
 		// 向所有与该agentId相关的客户端发送消息更新
 		if (agentId) {
+			let messagesSent = 0;
 			// 找到所有相关客户端并发送消息
 			for (const [_, client] of clients) {
-				try {
-					const event = {
-						type: "message",
-						agentId,
-						response,
-						timestamp: new Date().toISOString(),
-					};
+				if (client.agentId === agentId) {
+					try {
+						const event = {
+							type: "message",
+							agentId,
+							response,
+							messages,
+							userId,
+							conversationId,
+							timestamp: new Date().toISOString(),
+						};
 
-					const message = `data: ${JSON.stringify(event)}\n\n`;
-					client.controller.enqueue(new TextEncoder().encode(message));
-				} catch (err) {
-					console.error("Error sending SSE message:", err);
-					// 移除断开连接的客户端
-					clients.delete(client.id);
+						const message = `data: ${JSON.stringify(event)}\n\n`;
+						client.controller.enqueue(new TextEncoder().encode(message));
+						messagesSent++;
+					} catch (err) {
+						console.error("[SSE] Error sending message to client:", {
+							clientId: client.id,
+							error: err instanceof Error ? err.message : String(err),
+						});
+						// 移除断开连接的客户端
+						clients.delete(client.id);
+					}
 				}
 			}
+
+			console.log(
+				`[SSE] Messages sent to ${messagesSent} clients for agent ${agentId}`,
+			);
 		}
 
 		// 使用 revalidatePath 来刷新相关页面的数据
@@ -110,14 +145,22 @@ export async function POST(req: NextRequest) {
 			revalidatePath(`/agents/${agentId}`);
 		}
 
+		console.log("[Webhook] Successfully processed chat response", {
+			userId,
+			agentId,
+			conversationId,
+		});
+
 		return NextResponse.json({
 			success: true,
-			message: "Chat response generated successfully",
+			message: "Chat response processed successfully",
 			response,
 			messages,
 		});
 	} catch (error) {
-		console.error("Error processing webhook:", error);
+		console.error("[Webhook] Error processing request:", {
+			error: error instanceof Error ? error.message : String(error),
+		});
 		return NextResponse.json(
 			{
 				success: false,
