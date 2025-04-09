@@ -47,4 +47,7 @@ yarn-error.log*
 
 # drizzle
 /drizzle
+.trigger.env
+
+# trigger.dev
 .trigger
