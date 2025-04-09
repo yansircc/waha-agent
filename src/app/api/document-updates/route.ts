@@ -1,7 +1,7 @@
+import { getRecentDocumentUpdates } from "@/lib/document-updates";
 import { kbService } from "@/lib/kb-service";
 import { auth } from "@/server/auth";
 import { NextResponse } from "next/server";
-import { getRecentDocumentUpdates } from "../webhooks/doc/route";
 
 // This endpoint allows clients to poll for document status updates
 export const dynamic = "force-dynamic";
