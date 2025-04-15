@@ -4,24 +4,23 @@ import { embed, generateText, tool } from "ai";
 import { z } from "zod";
 import { reranker } from "./jina-reranker";
 import { qdrantService } from "./qdrant-service";
-
-// Define input schema for the search tool
-const searchInputSchema = z.object({
-	query: z
-		.string()
-		.describe(
-			"The search query to find relevant information. Rewrite the query to be more specific and professional if necessary.",
-		),
-	kbIds: z
-		.array(z.string().describe("The IDs of the knowledge bases to search."))
-		.describe("The IDs of the knowledge bases to search."),
-});
+import { sendEmail } from "./send-email";
+import { sendWahaMessageWithUrl } from "./send-waha-message";
 
 // Define the search tool using Vercel AI SDK's tool function
 const searchKnowledgeBase = tool({
 	description:
 		"Search through the knowledge base to find relevant information.",
-	parameters: searchInputSchema,
+	parameters: z.object({
+		query: z
+			.string()
+			.describe(
+				"The search query to find relevant information. Rewrite the query to be more specific and professional if necessary.",
+			),
+		kbIds: z
+			.array(z.string().describe("The IDs of the knowledge bases to search."))
+			.describe("The IDs of the knowledge bases to search."),
+	}),
 	execute: async ({ query, kbIds }) => {
 		// 1. Generate embedding for the query
 		const { embedding } = await embed({
@@ -89,6 +88,39 @@ const searchKnowledgeBase = tool({
 	},
 });
 
+// Send email tool
+const sendEmailTool = tool({
+	description: "Send an email to the user.",
+	parameters: z.object({
+		to: z.string().describe("The email address of the recipient."),
+		subject: z.string().describe("The subject of the email."),
+		body: z.string().describe("The body of the email."),
+	}),
+	execute: async ({ to, subject, body }) => {
+		const { success, error } = await sendEmail(to, subject, body);
+		if (!success) {
+			throw new Error(error);
+		}
+		return { success, error };
+	},
+});
+
+// Send Waha message tool
+const sendWahaMessageTool = tool({
+	description: "Send a WhatsApp message to the user.",
+	parameters: z.object({
+		chatId: z.string().describe("The WhatsApp chat ID of the recipient."),
+		text: z.string().describe("The message to send."),
+	}),
+	execute: async ({ chatId, text }) => {
+		const { success, error } = await sendWahaMessageWithUrl(chatId, text);
+		if (!success) {
+			throw new Error(error);
+		}
+		return { success, error };
+	},
+});
+
 export interface VercelAIAgentPayload {
 	messages: Array<{
 		role: "user" | "assistant";
@@ -100,12 +132,14 @@ export interface VercelAIAgentPayload {
 
 export const vercelAIAgent = async (payload: VercelAIAgentPayload) => {
 	const result = await generateText({
-		model: openai("gpt-4o-mini"),
+		model: openai("gpt-4o"),
 		messages: payload.messages,
 		tools: {
 			searchKnowledgeBase,
+			sendEmailTool,
+			sendWahaMessageTool,
 		},
-		maxSteps: 3,
+		maxSteps: 10,
 		system: `You are a WhatsApp user trying to pass the Turing test by answering questions as accurately as possible.
 
 When you encounter a question you cannot answer:
