@@ -31,6 +31,7 @@ export const env = createEnv({
 		R2_BUCKET: z.string(),
 		MARKITDOWN_API_URL: z.string(),
 		REDIS_URL: z.string(),
+		MASTRA_API_URL: z.string(),
 	},
 
 	/**
@@ -71,6 +72,7 @@ export const env = createEnv({
 		R2_BUCKET: process.env.R2_BUCKET,
 		MARKITDOWN_API_URL: process.env.MARKITDOWN_API_URL,
 		REDIS_URL: process.env.REDIS_URL,
+		MASTRA_API_URL: process.env.MASTRA_API_URL,
 	},
 	/**
 	 * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

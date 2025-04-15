@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { QDRANT_COLLECTION_NAME } from "@/lib/constants";
 import type { Kb } from "@/types/kb";
 import { Plus } from "lucide-react";
 import { useState } from "react";
@@ -84,7 +85,7 @@ export default function KnowledgePage() {
 			await vectorizeDocument({
 				kbId: selectedKb.id,
 				documentId,
-				collectionName: "waha", // 使用固定的集合名称
+				collectionName: QDRANT_COLLECTION_NAME,
 				url: "", // 文档URL现在从后端获取
 			});
 

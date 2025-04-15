@@ -121,13 +121,22 @@ export class QdrantService {
 
 	async deletePoints(
 		collectionName: string,
-		pointIds: (string | number)[],
+		pointIdsOrFilter: (string | number)[] | { filter: Record<string, unknown> },
 		wait = true,
 	) {
 		try {
+			if (Array.isArray(pointIdsOrFilter)) {
+				// Delete by point IDs
+				return await this.client.delete(collectionName, {
+					wait,
+					points: pointIdsOrFilter,
+				});
+			}
+
+			// Delete by filter
 			return await this.client.delete(collectionName, {
 				wait,
-				points: pointIds,
+				filter: pointIdsOrFilter.filter,
 			});
 		} catch (error) {
 			console.error(`Error deleting points from ${collectionName}:`, error);

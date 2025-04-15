@@ -1,5 +1,7 @@
-import { mastra } from "@/lib/mastra";
+// import { mastraClient } from "@/lib/mastra";
+import { type VercelAIAgentPayload, vercelAIAgent } from "@/lib/vercel-ai";
 import { logger, task } from "@trigger.dev/sdk/v3";
+import { type WebhookResponse, sendWebhookResponse } from "./utils";
 
 export interface AgentChatPayload {
 	messages: Array<{
@@ -8,84 +10,62 @@ export interface AgentChatPayload {
 	}>;
 	userId: string;
 	agentId: string;
+	kbIds: string[];
 	conversationId: string;
 	webhookUrl: string;
 	messageId?: string;
 }
 
-interface WebhookResponse {
-	success: boolean;
+// Extend the generic webhook response for agent chat
+interface ChatWebhookResponse extends WebhookResponse {
 	response?: string;
 	messages?: Array<{
 		role: "user" | "assistant";
 		content: string;
 	}>;
-	error?: string;
 	userId: string;
 	agentId: string;
 	conversationId: string;
 	messageId?: string;
 }
 
-async function sendWebhookResponse(
-	webhookUrl: string,
-	data: WebhookResponse,
-): Promise<void> {
-	try {
-		const response = await fetch(webhookUrl, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-			},
-			body: JSON.stringify(data),
-		});
-
-		if (!response.ok) {
-			logger.error("Failed to send webhook response", {
-				status: response.status,
-				statusText: response.statusText,
-			});
-		}
-	} catch (error) {
-		logger.error("Error sending webhook response", {
-			error: error instanceof Error ? error.message : String(error),
-		});
-	}
-}
-
 export const agentChat = task({
 	id: "agent-chat",
 	run: async (payload: AgentChatPayload) => {
-		const { messages, userId, agentId, conversationId, webhookUrl, messageId } =
-			payload;
+		const {
+			messages,
+			userId,
+			agentId,
+			kbIds,
+			conversationId,
+			webhookUrl,
+			messageId,
+		} = payload;
 
 		try {
-			// Get the RAG agent
-			const agent = mastra.getAgent("ragAgent");
-
-			if (!agent) {
-				throw new Error("Agent not found");
-			}
-
-			// Log start of processing
+			// // Log start of processing
 			logger.info("Starting chat generation", {
 				userId,
 				agentId,
+				kbIds,
 				conversationId,
 				messageId,
 				messageCount: messages.length,
 			});
 
-			// Generate response
-			const result = await agent.generate(
-				messages.map((message) => ({
+			const vercelAIAgentPayload: VercelAIAgentPayload = {
+				messages: messages.map((message) => ({
 					role: message.role,
 					content: message.content,
 				})),
-			);
+				userId,
+				kbIds,
+			};
+
+			const result = await vercelAIAgent(vercelAIAgentPayload);
 
 			// Prepare webhook response
-			const webhookData: WebhookResponse = {
+			const webhookData: ChatWebhookResponse = {
 				success: true,
 				response: result.text,
 				messages: [...messages, { role: "assistant", content: result.text }],
@@ -102,17 +82,23 @@ export const agentChat = task({
 				conversationId,
 				messageId,
 				messageCount: messages.length,
+				responseLength: result.text.length,
 			});
 
 			// Send webhook response
-			await sendWebhookResponse(webhookUrl, webhookData);
+			logger.debug("Sending webhook response", {
+				url: webhookUrl,
+				success: true,
+			});
+
+			await sendWebhookResponse<ChatWebhookResponse>(webhookUrl, webhookData);
 
 			return webhookData;
 		} catch (error) {
 			// Prepare error response
 			const errorMessage =
 				error instanceof Error ? error.message : String(error);
-			const errorResponse: WebhookResponse = {
+			const errorResponse: ChatWebhookResponse = {
 				success: false,
 				error: errorMessage,
 				userId,
@@ -131,7 +117,12 @@ export const agentChat = task({
 			});
 
 			// Send error webhook response
-			await sendWebhookResponse(webhookUrl, errorResponse);
+			logger.debug("Sending error webhook response", {
+				url: webhookUrl,
+				success: false,
+			});
+
+			await sendWebhookResponse<ChatWebhookResponse>(webhookUrl, errorResponse);
 
 			return errorResponse;
 		}

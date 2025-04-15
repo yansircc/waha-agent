@@ -12,13 +12,22 @@ export async function POST(request: NextRequest) {
 	const body = (await request.json()) as Omit<HandleDocPayload, "userId">;
 
 	if (body satisfies Omit<HandleDocPayload, "userId">) {
-		await handleDoc.trigger({ ...body, userId: session.user.id });
+		try {
+			await handleDoc.trigger({ ...body, userId: session.user.id });
+			return NextResponse.json({ success: true });
+		} catch (error) {
+			return NextResponse.json(
+				{
+					error: "Failed to trigger task",
+					details: error instanceof Error ? error.message : String(error),
+				},
+				{ status: 500 },
+			);
+		}
 	} else {
 		return NextResponse.json(
 			{ error: "Invalid request body" },
 			{ status: 400 },
 		);
 	}
-
-	return NextResponse.json({ success: true });
 }

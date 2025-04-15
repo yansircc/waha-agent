@@ -41,6 +41,7 @@ export function DocumentCard({
 	onVectorize,
 }: DocumentCardProps) {
 	const [isLocalProcessing, setIsLocalProcessing] = useState(false);
+	const [isDeleting, setIsDeleting] = useState(false);
 
 	// Reset local processing state when document status changes
 	useEffect(() => {
@@ -99,6 +100,50 @@ export function DocumentCard({
 			toast.error("File link not available");
 		}
 	};
+
+	// Handle document deletion
+	const handleDelete = async () => {
+		if (!document.kbId) return;
+
+		setIsDeleting(true);
+		try {
+			await onDelete(document.id, document.kbId);
+			// The parent component will handle removing this card from the list
+		} catch (error) {
+			setIsDeleting(false);
+			toast.error("Failed to delete document");
+		}
+	};
+
+	if (isDeleting) {
+		return (
+			<Card className="opacity-60 transition-opacity">
+				<CardHeader className="flex flex-row items-center justify-between pb-2">
+					<CardTitle className="font-medium text-base">
+						{document.name}
+					</CardTitle>
+					<div className="rounded-full bg-red-100 px-2 py-1 text-red-800 text-xs">
+						删除中...
+					</div>
+				</CardHeader>
+				<CardContent>
+					<div className="flex items-center justify-between text-sm">
+						<div className="text-muted-foreground">
+							{formatFileSize(document.fileSize || 0)}
+						</div>
+						<div className="text-muted-foreground">
+							{document.createdAt
+								? new Date(document.createdAt).toLocaleDateString()
+								: "No date"}
+						</div>
+					</div>
+				</CardContent>
+				<CardFooter className="flex justify-center">
+					<Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+				</CardFooter>
+			</Card>
+		);
+	}
 
 	return (
 		<Card>
@@ -210,14 +255,21 @@ export function DocumentCard({
 						</TooltipProvider>
 					)}
 				</div>
-				<Button
-					variant="ghost"
-					size="sm"
-					onClick={() => document.kbId && onDelete(document.id, document.kbId)}
-					className="text-destructive hover:text-destructive"
-				>
-					<Trash2 className="h-4 w-4" />
-				</Button>
+				<TooltipProvider>
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={handleDelete}
+								className="text-destructive hover:text-destructive"
+							>
+								<Trash2 className="h-4 w-4" />
+							</Button>
+						</TooltipTrigger>
+						<TooltipContent>Delete document</TooltipContent>
+					</Tooltip>
+				</TooltipProvider>
 			</CardFooter>
 		</Card>
 	);

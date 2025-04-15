@@ -107,6 +107,36 @@ export const qdrantRouter = createTRPCRouter({
 			);
 		}),
 
+	deletePointsByDocumentId: protectedProcedure
+		.input(
+			z.object({
+				collectionName: z.string(),
+				documentId: z.string(),
+				wait: z.boolean().optional(),
+			}),
+		)
+		.mutation(async ({ input }) => {
+			// Create a filter that matches points with this document ID
+			const filter = {
+				filter: {
+					must: [
+						{
+							key: "documentId",
+							match: {
+								value: input.documentId,
+							},
+						},
+					],
+				},
+			};
+
+			return await qdrantService.deletePoints(
+				input.collectionName,
+				filter,
+				input.wait,
+			);
+		}),
+
 	retrievePoints: protectedProcedure
 		.input(
 			z.object({

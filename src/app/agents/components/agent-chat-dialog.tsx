@@ -207,6 +207,7 @@ export function AgentChatDialog({
 					body: JSON.stringify({
 						messages: apiMessages,
 						agentId,
+						kbId: kbIds,
 						conversationId: dialogConversationId,
 						webhookUrl: `${window.location.origin}/api/webhooks/chat`,
 						messageId, // 发送消息ID到触发器
@@ -227,7 +228,7 @@ export function AgentChatDialog({
 				setCurrentMessageId(null);
 			}
 		},
-		[agentId, conversationId, messages, startPolling],
+		[agentId, conversationId, messages, startPolling, kbIds],
 	);
 
 	// 对话关闭时清除聊天

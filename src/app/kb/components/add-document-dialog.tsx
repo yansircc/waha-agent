@@ -9,7 +9,7 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { FileText, UploadCloud } from "lucide-react";
+import { FileText, Loader2, UploadCloud } from "lucide-react";
 import { useState } from "react";
 
 interface AddDocumentDialogProps {
@@ -25,6 +25,7 @@ export function AddDocumentDialog({
 }: AddDocumentDialogProps) {
 	const [dragActive, setDragActive] = useState(false);
 	const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+	const [isUploading, setIsUploading] = useState(false);
 
 	const handleDrag = (e: React.DragEvent) => {
 		e.preventDefault();
@@ -56,8 +57,9 @@ export function AddDocumentDialog({
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		if (!uploadedFile) return;
+		if (!uploadedFile || isUploading) return;
 
+		setIsUploading(true);
 		try {
 			const isTextFile = [
 				"text/plain",
@@ -68,6 +70,7 @@ export function AddDocumentDialog({
 
 			if (uploadedFile.size > sizeLimit) {
 				alert(`File size exceeds the limit of ${isTextFile ? "4MB" : "1MB"}`);
+				setIsUploading(false);
 				return;
 			}
 
@@ -78,16 +81,19 @@ export function AddDocumentDialog({
 			alert(
 				`Failed to upload document. ${error instanceof Error ? error.message : ""}`,
 			);
+			setIsUploading(false);
 		}
 	};
 
 	const handleClose = () => {
+		if (isUploading) return; // Prevent closing while uploading
 		onOpenChange(false);
 		setUploadedFile(null);
+		setIsUploading(false);
 	};
 
 	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
+		<Dialog open={open} onOpenChange={isUploading ? undefined : onOpenChange}>
 			<DialogContent className="sm:max-w-[600px]">
 				<DialogHeader>
 					<DialogTitle>Upload Document</DialogTitle>
@@ -99,21 +105,39 @@ export function AddDocumentDialog({
 							<button
 								type="button"
 								className={`flex min-h-[200px] w-full cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed p-6 text-left transition-colors ${
-									dragActive ? "border-primary bg-primary/10" : "border-muted"
+									dragActive
+										? "border-primary bg-primary/10"
+										: isUploading
+											? "cursor-not-allowed border-blue-300 bg-blue-50"
+											: "border-muted"
 								}`}
-								onDragEnter={handleDrag}
-								onDragLeave={handleDrag}
-								onDragOver={handleDrag}
-								onDrop={handleDrop}
-								onClick={() => document.getElementById("file-upload")?.click()}
+								onDragEnter={isUploading ? undefined : handleDrag}
+								onDragLeave={isUploading ? undefined : handleDrag}
+								onDragOver={isUploading ? undefined : handleDrag}
+								onDrop={isUploading ? undefined : handleDrop}
+								onClick={
+									isUploading
+										? undefined
+										: () => document.getElementById("file-upload")?.click()
+								}
+								disabled={isUploading}
 							>
 								<input
 									id="file-upload"
 									type="file"
 									className="hidden"
 									onChange={handleFileInput}
+									disabled={isUploading}
 								/>
-								{uploadedFile ? (
+								{isUploading ? (
+									<>
+										<Loader2 className="mb-2 h-10 w-10 animate-spin text-blue-500" />
+										<p className="font-medium">Uploading...</p>
+										<p className="text-muted-foreground text-sm">
+											Please wait while we upload your document
+										</p>
+									</>
+								) : uploadedFile ? (
 									<>
 										<FileText className="mb-2 h-10 w-10 text-primary" />
 										<p className="font-medium">{uploadedFile.name}</p>
@@ -137,11 +161,23 @@ export function AddDocumentDialog({
 					</div>
 
 					<DialogFooter>
-						<Button type="button" variant="outline" onClick={handleClose}>
+						<Button
+							type="button"
+							variant="outline"
+							onClick={handleClose}
+							disabled={isUploading}
+						>
 							Cancel
 						</Button>
-						<Button type="submit" disabled={!uploadedFile}>
-							Upload Document
+						<Button type="submit" disabled={!uploadedFile || isUploading}>
+							{isUploading ? (
+								<>
+									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+									Uploading...
+								</>
+							) : (
+								"Upload Document"
+							)}
 						</Button>
 					</DialogFooter>
 				</form>

@@ -1,13 +1,16 @@
-import { env } from "@/env";
 import { convertToMarkdown } from "@/lib/markitdown";
 import { qdrantService } from "@/lib/qdrant-service";
 import { cohere } from "@ai-sdk/cohere";
-import { QdrantVector } from "@mastra/qdrant";
-import { MDocument } from "@mastra/rag";
 import { logger, task } from "@trigger.dev/sdk/v3";
 import { embedMany } from "ai";
-
-const qdrant = new QdrantVector(env.QDRANT_URL, env.QDRANT_API_KEY);
+import {
+	type TextChunk,
+	type WebhookResponse,
+	chunkText,
+	createCollectionIfNotExists,
+	isMarkdownOrTextFile,
+	sendWebhookResponse,
+} from "./utils";
 
 export interface HandleDocPayload {
 	url: string;
@@ -18,28 +21,12 @@ export interface HandleDocPayload {
 	collectionName: string;
 }
 
-interface WebhookResponse {
-	success: boolean;
+// Extend the generic webhook response for document handling
+interface DocWebhookResponse extends WebhookResponse {
 	kbId?: string;
 	documentId?: string;
 	collectionName?: string;
-	error?: string;
 	chunkCount?: number;
-}
-
-/**
- * Check if the URL points to a markdown or text file
- * Handles URLs with query parameters
- */
-function isMarkdownOrTextFile(url: string): boolean {
-	try {
-		// Remove query parameters and get the base URL
-		const baseUrl = new URL(url).pathname.toLowerCase();
-		return baseUrl.endsWith(".md") || baseUrl.endsWith(".txt");
-	} catch (error) {
-		logger.warn("Failed to parse URL for file type check", { url, error });
-		return false;
-	}
 }
 
 /**
@@ -53,7 +40,8 @@ async function getDocumentContent(url: string): Promise<string> {
 			if (!response.ok) {
 				throw new Error(`Failed to fetch document: ${response.statusText}`);
 			}
-			return await response.text();
+			const text = await response.text();
+			return text;
 		}
 		// For other file types, convert to markdown
 		return await convertToMarkdown(url);
@@ -63,70 +51,78 @@ async function getDocumentContent(url: string): Promise<string> {
 	}
 }
 
-/**
- * Create Qdrant collection if it doesn't exist
- */
-async function createCollectionIfNotExists(
+// Process embeddings and store in batches to avoid memory issues
+async function processEmbeddingsInBatches(
+	embeddings: number[][],
+	chunks: TextChunk[],
 	collectionName: string,
+	documentId: string,
+	userId: string,
+	kbId: string,
+	url: string,
+	batchSize = 100,
 ): Promise<void> {
-	try {
-		// Check if collection exists using the dedicated endpoint
-		const exists = await qdrantService.collectionExists(collectionName);
+	// Calculate number of batches
+	const totalChunks = chunks.length;
+	const batchCount = Math.ceil(totalChunks / batchSize);
 
-		if (!exists) {
-			logger.info("Creating new Qdrant collection", { collectionName });
+	logger.info(`Processing ${totalChunks} embeddings in ${batchCount} batches`);
 
-			// Create collection with standard configuration
-			await qdrantService.createCollection(collectionName, {
-				vectors: {
-					size: 1024, // Cohere embed-multilingual-v3.0 dimension
-					distance: "Cosine",
-				},
-				optimizers_config: {
-					default_segment_number: 2, // Optimize for faster searches
-				},
+	for (let i = 0; i < batchCount; i++) {
+		const startIdx = i * batchSize;
+		const endIdx = Math.min(startIdx + batchSize, totalChunks);
+
+		// Prepare current batch of points
+		const batchPoints = embeddings
+			.slice(startIdx, endIdx)
+			.map((vector, index) => {
+				const actualIndex = startIdx + index;
+				const chunkText = chunks[actualIndex]?.text || "";
+
+				// Use numeric ID instead of string ID as Qdrant supports numeric IDs
+				// Based on error message: "value ... is not a valid point ID, valid values are either an unsigned integer or a UUID"
+				// We're creating a unique numeric ID based on timestamp and index
+				const numericId = Number.parseInt(
+					`${Date.now().toString().slice(-6)}${actualIndex}`,
+					10,
+				);
+
+				return {
+					id: numericId,
+					vector,
+					payload: {
+						text: chunkText,
+						userId,
+						kbId,
+						documentId, // Keep original documentId in payload
+						pointId: `${documentId}-${actualIndex}`, // Store original point ID in payload
+						url,
+						chunkIndex: actualIndex,
+						totalChunks,
+						createdAt: new Date().toISOString(),
+					},
+				};
 			});
 
-			logger.info("Qdrant collection created successfully", { collectionName });
-		} else {
-			logger.info("Using existing Qdrant collection", { collectionName });
-		}
-	} catch (error) {
-		logger.error("Failed to create/check Qdrant collection", {
-			error: error instanceof Error ? error.message : String(error),
-			collectionName,
-		});
-		throw error;
-	}
-}
-
-// Helper function to send webhook response
-async function sendWebhookResponse(
-	webhookUrl: string,
-	data: WebhookResponse,
-): Promise<WebhookResponse> {
-	try {
-		const response = await fetch(webhookUrl, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-			},
-			body: JSON.stringify(data),
-		});
-
-		if (!response.ok) {
-			logger.error("Failed to send webhook response", {
-				status: response.status,
-				statusText: response.statusText,
+		try {
+			// Insert batch
+			await qdrantService.upsertPoints(collectionName, batchPoints);
+			logger.info(
+				`Processed batch ${i + 1}/${batchCount} (${startIdx} to ${endIdx - 1})`,
+			);
+		} catch (error) {
+			// Log detailed error information for debugging
+			const errorMsg = error instanceof Error ? error.message : String(error);
+			logger.error("Failed to upsert points batch to Qdrant", {
+				error: errorMsg,
+				collectionName,
+				batchNumber: i + 1,
+				totalBatches: batchCount,
+				batchSize: batchPoints.length,
+				firstPointId: batchPoints[0]?.id,
 			});
+			throw error;
 		}
-
-		return data;
-	} catch (error) {
-		logger.error("Error sending webhook response", {
-			error: error instanceof Error ? error.message : String(error),
-		});
-		return data;
 	}
 }
 
@@ -138,34 +134,57 @@ export const handleDoc = task({
 
 		try {
 			// 1. Get document content based on file type
-			const content = await getDocumentContent(url);
+			let content = await getDocumentContent(url);
 			logger.info("Document content retrieved", {
 				url,
 				isMarkdownOrText: isMarkdownOrTextFile(url),
+				contentSize: content.length,
 			});
 
-			// // 2. Split document into chunks
-			const docFromText = MDocument.fromText(content);
-			const chunks = await docFromText.chunk({
-				strategy: "recursive",
-				size: 512,
-				overlap: 50,
-			});
+			// 2. Split document into chunks using our custom chunking function
+			let chunks: TextChunk[] = [];
+			try {
+				chunks = chunkText(content, {
+					chunkSize: 512,
+					chunkOverlap: 50,
+					source: url,
+					maxChunks: 1000, // Explicitly set maximum chunks
+				}) as TextChunk[];
 
-			// const chunks = [
-			// 	{
-			// 		text: content,
-			// 		metadata: {
-			// 			source: url,
-			// 		},
-			// 	},
-			// ]; // TODO: split text manually
+				logger.info("Document chunking completed", {
+					chunkCount: chunks.length,
+					inputLength: content.length,
+					averageChunkLength:
+						chunks.length > 0
+							? chunks.reduce((sum, chunk) => sum + chunk.text.length, 0) /
+								chunks.length
+							: 0,
+				});
+			} catch (error) {
+				const errorMsg = error instanceof Error ? error.message : String(error);
+				logger.error("Failed to chunk document content", {
+					url,
+					error: errorMsg,
+					contentSize: content.length,
+				});
+				return await sendWebhookResponse<DocWebhookResponse>(webhookUrl, {
+					success: false,
+					error: `Failed to chunk document: ${errorMsg}`,
+					kbId,
+					documentId,
+					collectionName,
+				});
+			}
+
+			// Free up memory
+			const contentLength = content.length;
+			content = "";
 
 			if (!chunks || chunks.length === 0) {
-				logger.error("Failed to chunk document", { url });
-				return await sendWebhookResponse(webhookUrl, {
+				logger.error("Failed to chunk document - no chunks produced", { url });
+				return await sendWebhookResponse<DocWebhookResponse>(webhookUrl, {
 					success: false,
-					error: "Failed to chunk document",
+					error: "Failed to chunk document - no chunks produced",
 					kbId,
 					documentId,
 					collectionName,
@@ -175,23 +194,42 @@ export const handleDoc = task({
 			logger.info("Document chunked successfully", {
 				chunkCount: chunks.length,
 				documentId,
+				contentSize: contentLength,
 			});
 
 			// 3. Generate embeddings for all chunks
-			const { embeddings } = await embedMany({
-				values: chunks.map((chunk) => chunk.text),
-				model: cohere.embedding("embed-multilingual-v3.0"),
-				maxRetries: 3,
-			});
+			let embeddings: number[][] = [];
+			try {
+				const result = await embedMany({
+					values: chunks.map((chunk) => chunk.text),
+					model: cohere.embedding("embed-multilingual-v3.0"),
+					maxRetries: 3,
+				});
+				embeddings = result.embeddings;
+			} catch (error) {
+				const errorMsg = error instanceof Error ? error.message : String(error);
+				logger.error("Failed to generate embeddings", {
+					url,
+					error: errorMsg,
+					chunkCount: chunks.length,
+				});
+				return await sendWebhookResponse<DocWebhookResponse>(webhookUrl, {
+					success: false,
+					error: `Failed to generate embeddings: ${errorMsg}`,
+					kbId,
+					documentId,
+					collectionName,
+				});
+			}
 
 			if (!embeddings || embeddings.length !== chunks.length) {
-				logger.error("Failed to generate embeddings", {
+				logger.error("Embedding count mismatch", {
 					expectedCount: chunks.length,
 					receivedCount: embeddings?.length,
 				});
-				return await sendWebhookResponse(webhookUrl, {
+				return await sendWebhookResponse<DocWebhookResponse>(webhookUrl, {
 					success: false,
-					error: "Failed to generate embeddings",
+					error: `Embedding count mismatch: expected ${chunks.length}, received ${embeddings?.length}`,
 					kbId,
 					documentId,
 					collectionName,
@@ -199,23 +237,35 @@ export const handleDoc = task({
 			}
 
 			// 4. Ensure collection exists
-			await createCollectionIfNotExists(collectionName);
-
-			// 5. Store vectors with metadata
-			await qdrant.upsert({
-				indexName: collectionName,
-				vectors: embeddings,
-				metadata: chunks.map((chunk, index) => ({
-					text: chunk.text,
-					userId,
+			try {
+				logger.info("Ensuring collection exists", { collectionName });
+				await createCollectionIfNotExists(collectionName);
+				logger.info("Collection ready", { collectionName });
+			} catch (error) {
+				const errorMsg = error instanceof Error ? error.message : String(error);
+				logger.error("Failed to create collection", {
+					collectionName,
+					error: errorMsg,
+				});
+				return await sendWebhookResponse<DocWebhookResponse>(webhookUrl, {
+					success: false,
+					error: `Failed to create collection: ${errorMsg}`,
 					kbId,
 					documentId,
-					url,
-					chunkIndex: index,
-					totalChunks: chunks.length,
-					createdAt: new Date().toISOString(),
-				})),
-			});
+					collectionName,
+				});
+			}
+
+			// 5. Store vectors with metadata in batches
+			await processEmbeddingsInBatches(
+				embeddings,
+				chunks,
+				collectionName,
+				documentId,
+				userId,
+				kbId,
+				url,
+			);
 
 			logger.info("Document vectors stored in Qdrant with metadata", {
 				documentId,
@@ -226,7 +276,7 @@ export const handleDoc = task({
 			});
 
 			// 6. Return success response
-			return await sendWebhookResponse(webhookUrl, {
+			return await sendWebhookResponse<DocWebhookResponse>(webhookUrl, {
 				success: true,
 				kbId,
 				documentId,
@@ -244,7 +294,7 @@ export const handleDoc = task({
 				collectionName,
 			});
 
-			return await sendWebhookResponse(webhookUrl, {
+			return await sendWebhookResponse<DocWebhookResponse>(webhookUrl, {
 				success: false,
 				error: errorMessage,
 				kbId,

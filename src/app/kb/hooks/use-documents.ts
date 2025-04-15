@@ -2,6 +2,7 @@
 
 import { env } from "@/env";
 import { useS3Upload } from "@/hooks/use-s3-upload";
+import { QDRANT_COLLECTION_NAME } from "@/lib/constants";
 import type { AppRouter } from "@/server/api/root";
 import { api } from "@/utils/api";
 import type { TRPCClientErrorLike } from "@trpc/client";
@@ -236,9 +237,29 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 	const deleteDocument = async (id: string, kbId?: string) => {
 		setIsLoading(true);
 		try {
+			// 先获取文档状态，检查是否已向量化
+			const document = await utils.client.kbs.getDocumentById.query({ id });
+
+			// Delete document from database first
 			const result = await utils.client.kbs.deleteDocument.mutate({ id });
 
-			// 使相关查询缓存失效
+			// If document was successfully deleted and was vectorized, clean up related vector data
+			if (result && kbId && document?.vectorizationStatus === "completed") {
+				try {
+					const collectionName = QDRANT_COLLECTION_NAME;
+
+					// Delete Qdrant points related to this document
+					await utils.client.qdrant.deletePointsByDocumentId.mutate({
+						collectionName,
+						documentId: id,
+					});
+				} catch (qdrantError) {
+					// Log but don't fail the entire operation if Qdrant deletion fails
+					console.error("Error deleting Qdrant points:", qdrantError);
+				}
+			}
+
+			// Invalidate queries to refresh UI
 			if (kbId) {
 				await utils.kbs.getDocuments.invalidate({
 					kbId,
