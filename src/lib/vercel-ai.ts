@@ -54,6 +54,8 @@ const searchKnowledgeBase = tool({
 			return { results: [] }; // Return an object with a results array
 		}
 
+		console.log("initialResults", initialResults);
+
 		// 3. Rerank results
 		// Extract content from results assuming it's in payload.text
 		const documentsToRerank = initialResults
@@ -73,6 +75,8 @@ const searchKnowledgeBase = tool({
 		}
 
 		const rerankedResults = await reranker(query, documentsToRerank); // Pass extracted content
+
+		console.log("rerankedResults", rerankedResults);
 
 		// Cherrypick the top N results based on reranker output
 		// Ensure rerankedResults.results is an array and contains objects with an 'index' property
