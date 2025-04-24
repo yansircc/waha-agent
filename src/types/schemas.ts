@@ -134,7 +134,7 @@ export const AgentSchema = z.object({
 	id: z.string(),
 	name: z.string(),
 	prompt: z.string(),
-	isActive: z.boolean(),
+	model: z.string(),
 	kbIds: z.array(z.string()).nullable(),
 	createdById: z.string(),
 	createdAt: z.date(),

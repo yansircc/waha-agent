@@ -1,6 +1,6 @@
-// import { mastraClient } from "@/lib/mastra";
 import { type VercelAIAgentPayload, vercelAIAgent } from "@/lib/vercel-ai";
-import { logger, task } from "@trigger.dev/sdk/v3";
+import type { Agent } from "@/types/agents";
+import { logger, task } from "@trigger.dev/sdk";
 import { type WebhookResponse, sendWebhookResponse } from "./utils";
 
 export interface AgentChatPayload {
@@ -8,9 +8,7 @@ export interface AgentChatPayload {
 		role: "user" | "assistant";
 		content: string;
 	}>;
-	userId: string;
-	agentId: string;
-	kbIds: string[];
+	agent: Agent;
 	conversationId: string;
 	webhookUrl: string;
 	messageId?: string;
@@ -23,8 +21,7 @@ interface ChatWebhookResponse extends WebhookResponse {
 		role: "user" | "assistant";
 		content: string;
 	}>;
-	userId: string;
-	agentId: string;
+	agent: Agent;
 	conversationId: string;
 	messageId?: string;
 }
@@ -32,22 +29,13 @@ interface ChatWebhookResponse extends WebhookResponse {
 export const agentChat = task({
 	id: "agent-chat",
 	run: async (payload: AgentChatPayload) => {
-		const {
-			messages,
-			userId,
-			agentId,
-			kbIds,
-			conversationId,
-			webhookUrl,
-			messageId,
-		} = payload;
+		const { messages, agent, conversationId, webhookUrl, messageId } = payload;
 
 		try {
 			// Log start of processing
 			logger.info("Starting chat generation", {
-				userId,
-				agentId,
-				kbIds,
+				agentId: agent.id,
+				kbIds: agent.kbIds,
 				conversationId,
 				messageId,
 				messageCount: messages.length,
@@ -58,8 +46,7 @@ export const agentChat = task({
 					role: message.role,
 					content: message.content,
 				})),
-				userId,
-				kbIds,
+				agent,
 			};
 
 			// 调用已更新的vercelAIAgent函数(内部已包含混合搜索逻辑)
@@ -70,16 +57,14 @@ export const agentChat = task({
 				success: true,
 				response: result.text,
 				messages: [...messages, { role: "assistant", content: result.text }],
-				userId,
-				agentId,
+				agent,
 				conversationId,
 				messageId,
 			};
 
 			// Log success
 			logger.info("Chat generation completed", {
-				userId,
-				agentId,
+				agent,
 				conversationId,
 				messageId,
 				messageCount: messages.length,
@@ -102,8 +87,7 @@ export const agentChat = task({
 			const errorResponse: ChatWebhookResponse = {
 				success: false,
 				error: errorMessage,
-				userId,
-				agentId,
+				agent,
 				conversationId,
 				messageId,
 			};
@@ -111,8 +95,7 @@ export const agentChat = task({
 			// Log error
 			logger.error("Chat generation failed", {
 				error: errorMessage,
-				userId,
-				agentId,
+				agent,
 				conversationId,
 				messageId,
 			});

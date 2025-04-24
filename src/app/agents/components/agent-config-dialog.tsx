@@ -12,7 +12,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckIcon, X } from "lucide-react";
+import type { Agent } from "@/types/agents";
+import { CheckIcon } from "lucide-react";
 import { useState } from "react";
 
 interface Kb {
@@ -23,19 +24,9 @@ interface Kb {
 interface AgentConfigDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	onSubmit: (data: {
-		id?: string;
-		name: string;
-		prompt: string;
-		kbIds: string[];
-	}) => void;
+	onSubmit: (data: Agent) => void;
 	kbs?: Kb[];
-	defaultValues?: {
-		id: string;
-		name: string;
-		prompt: string;
-		kbIds: string[];
-	};
+	defaultValues?: Agent;
 	mode?: "create" | "edit";
 }
 
@@ -47,8 +38,10 @@ export function AgentConfigDialog({
 	defaultValues,
 	mode = "create",
 }: AgentConfigDialogProps) {
+	const [apiKey, setApiKey] = useState(defaultValues?.apiKey || "");
 	const [name, setName] = useState(defaultValues?.name || "");
 	const [prompt, setPrompt] = useState(defaultValues?.prompt || "");
+	const [model, setModel] = useState(defaultValues?.model || "gpt-4o");
 	const [selectedKbIds, setSelectedKbIds] = useState<string[]>(
 		defaultValues?.kbIds || [],
 	);
@@ -59,11 +52,15 @@ export function AgentConfigDialog({
 		setIsLoading(true);
 
 		try {
-			await onSubmit({
-				id: defaultValues?.id,
+			onSubmit({
+				id: defaultValues?.id || "",
+				apiKey,
 				name,
 				prompt,
+				model,
 				kbIds: selectedKbIds,
+				createdAt: defaultValues?.createdAt || null,
+				updatedAt: defaultValues?.updatedAt || null,
 			});
 		} finally {
 			setIsLoading(false);
@@ -88,12 +85,34 @@ export function AgentConfigDialog({
 				<form onSubmit={handleSubmit}>
 					<div className="grid gap-6 py-4">
 						<div className="grid gap-2">
+							<Label htmlFor="apiKey">API Key</Label>
+							<Input
+								id="apiKey"
+								value={apiKey}
+								onChange={(e) => setApiKey(e.target.value)}
+								placeholder="sk-..."
+								type="password"
+							/>
+						</div>
+
+						<div className="grid gap-2">
 							<Label htmlFor="name">Name</Label>
 							<Input
 								id="name"
 								value={name}
 								onChange={(e) => setName(e.target.value)}
 								placeholder="Customer Service Bot"
+								required
+							/>
+						</div>
+
+						<div className="grid gap-2">
+							<Label htmlFor="model">Model</Label>
+							<Input
+								id="model"
+								value={model}
+								onChange={(e) => setModel(e.target.value)}
+								placeholder="gpt-4o"
 								required
 							/>
 						</div>

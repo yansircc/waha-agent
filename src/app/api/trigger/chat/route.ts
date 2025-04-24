@@ -9,19 +9,11 @@ export async function POST(request: NextRequest) {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	}
 
-	const body = (await request.json()) as Omit<AgentChatPayload, "userId">;
-	console.log("[Trigger API] Received chat request:", {
-		conversationId: body.conversationId,
-		messageId: body.messageId,
-		agentId: body.agentId,
-		kbIds: body.kbIds,
-		messagesCount: body.messages?.length,
-	});
+	const body = (await request.json()) as AgentChatPayload;
 
-	if (body satisfies Omit<AgentChatPayload, "userId">) {
+	if (body satisfies AgentChatPayload) {
 		try {
-			await agentChat.trigger({ ...body, userId: session.user.id });
-			console.log("[Trigger API] Triggered chat generation task successfully");
+			await agentChat.trigger({ ...body });
 
 			return NextResponse.json({ success: true });
 		} catch (error) {

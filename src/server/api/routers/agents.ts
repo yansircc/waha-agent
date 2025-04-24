@@ -54,19 +54,21 @@ export const agentsRouter = createTRPCRouter({
 	create: protectedProcedure
 		.input(
 			z.object({
+				apiKey: z.string(),
 				name: z.string().min(1).max(255),
 				prompt: z.string(),
+				model: z.string(),
 				kbIds: z.array(z.string()).optional(),
-				isActive: z.boolean().optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
 			// Create the agent
 			const agentData = {
+				apiKey: input.apiKey,
 				name: input.name,
 				prompt: input.prompt,
+				model: input.model,
 				kbIds: input.kbIds || null,
-				isActive: input.isActive ?? false,
 				createdById: ctx.session.user.id,
 			};
 
@@ -98,10 +100,11 @@ export const agentsRouter = createTRPCRouter({
 		.input(
 			z.object({
 				id: z.string(),
+				apiKey: z.string().optional(),
 				name: z.string().min(1).max(255).optional(),
 				prompt: z.string().optional(),
+				model: z.string().optional(),
 				kbIds: z.array(z.string()).optional(),
-				isActive: z.boolean().optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -122,9 +125,10 @@ export const agentsRouter = createTRPCRouter({
 
 			const updateData: Record<string, unknown> = {};
 			if (input.name !== undefined) updateData.name = input.name;
+			if (input.apiKey !== undefined) updateData.apiKey = input.apiKey;
 			if (input.prompt !== undefined) updateData.prompt = input.prompt;
 			if (input.kbIds !== undefined) updateData.kbIds = input.kbIds;
-			if (input.isActive !== undefined) updateData.isActive = input.isActive;
+			if (input.model !== undefined) updateData.model = input.model;
 
 			// Update the agent
 			const updateResult = await ctx.db
@@ -177,35 +181,6 @@ export const agentsRouter = createTRPCRouter({
 			// Delete the agent (relations will be cascade deleted)
 			await ctx.db.delete(agents).where(eq(agents.id, input.id));
 			return { success: true };
-		}),
-
-	toggleActive: protectedProcedure
-		.input(z.object({ id: z.string() }))
-		.mutation(async ({ ctx, input }) => {
-			const agent = await ctx.db.query.agents.findFirst({
-				where: (agent, { eq, and }) =>
-					and(
-						eq(agent.id, input.id),
-						eq(agent.createdById, ctx.session.user.id),
-					),
-			});
-
-			if (!agent) {
-				throw new Error(
-					"Agent not found or you don't have permission to update it",
-				);
-			}
-
-			// Toggle the isActive status
-			const newIsActive = !agent.isActive;
-
-			const result = await ctx.db
-				.update(agents)
-				.set({ isActive: newIsActive })
-				.where(eq(agents.id, input.id))
-				.returning();
-
-			return result[0];
 		}),
 
 	getKbs: protectedProcedure

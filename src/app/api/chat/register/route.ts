@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 		);
 
 		// 将用户消息存储在对话历史中，并获取消息ID
-		const messageId = storeUserMessage(conversationId, message);
+		const messageId = await storeUserMessage(conversationId, message);
 
 		console.log(`[Register API] Generated messageId: ${messageId}`);
 

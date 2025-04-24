@@ -1,6 +1,9 @@
 import { db } from "@/server/db";
 import { emailConfigs } from "@/server/db/schema";
 import { replyEmail } from "@/trigger/reply-email";
+import { formDataSchema } from "@/types/email";
+import { wait } from "@trigger.dev/sdk";
+
 import { eq } from "drizzle-orm";
 import jwt from "jsonwebtoken";
 import { type NextRequest, NextResponse } from "next/server";
@@ -73,36 +76,25 @@ export async function POST(
 
 		// Parse JSON body
 		const body = await request.json();
+		const emailPayload = formDataSchema.parse(body);
 
-		// Log the form submission data
-		console.log("Form submission received:", JSON.stringify(body, null, 2));
+		// Create the wait token
+		const token = await wait.createToken({
+			tags: [`formId:${formId}`, `email:${emailPayload.email}`],
+			timeout: "2d",
+		});
+		console.log(
+			`Created approval token ${token.id} in API route for form ${formId}`,
+		);
 
-		// Extract the required fields for the email
-		const email = body.email;
-		const name = body.name || email;
-		const message = body.message;
-		const country = body._country;
-
-		if (!email || !message) {
-			return NextResponse.json(
-				{
-					error: "Missing required fields (email, message)",
-				},
-				{ status: 400 },
-			);
-		}
-
-		// Directly trigger the email reply task
 		// This will generate the AI response, create the wait token, send notification, and wait for approval
 		const handle = await replyEmail.trigger({
-			email,
-			name,
-			message,
-			_country: country,
-			agentId: config.agentId,
+			...emailPayload,
+			agent: config.agent,
 			signature: config.signature,
 			plunkApiKey: config.plunkApiKey,
 			wechatPushApiKey: config.wechatPushApiKey,
+			approvalTokenId: token.id,
 		});
 
 		console.log(`Email reply task triggered with handle ID: ${handle.id}`);
@@ -112,6 +104,7 @@ export async function POST(
 			success: true,
 			message: "Email reply task initiated",
 			handleId: handle.id,
+			tokenId: token.id,
 		});
 	} catch (error) {
 		console.error("Error processing email webhook:", error);
@@ -133,10 +126,3 @@ export async function GET(
 		message: `Form-Data webhook endpoint is ready, formId: ${formId}`,
 	});
 }
-
-// Form submission received: {
-//   "email": "cnmarkyan@gmail.com",
-//   "name": "John",
-//   "message": "Hi,\r\nI was wondering what's the MOQ for your led stripes ship to US? This is a follow-up email.",
-//   "_country": "US"
-// }

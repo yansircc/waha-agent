@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 	);
 
 	// 使用存储模块获取响应
-	const response = getResponseByConversationId(
+	const response = await getResponseByConversationId(
 		conversationId,
 		messageId || undefined,
 	);
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 	}
 
 	console.log(
-		`[Status API] Found response for conversation: ${conversationId}, status: ${response.status}`,
+		`[Status API] Found response for conversation: ${conversationId}, status: ${response.status}${response.error ? `, error: ${response.error}` : ""}`,
 	);
 
 	// 返回找到的响应

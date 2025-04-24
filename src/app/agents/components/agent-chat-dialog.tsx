@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import type { Agent } from "@/types/agents";
 import { Bot, Cloud, Send, User } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -21,7 +22,7 @@ interface ChatMessage {
 }
 
 interface AgentChatDialogProps {
-	agentId: string;
+	agent: Agent;
 	agentName: string;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
@@ -29,7 +30,7 @@ interface AgentChatDialogProps {
 }
 
 export function AgentChatDialog({
-	agentId,
+	agent,
 	agentName,
 	open,
 	onOpenChange,
@@ -81,7 +82,21 @@ export function AgentChatDialog({
 					`/api/chat/status?conversationId=${conversationId}&messageId=${currentMessageId}`,
 				);
 
-				if (!response.ok) return;
+				if (!response.ok) {
+					const errorData = await response
+						.json()
+						.catch(() => ({ error: "Server error" }));
+					setError(errorData.error || "Failed to get message status");
+					setIsProcessing(false);
+					setCurrentMessageId(null);
+
+					// 停止轮询
+					if (pollingInterval.current) {
+						clearInterval(pollingInterval.current);
+						pollingInterval.current = null;
+					}
+					return;
+				}
 
 				const data = await response.json();
 
@@ -92,6 +107,22 @@ export function AgentChatDialog({
 						setError(data.error);
 						setIsProcessing(false);
 						setCurrentMessageId(null);
+
+						// 添加错误消息到聊天
+						// 检查消息是否已存在（避免重复）
+						const errorExists = messages.some(
+							(m) => m.role === "assistant" && m.content.includes(data.error),
+						);
+
+						if (!errorExists) {
+							const errorMessage: ChatMessage = {
+								id: Date.now().toString(),
+								role: "assistant",
+								content: `Error: ${data.error}`,
+								messageId: data.messageId,
+							};
+							setMessages((prev) => [...prev, errorMessage]);
+						}
 
 						// 停止轮询
 						if (pollingInterval.current) {
@@ -145,7 +176,7 @@ export function AgentChatDialog({
 				pollingInterval.current = null;
 			}
 		};
-	}, [conversationId, isProcessing, currentMessageId]);
+	}, [conversationId, isProcessing, currentMessageId, messages]);
 
 	// 发送消息
 	const sendMessage = useCallback(
@@ -206,7 +237,7 @@ export function AgentChatDialog({
 					},
 					body: JSON.stringify({
 						messages: apiMessages,
-						agentId,
+						agent,
 						kbIds,
 						conversationId: dialogConversationId,
 						webhookUrl: `${window.location.origin}/api/webhooks/chat`,
@@ -228,7 +259,7 @@ export function AgentChatDialog({
 				setCurrentMessageId(null);
 			}
 		},
-		[agentId, conversationId, messages, startPolling, kbIds],
+		[agent, conversationId, messages, startPolling, kbIds],
 	);
 
 	// 对话关闭时清除聊天

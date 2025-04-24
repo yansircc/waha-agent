@@ -1,7 +1,7 @@
 import { convertToMarkdown } from "@/lib/markitdown";
 import { qdrantService } from "@/lib/qdrant-service";
 import { cohere } from "@ai-sdk/cohere";
-import { logger, task } from "@trigger.dev/sdk/v3";
+import { logger, task } from "@trigger.dev/sdk";
 import { embedMany } from "ai";
 import {
 	type TextChunk,

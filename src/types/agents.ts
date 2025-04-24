@@ -1,8 +1,9 @@
 export type Agent = {
 	id: string;
+	apiKey: string;
 	name: string;
 	prompt: string;
-	isActive: boolean;
+	model: string;
 	kbIds: string[] | null;
 	createdAt: Date | null;
 	updatedAt: Date | null;

@@ -88,10 +88,11 @@ export const agents = createTable(
 			.notNull()
 			.primaryKey()
 			.$defaultFn(() => crypto.randomUUID()),
+		apiKey: d.text().notNull(),
 		name: d.varchar({ length: 255 }).notNull(),
 		prompt: d.text().notNull(),
-		kbIds: d.text().array(), // Array of knowledge base IDs
-		isActive: d.boolean().default(false).notNull(),
+		model: d.varchar({ length: 255 }).notNull(),
+		kbIds: d.text().array(),
 		createdById: d
 			.varchar({ length: 255 })
 			.notNull()

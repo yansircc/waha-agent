@@ -39,28 +39,6 @@ export async function POST(
 
 			console.log(`收到来自 ${chatId} 的消息: ${messageContent}`);
 
-			// 查找该用户的活跃代理
-			const activeAgent = await db.query.agents.findFirst({
-				where: (agent, { eq, and }) =>
-					and(eq(agent.createdById, userId), eq(agent.isActive, true)),
-			});
-
-			// 从 Mastra API 获取 agentId，默认使用 weatherAgent
-			// const mastraAgentId = activeAgent?.id || "weatherAgent";
-			const mastraAgentId = "weatherAgent"; //TODO: 测试用
-
-			// 创建消息格式
-			const messages: MastraMessage[] = [
-				{
-					role: "user",
-					content: messageContent,
-				},
-			];
-
-			// 创建包含用户ID的threadId和 resourceId
-			const threadId = `user-${userId}-${chatId}`;
-			const resourceId = `whatsapp-${chatId}`;
-
 			// 调用 Mastra API 生成回复
 			const response = { text: "Hello, how can I help you today?" };
 

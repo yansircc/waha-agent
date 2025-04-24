@@ -19,9 +19,6 @@ export async function sendEmail(
 			body,
 		};
 
-		console.log("payload", payload);
-		console.log("apiKey", apiKey);
-
 		// Make the API request
 		await fetch("https://api.useplunk.com/v1/send", {
 			method: "POST",

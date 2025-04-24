@@ -8,47 +8,41 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Switch } from "@/components/ui/switch";
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import type { Agent } from "@/types/agents";
 import { InfoIcon, MessageCircle, PenIcon } from "lucide-react";
 import { useState } from "react";
-import { useAgents } from "../hooks/use-agents";
 import { AgentChatDialog } from "./agent-chat-dialog";
 
 interface AgentCardProps {
-	id: string;
+	agent: Agent;
 	name: string;
 	prompt: string;
+	model: string;
 	kbs?: {
 		id: string;
 		name: string;
 	}[];
-	isActive?: boolean;
 	onEdit?: () => void;
 	createdAt?: Date | null;
 	updatedAt?: Date | null;
 }
 
 export function AgentCard({
-	id,
+	agent,
 	name,
 	prompt,
+	model,
 	kbs = [],
-	isActive = false,
 	onEdit,
 	createdAt,
 	updatedAt,
 }: AgentCardProps) {
 	const [isChatOpen, setIsChatOpen] = useState(false);
-	const { toggleAgentActiveStatus, isLoading } = useAgents();
-
-	const handleToggleActive = async (checked: boolean) => {
-		await toggleAgentActiveStatus(id);
-	};
 
 	// Extract knowledge base IDs for use with the chat dialog
 	const kbIds = kbs.map((kb) => kb.id);
@@ -58,12 +52,6 @@ export function AgentCard({
 			<div className="mb-4 flex items-center justify-between">
 				<h3 className="font-semibold text-xl tracking-tight">{name}</h3>
 				<div className="flex items-center gap-2">
-					<Switch
-						checked={isActive}
-						onCheckedChange={handleToggleActive}
-						disabled={isLoading}
-						aria-label={isActive ? "Deactivate agent" : "Activate agent"}
-					/>
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
 							<Button variant="ghost" size="icon" className="h-8 w-8">
@@ -98,7 +86,6 @@ export function AgentCard({
 					size="sm"
 					className="gap-1"
 					onClick={() => setIsChatOpen(true)}
-					disabled={!isActive}
 				>
 					<MessageCircle className="h-4 w-4" /> Chat
 				</Button>
@@ -131,10 +118,8 @@ export function AgentCard({
 										</div>
 									)}
 									<div>
-										<p className="font-semibold text-xs">Status:</p>
-										<p className="text-muted-foreground text-xs">
-											{isActive ? "Active" : "Inactive"}
-										</p>
+										<p className="font-semibold text-xs">Model:</p>
+										<p className="text-muted-foreground text-xs">{model}</p>
 									</div>
 								</div>
 							</TooltipContent>
@@ -145,7 +130,7 @@ export function AgentCard({
 
 			{isChatOpen && (
 				<AgentChatDialog
-					agentId={id}
+					agent={agent}
 					agentName={name}
 					open={isChatOpen}
 					onOpenChange={setIsChatOpen}

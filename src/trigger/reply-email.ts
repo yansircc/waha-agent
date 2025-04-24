@@ -2,20 +2,19 @@ import { env } from "@/env";
 import { pushWechatNotification } from "@/lib/push-wechat-notification";
 import { sendEmail } from "@/lib/send-email";
 import { type VercelAIAgentPayload, vercelAIAgent } from "@/lib/vercel-ai";
+import type { Agent } from "@/types/agents";
+import type { FormDataEmailPayload } from "@/types/email";
 import { wait } from "@trigger.dev/sdk";
-import { logger, task } from "@trigger.dev/sdk/v3";
+import { logger, task } from "@trigger.dev/sdk";
 import { type WebhookResponse, sendWebhookResponse } from "./utils";
 
-export interface EmailFormPayload {
-	email: string;
-	name: string;
-	message: string;
-	_country?: string;
+export interface EmailFormPayload extends FormDataEmailPayload {
 	webhookUrl?: string;
-	agentId?: string;
+	agent: Agent;
 	signature?: string | null;
-	plunkApiKey?: string;
+	plunkApiKey: string;
 	wechatPushApiKey?: string;
+	approvalTokenId: string;
 }
 
 // Extend the generic webhook response for email replies
@@ -29,6 +28,12 @@ interface EmailReplyWebhookResponse extends WebhookResponse {
 
 export const replyEmail = task({
 	id: "reply-email",
+	onWait: async ({ wait }) => {
+		console.log("Run paused", wait);
+	},
+	onResume: async ({ wait }) => {
+		console.log("Run resumed", wait);
+	},
 	run: async (payload: EmailFormPayload) => {
 		const {
 			email,
@@ -36,10 +41,11 @@ export const replyEmail = task({
 			message,
 			_country,
 			webhookUrl,
-			agentId,
+			agent,
 			signature,
 			plunkApiKey,
 			wechatPushApiKey,
+			approvalTokenId,
 		} = payload;
 
 		try {
@@ -49,70 +55,73 @@ export const replyEmail = task({
 				name,
 				_country,
 				messageLength: message.length,
-				agentId,
+				agent,
+				approvalTokenId,
 			});
 
 			// Create user prompt with customer details
 			const country = _country || "Unknown";
-			const userPrompt = [
-				"I am a customer service representative. Please respond to this customer inquiry as if you are a customer support agent for a company that sells LED strips and lighting products. The customer details are below:",
-				"",
-				`Customer Name: ${name}`,
-				`Customer Email: ${email}`,
-				`Customer Country: ${country}`,
-				`Message: ${message}`,
-			].join("\n");
+			const userPrompt = `
+Process the following email:
+- Customer Name: ${name}
+- Customer Email: ${email}
+- Customer Country: ${country}
+- Message: ${message}
+
+Format the response as an email (subject not required) and ensure it aligns with the customer's message language.
+			`;
 
 			// Prepare context for the AI agent
 			const vercelAIAgentPayload: VercelAIAgentPayload = {
+				agent,
 				messages: [
 					{
 						role: "user",
 						content: userPrompt,
 					},
 				],
-				userId: email,
-				kbIds: [], // Use appropriate knowledge base IDs if needed
 			};
 
 			// Generate response using Vercel AI agent
-			const result = await vercelAIAgent(vercelAIAgentPayload);
-
-			// Extract the AI-generated response
-			const responseText = result.text;
+			const { text } = await vercelAIAgent(vercelAIAgentPayload);
 
 			// Add signature if provided
-			const fullResponseText = signature
-				? `${responseText}\n\n${signature}`
-				: responseText;
+			const fullResponseText = signature ? `${text}\n\n${signature}` : text;
 
-			// Create a wait token for approval
-			const token = await wait.createToken({
-				tags: [`email:${email}`, `response-id:${Date.now()}`],
-			});
+			// Define the expected structure of the completion payload
+			interface ApprovalPayload {
+				status: "approved" | "rejected"; // Or whatever structure you use
+				approvedAt?: string;
+			}
 
-			logger.info(`Created approval wait token: ${token.id}`);
+			logger.info(
+				`Using approval token ID received from payload: ${approvalTokenId}`,
+			);
 
-			// Generate approval URL
-			const approvalUrl = `${env.NEXT_PUBLIC_WEBHOOK_URL}/api/webhooks/email/approve/${token.id}`;
+			// Generate approval URL using the passed ID
+			const approvalUrl = `${env.NEXT_PUBLIC_WEBHOOK_URL}/api/webhooks/email/approve/${approvalTokenId}`;
 
 			// Create a message with the approval link and response preview in markdown format
 			const notificationMessage = `
 **AI Response Ready for Approval**
 
-## From Customer: ${name} (${email})
+From Customer: ${name} (${email})
+
 ${country ? `Country: ${country}` : ""}
 
-## Customer Message: 
+Customer Message: 
+
 ${message}
 
-## AI Generated Response:
-${responseText}
+**AI Generated Response:**
+
+${text}
 
 **Actions:**
+
 [✅ Approve and Send Reply](${approvalUrl})
 
-Token ID: ${token.id}
+Token ID: ${approvalTokenId}
 `;
 
 			if (wechatPushApiKey) {
@@ -124,24 +133,26 @@ Token ID: ${token.id}
 				});
 			}
 
-			// Wait for token approval
-			logger.info(`Waiting for approval token: ${token.id}`);
-			const waitResult = await wait.forToken(token.id);
+			// Wait for the token using the passed ID
+			const waitResult = await wait.forToken<ApprovalPayload>(approvalTokenId);
+			if (waitResult.ok) {
+				console.log("Token completed", waitResult.output.status); // "approved" or "rejected"
+			}
 
 			if (!waitResult.ok) {
 				// Token timed out or errored
 				logger.error("Approval token timed out or errored", {
-					tokenId: token.id,
+					tokenId: approvalTokenId,
 					error: waitResult.error,
 				});
 
 				const errorResponse: EmailReplyWebhookResponse = {
 					success: false,
-					error: "Approval timed out or was rejected",
+					error: `Approval failed: ${waitResult.error?.message || "Timeout"}`,
 					email,
 					name,
 					messageReceived: message,
-					responseGenerated: responseText,
+					responseGenerated: text,
 					emailSent: false,
 				};
 
@@ -151,57 +162,84 @@ Token ID: ${token.id}
 						errorResponse,
 					);
 				}
-
 				return errorResponse;
 			}
 
-			logger.info("Email approved, sending now", {
-				tokenId: token.id,
-				email,
+			// Token completed successfully, now check the status from the payload
+			if (waitResult.output.status === "approved") {
+				// Send the email reply
+				const subject = "Re: Your inquiry about LED strips";
+
+				const emailResult = await sendEmail(
+					{
+						to: email,
+						subject,
+						body: fullResponseText,
+					},
+					plunkApiKey,
+				);
+
+				logger.info("Email sending result", {
+					success: emailResult.success,
+					error: emailResult.error,
+					details: emailResult,
+				});
+
+				// Prepare webhook response if a webhook URL was provided
+				const responseData: EmailReplyWebhookResponse = {
+					success: true,
+					email,
+					name,
+					messageReceived: message,
+					responseGenerated: text,
+					emailSent: emailResult.success,
+				};
+
+				// Log success
+				logger.info("Email reply completed successfully", {
+					email,
+					name,
+					responseLength: text.length,
+					emailSent: emailResult.success,
+				});
+
+				// Send webhook response if URL was provided
+				if (webhookUrl) {
+					logger.debug("Sending success webhook response", {
+						url: webhookUrl,
+						success: true,
+					});
+					await sendWebhookResponse<EmailReplyWebhookResponse>(
+						webhookUrl,
+						responseData,
+					);
+				}
+
+				return responseData;
+			}
+
+			// Handle other statuses (e.g., rejected) if the token was completed but not approved
+			logger.warn("Token was completed but not approved", {
+				tokenId: approvalTokenId,
+				status: waitResult.output.status,
 			});
 
-			// Send the email reply
-			const subject = "Re: Your inquiry about LED strips";
-			const emailResult = await sendEmail(
-				{
-					to: email,
-					subject,
-					body: fullResponseText,
-				},
-				plunkApiKey,
-			);
-
-			// Prepare webhook response if a webhook URL was provided
-			const responseData: EmailReplyWebhookResponse = {
-				success: true,
+			const rejectionResponse: EmailReplyWebhookResponse = {
+				success: false,
+				error: `Approval status: ${waitResult.output.status}`,
 				email,
 				name,
 				messageReceived: message,
-				responseGenerated: responseText,
-				emailSent: emailResult.success,
+				responseGenerated: text, // Include the generated text even if rejected
+				emailSent: false,
 			};
-
-			// Log success
-			logger.info("Email reply completed", {
-				email,
-				name,
-				responseLength: responseText.length,
-				emailSent: emailResult.success,
-			});
-
-			// Send webhook response if URL was provided
 			if (webhookUrl) {
-				logger.debug("Sending webhook response", {
-					url: webhookUrl,
-					success: true,
-				});
 				await sendWebhookResponse<EmailReplyWebhookResponse>(
 					webhookUrl,
-					responseData,
+					rejectionResponse,
 				);
 			}
-
-			return responseData;
+			return rejectionResponse;
 		} catch (error) {
 			// Prepare error response
 			const errorMessage =

@@ -1,6 +1,29 @@
 import { storeResponse } from "@/lib/chat-store";
 import { revalidatePath } from "next/cache";
 import { type NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+
+const ChatWebhookDataSchema = z.object({
+	success: z.boolean(),
+	response: z.string().optional(),
+	messages: z
+		.array(
+			z.object({
+				role: z.string(),
+				content: z.string(),
+			}),
+		)
+		.optional(),
+	error: z.string().optional(),
+	agent: z.object({
+		id: z.string(),
+		name: z.string(),
+		prompt: z.string(),
+		model: z.string(),
+	}),
+	conversationId: z.string(),
+	messageId: z.string(),
+});
 
 /**
  * 聊天生成 Webhook 端点
@@ -10,52 +33,58 @@ import { type NextRequest, NextResponse } from "next/server";
 export async function POST(req: NextRequest) {
 	try {
 		const data = await req.json();
+		const parsedData = ChatWebhookDataSchema.parse(data);
+
 		const {
 			success,
 			response,
 			messages,
 			error,
-			userId,
-			agentId,
+			agent,
 			conversationId,
 			messageId,
-		} = data;
+		} = parsedData;
 
 		console.log("[Webhook] Received chat response:", {
 			success,
-			userId,
-			agentId,
+			agent,
 			conversationId,
 			messageId,
 			messageCount: messages?.length,
 		});
 
 		if (!success) {
-			console.error(
-				`[Webhook] Chat generation failed for user ${userId}:`,
-				error,
-			);
-
 			// 存储错误信息，包含消息ID
-			if (conversationId) {
-				storeResponse(conversationId, "", error, messageId);
+			if (conversationId && messageId) {
+				await storeResponse(conversationId, "", error, messageId);
+				console.log(
+					`[Webhook] Stored error response for conversation: ${conversationId}, messageId: ${messageId}`,
+				);
 			}
 
-			return NextResponse.json({ success: false, error }, { status: 500 });
+			// 即使出错，也返回200状态码，让前端通过轮询获取错误信息
+			return NextResponse.json(
+				{
+					success: false,
+					error,
+					conversationId,
+					messageId,
+				},
+				{ status: 200 },
+			);
 		}
 
 		// 验证必要数据是否存在
-		if (!response || !messages || !userId) {
+		if (!response || !messages) {
 			const missingDataError = "Missing required data";
 			console.error("[Webhook] Missing required data:", {
 				response,
 				messages,
-				userId,
 			});
 
 			// 存储错误信息，包含消息ID
-			if (conversationId) {
-				storeResponse(conversationId, "", missingDataError, messageId);
+			if (conversationId && messageId) {
+				await storeResponse(conversationId, "", missingDataError, messageId);
 			}
 
 			return NextResponse.json(
@@ -64,13 +93,9 @@ export async function POST(req: NextRequest) {
 			);
 		}
 
-		console.log(
-			`[Webhook] Chat generation completed for user ${userId} with agent ${agentId || "default"}`,
-		);
-
 		// 存储响应以供轮询获取，并包含消息ID
 		if (conversationId) {
-			storeResponse(conversationId, response, undefined, messageId);
+			await storeResponse(conversationId, response, undefined, messageId);
 			console.log(
 				`[Webhook] Stored response for conversationId: ${conversationId}, messageId: ${messageId || "not provided"}`,
 			);
@@ -80,13 +105,12 @@ export async function POST(req: NextRequest) {
 		revalidatePath("/agents");
 
 		// 如果存在agentId，重新验证特定代理路径
-		if (agentId) {
-			revalidatePath(`/agents/${agentId}`);
+		if (agent.id) {
+			revalidatePath(`/agents/${agent.id}`);
 		}
 
 		console.log("[Webhook] Successfully processed chat response", {
-			userId,
-			agentId,
+			agent,
 			conversationId,
 			messageId,
 		});

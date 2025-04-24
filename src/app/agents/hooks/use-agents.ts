@@ -1,4 +1,5 @@
 import type { AppRouter } from "@/server/api/root";
+import type { Agent } from "@/types/agents";
 import { api } from "@/utils/api";
 import type { TRPCClientErrorLike } from "@trpc/client";
 import { useState } from "react";
@@ -31,15 +32,13 @@ export function useAgents({ onSuccess, onError }: UseAgentsProps = {}) {
 		},
 	});
 
-	const createAgent = async (data: {
-		name: string;
-		prompt: string;
-		kbIds?: string[];
-		isActive?: boolean;
-	}) => {
+	const createAgent = async (data: Agent) => {
 		setIsLoading(true);
 		try {
-			const result = await createAgentMutation.mutateAsync(data);
+			const result = await createAgentMutation.mutateAsync({
+				...data,
+				kbIds: data.kbIds ?? undefined,
+			});
 			setIsLoading(false);
 			return result;
 		} catch (error: unknown) {
@@ -59,16 +58,13 @@ export function useAgents({ onSuccess, onError }: UseAgentsProps = {}) {
 		},
 	});
 
-	const updateAgent = async (data: {
-		id: string;
-		name?: string;
-		prompt?: string;
-		kbIds?: string[];
-		isActive?: boolean;
-	}) => {
+	const updateAgent = async (data: Agent) => {
 		setIsLoading(true);
 		try {
-			const result = await updateAgentMutation.mutateAsync(data);
+			const result = await updateAgentMutation.mutateAsync({
+				...data,
+				kbIds: data.kbIds ?? undefined,
+			});
 			setIsLoading(false);
 			return result;
 		} catch (error: unknown) {
@@ -100,29 +96,6 @@ export function useAgents({ onSuccess, onError }: UseAgentsProps = {}) {
 		}
 	};
 
-	// Toggle agent active status
-	const toggleActiveStatusMutation = api.agents.toggleActive.useMutation({
-		onSuccess: () => {
-			utils.agents.getAll.invalidate();
-			onSuccess?.();
-		},
-		onError: (error) => {
-			onError?.(error);
-		},
-	});
-
-	const toggleAgentActiveStatus = async (id: string) => {
-		setIsLoading(true);
-		try {
-			const result = await toggleActiveStatusMutation.mutateAsync({ id });
-			setIsLoading(false);
-			return result;
-		} catch (error: unknown) {
-			setIsLoading(false);
-			throw error;
-		}
-	};
-
 	return {
 		agents: agentsQuery.data || [],
 		isLoadingAgents: agentsQuery.isLoading,
@@ -130,7 +103,6 @@ export function useAgents({ onSuccess, onError }: UseAgentsProps = {}) {
 		createAgent,
 		updateAgent,
 		deleteAgent,
-		toggleAgentActiveStatus,
 		isLoading,
 	};
 }

@@ -2,6 +2,7 @@
 
 import { useKbs } from "@/app/kb/hooks/use-kbs";
 import { Button } from "@/components/ui/button";
+import type { Agent } from "@/types/agents";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { AgentCard } from "./components/agent-card";
@@ -29,26 +30,28 @@ export default function AgentsPage() {
 		setEditingAgentId(null);
 	};
 
-	const handleSubmit = (data: {
-		id?: string;
-		name: string;
-		prompt: string;
-		kbIds: string[];
-	}) => {
+	const handleSubmit = (data: Agent) => {
 		if (data.id) {
 			updateAgent({
 				id: data.id,
+				apiKey: data.apiKey,
 				name: data.name,
 				prompt: data.prompt,
+				model: data.model,
 				kbIds: data.kbIds,
-				isActive: editingAgent?.isActive ?? false,
+				createdAt: data.createdAt,
+				updatedAt: data.updatedAt,
 			});
 		} else {
 			createAgent({
+				id: data.id,
+				apiKey: data.apiKey,
 				name: data.name,
 				prompt: data.prompt,
+				model: data.model,
 				kbIds: data.kbIds,
-				isActive: false,
+				createdAt: data.createdAt,
+				updatedAt: data.updatedAt,
 			});
 		}
 		handleCloseDialog();
@@ -67,9 +70,13 @@ export default function AgentsPage() {
 	const formDefaultValues = editingAgent
 		? {
 				id: editingAgent.id,
+				apiKey: editingAgent.apiKey,
 				name: editingAgent.name,
 				prompt: editingAgent.prompt,
-				kbIds: editingAgent.kbIds || [],
+				model: editingAgent.model,
+				kbIds: editingAgent.kbIds,
+				createdAt: editingAgent.createdAt,
+				updatedAt: editingAgent.updatedAt,
 			}
 		: undefined;
 
@@ -112,11 +119,11 @@ export default function AgentsPage() {
 					{agents.map((agent) => (
 						<AgentCard
 							key={agent.id}
-							id={agent.id}
+							agent={agent}
 							name={agent.name}
 							prompt={agent.prompt}
+							model={agent.model}
 							kbs={kbs.filter((kb) => agent.kbIds?.includes(kb.id))}
-							isActive={agent.isActive}
 							onEdit={() => handleOpenEditDialog(agent.id)}
 							createdAt={agent.createdAt}
 							updatedAt={agent.updatedAt}
