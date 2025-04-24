@@ -4,7 +4,7 @@ import { z } from "zod";
 import { sendEmail } from "../send-email";
 
 // Define the tool to send emails
-const createSendEmailTool = (plunkApiKey: string) => {
+const createSendEmailTool = (plunkApiKey: string, signature?: string) => {
 	return tool({
 		description: "Send an email to the customer.",
 		parameters: z.object({
@@ -15,14 +15,12 @@ const createSendEmailTool = (plunkApiKey: string) => {
 
 		execute: async ({ email, subject, body }) => {
 			try {
-				console.log("Sending email to:", email);
-				console.log("Subject:", subject);
-				console.log("Body:", body);
 				const emailResult = await sendEmail(
 					{
 						to: email,
 						subject,
 						body,
+						signature,
 					},
 					plunkApiKey,
 				);
@@ -39,7 +37,8 @@ const createSendEmailTool = (plunkApiKey: string) => {
 export const mailSender = async (
 	apiKey: string,
 	plunkApiKey: string,
-	text: string,
+	mailContent: string,
+	signature?: string,
 ) => {
 	const openai = createOpenAI({
 		apiKey,
@@ -47,13 +46,13 @@ export const mailSender = async (
 	});
 
 	// Create the tool with the API key closure
-	const sendEmailTool = createSendEmailTool(plunkApiKey);
+	const sendEmailTool = createSendEmailTool(plunkApiKey, signature);
 
 	const { toolResults } = await generateText({
 		model: openai("gpt-4o-mini"),
 		prompt: `
 			As a proficient assistant, your task is to send emails using the 'sendEmailTool'. Format the email content minimally in HTML as follows:
-			${text}
+			${mailContent}
 		`,
 		tools: {
 			sendEmailTool,

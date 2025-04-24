@@ -14,7 +14,7 @@ import { type WebhookResponse, sendWebhookResponse } from "./utils";
 export interface EmailFormPayload extends FormDataEmailPayload {
 	webhookUrl?: string;
 	agent: Agent;
-	signature?: string | null;
+	signature?: string;
 	plunkApiKey: string;
 	wechatPushApiKey?: string;
 	approvalTokenId: string;
@@ -85,12 +85,11 @@ Format the response as an email and ensure it aligns with the customer's message
 			// Generate response using Vercel AI agent
 			const { text } = await kbSearcher(kbSearcherPayload);
 
-			const fullEmailContext = `
+			const mailContent = `
 			customerName: ${name}
 			customerEmail: ${email}
 			customerCountry: ${country}
 			ourResponse: ${text}
-			${signature ? `ourSignature: ${signature}` : ""}
 			`;
 
 			// Define the expected structure of the completion payload
@@ -175,7 +174,8 @@ Token ID: ${approvalTokenId}
 				const [emailResult] = await mailSender(
 					agent.apiKey,
 					plunkApiKey,
-					fullEmailContext,
+					mailContent,
+					signature,
 				);
 
 				// Prepare webhook response if a webhook URL was provided
