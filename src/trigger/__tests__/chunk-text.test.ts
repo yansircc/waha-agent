@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { type ChunkResult, chunkText } from "../utils";
+import { type ChunkResult, type TextChunk, chunkText } from "../utils";
 
 describe("chunkText function", () => {
 	// Normal case tests
@@ -10,7 +10,7 @@ describe("chunkText function", () => {
 			const chunks = chunkText(text, {
 				chunkSize: 20,
 				chunkOverlap: 5,
-			}) as Array<any>;
+			}) as TextChunk[];
 
 			expect(chunks.length).toBeGreaterThan(1);
 			expect(chunks[0]?.text).toBe("This is a sample text");
@@ -24,14 +24,14 @@ describe("chunkText function", () => {
 		it("should include source in metadata", () => {
 			const text = "Some text";
 			const source = "test-source";
-			const chunks = chunkText(text, { source }) as Array<any>;
+			const chunks = chunkText(text, { source }) as TextChunk[];
 
 			expect(chunks[0]?.metadata).toEqual({ source });
 		});
 
 		it("should handle text smaller than chunk size", () => {
 			const text = "Small text";
-			const chunks = chunkText(text, { chunkSize: 100 }) as Array<any>;
+			const chunks = chunkText(text, { chunkSize: 100 }) as TextChunk[];
 
 			expect(chunks.length).toBe(1);
 			expect(chunks[0]?.text).toBe(text);
@@ -53,7 +53,7 @@ describe("chunkText function", () => {
 			const chunks = chunkText(trickyText, {
 				chunkSize: 10,
 				chunkOverlap: 5,
-			}) as Array<any>;
+			}) as TextChunk[];
 
 			expect(chunks.length).toBeGreaterThan(0);
 			expect(chunks.length).toBeLessThan(100); // Should not create one chunk per "a "
@@ -115,7 +115,7 @@ describe("chunkText function", () => {
 			const chunks = chunkText(challengingText, {
 				chunkSize: 30,
 				chunkOverlap: 15,
-			}) as Array<any>;
+			}) as TextChunk[];
 
 			// Ensure the algorithm made progress through the text
 			const lastChunk = chunks[chunks.length - 1];
@@ -153,7 +153,7 @@ describe("chunkText function", () => {
 			const chunks = chunkText(reasonableLengthText, {
 				chunkSize: 200,
 				chunkOverlap: 50,
-			}) as Array<any>;
+			}) as TextChunk[];
 			const duration = performance.now() - startTime;
 
 			// Should process within a reasonable time (arbitrary threshold for test)

@@ -1,5 +1,6 @@
 import { agentsRouter } from "@/server/api/routers/agents";
 import { chatRouter } from "@/server/api/routers/chat";
+import { emailsRouter } from "@/server/api/routers/emails";
 import { instancesRouter } from "@/server/api/routers/instances";
 import { kbsRouter } from "@/server/api/routers/kb";
 import { wahaAuthRouter } from "@/server/api/routers/waha-auth";
@@ -26,6 +27,7 @@ export const appRouter = createTRPCRouter({
 	chat: chatRouter,
 	s3: s3Router,
 	qdrant: qdrantRouter,
+	emails: emailsRouter,
 });
 
 // export type definition of API

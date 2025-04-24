@@ -31,6 +31,7 @@ export const usersRelations = relations(users, ({ many }) => ({
 	accounts: many(accounts),
 	agents: many(agents),
 	instances: many(instances),
+	emailConfigs: many(emailConfigs),
 }));
 
 export const accounts = createTable(
@@ -112,6 +113,53 @@ export const agentsRelations = relations(agents, ({ one, many }) => ({
 	instances: many(instances),
 	kbs: many(agentToKb, {
 		relationName: "agentToKb",
+	}),
+	emailConfigs: many(emailConfigs),
+}));
+
+// Email Configuration schema
+export const emailConfigs = createTable(
+	"email_config",
+	(d) => ({
+		id: d
+			.varchar({ length: 255 })
+			.notNull()
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		signature: d.text(), // Optional HTML signature
+		plunkApiKey: d.text().notNull(), // API key for Plunk email service
+		wechatPushApiKey: d.text().notNull(), // API key for Wechat push service
+		formDataFormId: d.varchar({ length: 255 }).notNull().unique(), // Form-Data form ID - must be unique
+		formDataWebhookSecret: d.text().notNull(), // Form-Data webhook secret
+		agentId: d
+			.varchar({ length: 255 })
+			.notNull()
+			.references(() => agents.id), // Associated agent for responses
+		createdById: d
+			.varchar({ length: 255 })
+			.notNull()
+			.references(() => users.id),
+		createdAt: d
+			.timestamp({ withTimezone: true })
+			.default(sql`CURRENT_TIMESTAMP`)
+			.notNull(),
+		updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+	}),
+	(t) => [
+		index("email_config_created_by_idx").on(t.createdById),
+		index("email_config_agent_idx").on(t.agentId),
+		index("email_config_form_id_idx").on(t.formDataFormId), // Add index for form ID lookups
+	],
+);
+
+export const emailConfigsRelations = relations(emailConfigs, ({ one }) => ({
+	user: one(users, {
+		fields: [emailConfigs.createdById],
+		references: [users.id],
+	}),
+	agent: one(agents, {
+		fields: [emailConfigs.agentId],
+		references: [agents.id],
 	}),
 }));
 
@@ -298,3 +346,7 @@ export const waMessages = createTable(
 // waMessages关系类型
 export type WaMessage = typeof waMessages.$inferSelect;
 export type InsertWaMessage = typeof waMessages.$inferInsert;
+
+// Types for the Email Configuration schema
+export type EmailConfig = typeof emailConfigs.$inferSelect;
+export type InsertEmailConfig = typeof emailConfigs.$inferInsert;

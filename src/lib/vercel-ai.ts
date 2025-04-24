@@ -101,7 +101,7 @@ const sendEmailTool = tool({
 		body: z.string().describe("The body of the email."),
 	}),
 	execute: async ({ to, subject, body }) => {
-		const { success, error } = await sendEmail(to, subject, body);
+		const { success, error } = await sendEmail({ to, subject, body });
 		if (!success) {
 			throw new Error(error);
 		}

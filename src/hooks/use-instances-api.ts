@@ -53,7 +53,7 @@ export function useInstancesApi({
 
 				// 如果提供了用户ID，创建带webhooks的配置
 				if (userId) {
-					const webhookUrl = `${env.NEXT_PUBLIC_WEBHOOK_URL}/${userId}`;
+					const webhookUrl = `${env.NEXT_PUBLIC_WEBHOOK_URL}/api/webhooks/whatsapp/${userId}`;
 
 					// 构建配置信息
 					config.metadata = {

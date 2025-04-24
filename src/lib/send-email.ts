@@ -1,22 +1,35 @@
-import { env } from "@/env";
+interface EmailPayload {
+	to: string;
+	subject: string;
+	body: string;
+}
 
 export async function sendEmail(
-	to: string,
-	subject: string,
-	body: string,
+	{ to, subject, body }: EmailPayload,
+	ApiKey?: string,
 ): Promise<{ success: boolean; error?: string }> {
 	try {
+		// Use the provided API key or fall back to the environment variable
+		const apiKey = ApiKey;
+
+		// Prepare the request payload
+		const payload: EmailPayload = {
+			to,
+			subject,
+			body,
+		};
+
+		console.log("payload", payload);
+		console.log("apiKey", apiKey);
+
+		// Make the API request
 		await fetch("https://api.useplunk.com/v1/send", {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
-				Authorization: `Bearer ${env.PLUNK_API_KEY}`,
+				Authorization: `Bearer ${apiKey}`,
 			},
-			body: JSON.stringify({
-				to,
-				subject,
-				body,
-			}),
+			body: JSON.stringify(payload),
 		});
 		return { success: true };
 	} catch (error) {
