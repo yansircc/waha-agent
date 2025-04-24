@@ -39,7 +39,7 @@ export function useInstancesApi({
 
 	// Create a WhatsApp session for the instance
 	const createInstanceSession = useCallback(
-		async (instanceId: string, instanceName: string, userId?: string) => {
+		async (instanceId: string, instanceName: string) => {
 			setIsLoading(true);
 			try {
 				// Sanitize session name to ensure it's API-friendly
@@ -51,25 +51,22 @@ export function useInstancesApi({
 					webhooks: [],
 				};
 
-				// 如果提供了用户ID，创建带webhooks的配置
-				if (userId) {
-					const webhookUrl = `${env.NEXT_PUBLIC_WEBHOOK_URL}/api/webhooks/whatsapp/${userId}`;
+				const webhookUrl = `${env.NEXT_PUBLIC_WEBHOOK_URL}/api/webhooks/whatsapp/${instanceId}`;
 
-					// 构建配置信息
-					config.metadata = {
-						"user.id": userId,
-					};
+				// 构建配置信息
+				config.metadata = {
+					instanceId,
+				};
 
-					config.webhooks = [
-						{
-							url: webhookUrl,
-							events: ["message", "session.status"],
-							hmac: null,
-							retries: null,
-							customHeaders: null,
-						},
-					];
-				}
+				config.webhooks = [
+					{
+						url: webhookUrl,
+						events: ["message.any", "session.status"],
+						hmac: null,
+						retries: null,
+						customHeaders: null,
+					},
+				];
 
 				// Create a session using WAHA API
 				const sessionData = await createSession({

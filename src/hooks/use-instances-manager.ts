@@ -109,12 +109,7 @@ export function useInstancesManager() {
 
 			// Then create a WhatsApp session for it
 			if (newInstance?.id) {
-				// 传入当前用户ID用于生成专用webhook URL
-				await createInstanceSession(
-					newInstance.id,
-					newInstance.name,
-					newInstance.createdById,
-				);
+				await createInstanceSession(newInstance.id, newInstance.name);
 
 				// Get QR code immediately
 				await getInstanceQR(newInstance.id, newInstance.name);

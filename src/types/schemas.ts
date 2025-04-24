@@ -302,15 +302,3 @@ export const MastraGenerateResponseSchema = z.object({
 	runId: z.string().optional(),
 	metadata: z.record(z.unknown()).optional(),
 });
-
-export const WeatherInfoSchema = z.object({
-	location: z.string(),
-	temperature: z.number(),
-	condition: z.string(),
-	humidity: z.number(),
-	windSpeed: z.number(),
-});
-
-export const WeatherResponseSchema = MastraGenerateResponseSchema.extend({
-	weatherData: WeatherInfoSchema.optional(),
-});

@@ -61,9 +61,7 @@ export const kbSearcher = async (payload: KbSearcherPayload) => {
 		system: `${payload.agent.prompt}
 When you encounter a question you cannot answer, use the searchKnowledgeBase tool to find relevant content.
 The tool requires a rewritten, specific, and professional query based on the user's question, and also need to pass the kbIds(${payload.agent.kbIds}).
-Remember to:
-- Admit when you need more information *before* calling the tool if the query is unclear.
-- If the tool returns results, base your answer strictly on those results.`,
+If the tool returns results, base your answer strictly on those results.`,
 	});
 
 	return result;

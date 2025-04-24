@@ -1,3 +1,4 @@
+import { deleteInstanceData, saveInstanceAgent } from "@/lib/instance-redis";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { instances } from "@/server/db/schema";
 import type {
@@ -43,6 +44,7 @@ export const instancesRouter = createTRPCRouter({
 				name: z.string().min(1).max(255),
 				phoneNumber: z.string().optional(),
 				agentId: z.string().optional(),
+				isAgentActive: z.boolean().optional().default(true),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -61,7 +63,36 @@ export const instancesRouter = createTRPCRouter({
 				})
 				.returning();
 
-			return result[0];
+			const newInstance = result[0];
+			if (!newInstance) {
+				throw new Error("Failed to create instance - no result returned");
+			}
+
+			// 如果指定了代理ID，将代理配置保存到Redis
+			if (input.agentId) {
+				try {
+					// 获取完整的代理信息
+					const agent = await ctx.db.query.agents.findFirst({
+						where: (agentRecord) => eq(agentRecord.id, input.agentId as string),
+					});
+
+					if (agent) {
+						// 保存代理配置，并设置活跃状态
+						await saveInstanceAgent(newInstance.id, agent, input.isAgentActive);
+						console.log(
+							`已将实例 ${newInstance.id} 的代理配置保存至Redis (isActive: ${input.isAgentActive})`,
+						);
+					}
+				} catch (error) {
+					console.error(
+						`保存实例 ${newInstance.id} 的代理配置到Redis失败:`,
+						error,
+					);
+					// 不阻止创建实例，仅记录错误
+				}
+			}
+
+			return newInstance;
 		}),
 
 	update: protectedProcedure
@@ -74,6 +105,7 @@ export const instancesRouter = createTRPCRouter({
 				status: z.enum(["connected", "disconnected", "connecting"]).optional(),
 				qrCode: z.string().optional(),
 				sessionData: z.record(z.any()).optional(),
+				isAgentActive: z.boolean().optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -111,7 +143,66 @@ export const instancesRouter = createTRPCRouter({
 				.where(eq(instances.id, input.id))
 				.returning();
 
-			return result[0];
+			const updatedInstance = result[0];
+			if (!updatedInstance) {
+				throw new Error("Failed to update instance - no result returned");
+			}
+
+			// 如果更新了代理ID或代理活跃状态，更新Redis中的配置
+			if (input.agentId !== undefined || input.isAgentActive !== undefined) {
+				try {
+					if (input.agentId) {
+						// 获取最新的代理ID
+						const agent = await ctx.db.query.agents.findFirst({
+							where: (agentRecord) =>
+								eq(agentRecord.id, input.agentId as string),
+						});
+
+						if (agent) {
+							// 确定代理活跃状态
+							const isActive =
+								input.isAgentActive !== undefined ? input.isAgentActive : true;
+
+							// 保存代理配置
+							await saveInstanceAgent(updatedInstance.id, agent, isActive);
+							console.log(
+								`已更新实例 ${updatedInstance.id} 的代理配置到Redis (isActive: ${isActive})`,
+							);
+						}
+					} else if (input.agentId === null || input.agentId === "") {
+						// 如果移除了代理，清除Redis中的配置
+						await saveInstanceAgent(updatedInstance.id, null);
+						console.log(`已从Redis中移除实例 ${updatedInstance.id} 的代理配置`);
+					} else if (input.isAgentActive !== undefined && instance.agentId) {
+						// 如果只是更新代理活跃状态
+						// 获取当前的代理配置
+						const agent = await ctx.db.query.agents.findFirst({
+							where: (agentRecord) =>
+								eq(agentRecord.id, instance.agentId as string),
+						});
+
+						if (agent) {
+							// 更新代理活跃状态
+							await saveInstanceAgent(
+								updatedInstance.id,
+								agent,
+								input.isAgentActive,
+							);
+							console.log(
+								`已更新实例 ${updatedInstance.id} 的代理活跃状态为: ${input.isAgentActive}`,
+							);
+						}
+					}
+				} catch (error) {
+					console.error(
+						`更新实例 ${updatedInstance.id} 的Redis代理配置失败:`,
+						error,
+					);
+					// 不阻止更新实例，仅记录错误
+				}
+			}
+
+			return updatedInstance;
 		}),
 
 	delete: protectedProcedure
@@ -132,7 +223,70 @@ export const instancesRouter = createTRPCRouter({
 				);
 			}
 
+			// 删除实例前，清理Redis中的数据
+			try {
+				await deleteInstanceData(input.id);
+				console.log(`已清理实例 ${input.id} 的Redis数据`);
+			} catch (error) {
+				console.error(`清理实例 ${input.id} 的Redis数据失败:`, error);
+				// 不阻止删除实例，仅记录错误
+			}
+
 			await ctx.db.delete(instances).where(eq(instances.id, input.id));
 			return { success: true };
+		}),
+
+	setAgentActive: protectedProcedure
+		.input(
+			z.object({
+				id: z.string(),
+				isActive: z.boolean(),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			// 确保实例属于用户
+			const instance = await ctx.db.query.instances.findFirst({
+				where: (instance, { eq, and }) =>
+					and(
+						eq(instance.id, input.id),
+						eq(instance.createdById, ctx.session.user.id),
+					),
+				with: {
+					agent: true,
+				},
+			});
+
+			if (!instance) {
+				throw new Error(
+					"Instance not found or you don't have permission to update it",
+				);
+			}
+
+			// 如果实例没有代理，无法设置状态
+			if (!instance.agent) {
+				throw new Error(
+					"Instance does not have an agent to activate/deactivate",
+				);
+			}
+
+			try {
+				// 保存更新后的代理活跃状态
+				await saveInstanceAgent(input.id, instance.agent, input.isActive);
+				console.log(
+					`已将实例 ${input.id} 的代理活跃状态设置为: ${input.isActive}`,
+				);
+
+				return {
+					success: true,
+					id: input.id,
+					isActive: input.isActive,
+				};
+			} catch (error) {
+				const errorMessage =
+					error instanceof Error ? error.message : String(error);
+				throw new Error(
+					`Failed to update agent active status: ${errorMessage}`,
+				);
+			}
 		}),
 });
