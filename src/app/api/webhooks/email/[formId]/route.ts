@@ -91,7 +91,7 @@ export async function POST(
 		const handle = await replyEmail.trigger({
 			...emailPayload,
 			agent: config.agent,
-			signature: config.signature,
+			signature: config.signature || undefined,
 			plunkApiKey: config.plunkApiKey,
 			wechatPushApiKey: config.wechatPushApiKey,
 			approvalTokenId: token.id,

@@ -55,7 +55,9 @@ export function EmailCard({
 	return (
 		<div className="group relative flex flex-col overflow-hidden rounded-lg border bg-background p-6 shadow transition-all hover:shadow-md">
 			<div className="mb-4 flex items-center justify-between">
-				<h3 className="font-semibold text-xl tracking-tight">Email Config</h3>
+				<h3 className="font-semibold text-xl tracking-tight">
+					{formDataFormId}
+				</h3>
 				<div className="flex items-center gap-2">
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
@@ -70,25 +72,6 @@ export function EmailCard({
 							</DropdownMenuItem>
 						</DropdownMenuContent>
 					</DropdownMenu>
-				</div>
-			</div>
-
-			<div className="mb-4 space-y-2">
-				<div className="text-sm">
-					<span className="text-muted-foreground">Form ID: </span>
-					<span className="font-mono text-xs">{formDataFormId}</span>
-				</div>
-				<div className="text-sm">
-					<span className="text-muted-foreground">Plunk API: </span>
-					<span className="font-mono text-xs">{truncatedPlunkKey}</span>
-				</div>
-				<div className="text-sm">
-					<span className="text-muted-foreground">Webhook Secret: </span>
-					<span className="font-mono text-xs">{truncatedWebhookSecret}</span>
-				</div>
-				<div className="text-sm">
-					<span className="text-muted-foreground">Wechat Push API: </span>
-					<span className="font-mono text-xs">{wechatPushApiKey}</span>
 				</div>
 			</div>
 
