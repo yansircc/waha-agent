@@ -20,6 +20,25 @@ import type {
 	WAMessage,
 } from "./types";
 
+export interface GetChatMessagesOptions {
+	session?: string;
+	chatId: string;
+	limit?: number;
+	offset?: number;
+	downloadMedia?: boolean;
+	filter?: {
+		timestamp?: {
+			lte?: number;
+			gte?: number;
+		};
+		fromMe?: boolean;
+	};
+}
+
+export interface ChatHistoryResponse {
+	messages: WAMessage[];
+}
+
 // Chatting API client for sending messages through WhatsApp
 export class ChattingApi extends BaseApiClient {
 	/**
@@ -334,6 +353,57 @@ export class ChattingApi extends BaseApiClient {
 		} catch (error) {
 			throw new Error(
 				`Failed to reply to message: ${(error as Error).message}`,
+			);
+		}
+	}
+
+	/**
+	 * Get messages from a specific chat
+	 */
+	async getChatMessages(options: GetChatMessagesOptions): Promise<WAMessage[]> {
+		try {
+			const {
+				session = "default",
+				chatId,
+				limit = 100,
+				offset,
+				downloadMedia = false,
+				filter,
+			} = options;
+
+			// Build query parameters
+			const queryParams = new URLSearchParams();
+			queryParams.append("limit", limit.toString());
+			queryParams.append("downloadMedia", downloadMedia.toString());
+
+			if (offset !== undefined) {
+				queryParams.append("offset", offset.toString());
+			}
+
+			if (filter?.timestamp?.lte) {
+				queryParams.append(
+					"filter.timestamp.lte",
+					filter.timestamp.lte.toString(),
+				);
+			}
+
+			if (filter?.timestamp?.gte) {
+				queryParams.append(
+					"filter.timestamp.gte",
+					filter.timestamp.gte.toString(),
+				);
+			}
+
+			if (filter?.fromMe !== undefined) {
+				queryParams.append("filter.fromMe", filter.fromMe.toString());
+			}
+
+			const url = `/api/${session}/chats/${encodeURIComponent(chatId)}/messages?${queryParams.toString()}`;
+
+			return await this.get<WAMessage[]>(url);
+		} catch (error) {
+			throw new Error(
+				`Failed to get chat messages: ${(error as Error).message}`,
 			);
 		}
 	}

@@ -302,3 +302,22 @@ export const MastraGenerateResponseSchema = z.object({
 	runId: z.string().optional(),
 	metadata: z.record(z.unknown()).optional(),
 });
+
+export const GetChatMessagesRequestSchema = z.object({
+	session: z.string().default("default"),
+	chatId: z.string(),
+	limit: z.number().default(100),
+	offset: z.number().optional(),
+	downloadMedia: z.boolean().default(false),
+	filter: z
+		.object({
+			timestamp: z
+				.object({
+					lte: z.number().optional(),
+					gte: z.number().optional(),
+				})
+				.optional(),
+			fromMe: z.boolean().optional(),
+		})
+		.optional(),
+});

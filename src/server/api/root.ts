@@ -1,5 +1,6 @@
 import { agentsRouter } from "@/server/api/routers/agents";
 import { chatRouter } from "@/server/api/routers/chat";
+import { chatHistoryRouter } from "@/server/api/routers/chat-history";
 import { emailsRouter } from "@/server/api/routers/emails";
 import { instancesRouter } from "@/server/api/routers/instances";
 import { kbsRouter } from "@/server/api/routers/kb";
@@ -25,6 +26,7 @@ export const appRouter = createTRPCRouter({
 	wahaProfile: wahaProfileRouter,
 	wahaChatting: wahaChattingRouter,
 	chat: chatRouter,
+	chatHistory: chatHistoryRouter,
 	s3: s3Router,
 	qdrant: qdrantRouter,
 	emails: emailsRouter,

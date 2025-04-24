@@ -1,3 +1,4 @@
+import { getInstanceAgentFromDb } from "@/lib/db-utils";
 import { parseJsonValueIfNeeded, redis, safeRedisOperation } from "@/lib/redis";
 import type { Agent } from "@/types/agents";
 
@@ -5,6 +6,7 @@ import type { Agent } from "@/types/agents";
 const INSTANCE_PREFIX = "instance:";
 const AGENT_PREFIX = "agent:";
 export const CHAT_CONTROL_PREFIX = "chat-control:";
+const BOT_PHONE_PREFIX = "bot-phone:";
 
 // 扩展Agent类型，添加活动状态标记
 export interface AgentWithState extends Agent {
@@ -51,6 +53,7 @@ export async function saveInstanceAgent(
 
 /**
  * 从Redis获取实例的代理配置
+ * 如果Redis中没有，会尝试从数据库加载并存入Redis
  */
 export async function getInstanceAgent(
 	instanceId: string,
@@ -62,6 +65,26 @@ export async function getInstanceAgent(
 		const agentData = await safeRedisOperation(() => redis.get(key));
 
 		if (!agentData) {
+			console.log(
+				`实例 ${instanceId} 在Redis中没有关联的代理配置，尝试从数据库获取`,
+			);
+
+			// 尝试从数据库获取代理
+			const dbAgent = await getInstanceAgentFromDb(instanceId);
+
+			if (dbAgent) {
+				console.log(`从数据库找到实例 ${instanceId} 的代理配置，保存到Redis`);
+
+				// 保存到Redis并返回
+				const agentWithState: AgentWithState = {
+					...dbAgent,
+					isActive: true, // 默认为激活状态
+				};
+
+				await saveInstanceAgent(instanceId, dbAgent, true);
+				return agentWithState;
+			}
+
 			console.log(`实例 ${instanceId} 没有关联的代理配置`);
 			return null;
 		}
@@ -74,9 +97,6 @@ export async function getInstanceAgent(
 			agent.isActive = true; // 默认为激活状态
 		}
 
-		console.log(
-			`获取实例 ${instanceId} 的全局代理配置 (实例级别isActive: ${agent.isActive ? "激活" : "禁用"})`,
-		);
 		return agent;
 	} catch (error) {
 		console.error(`获取实例 ${instanceId} 的代理配置失败:`, error);
@@ -140,9 +160,6 @@ export async function getChatAgentActive(
 		const agent = await getInstanceAgent(instanceId);
 		const instanceActive = agent?.isActive ?? true;
 
-		console.log(
-			`聊天 ${chatId} 没有特定控制设置，使用实例全局状态: ${instanceActive ? "激活" : "禁用"}`,
-		);
 		return instanceActive;
 	} catch (error) {
 		console.error(`获取聊天 ${chatId} 的代理活动状态失败:`, error);
@@ -239,5 +256,50 @@ export async function deleteChatControl(
 	} catch (error) {
 		console.error(`删除聊天 ${chatId} 的控制设置失败:`, error);
 		return false;
+	}
+}
+
+/**
+ * 保存实例的机器人电话号码到Redis
+ */
+export async function saveBotPhoneNumber(
+	instanceId: string,
+	phoneNumber: string,
+): Promise<boolean> {
+	try {
+		const key = `${BOT_PHONE_PREFIX}${instanceId}`;
+
+		// 保存电话号码
+		await safeRedisOperation(() => redis.set(key, phoneNumber));
+		console.log(`已保存实例 ${instanceId} 的机器人电话号码: ${phoneNumber}`);
+
+		return true;
+	} catch (error) {
+		console.error(`保存实例 ${instanceId} 的机器人电话号码失败:`, error);
+		return false;
+	}
+}
+
+/**
+ * 从Redis获取实例的机器人电话号码
+ */
+export async function getBotPhoneNumber(
+	instanceId: string,
+): Promise<string | null> {
+	try {
+		const key = `${BOT_PHONE_PREFIX}${instanceId}`;
+
+		// 获取电话号码
+		const phoneNumber = await safeRedisOperation(() => redis.get(key));
+
+		if (!phoneNumber || typeof phoneNumber !== "string") {
+			console.log(`实例 ${instanceId} 的机器人电话号码尚未设置`);
+			return null;
+		}
+
+		return phoneNumber;
+	} catch (error) {
+		console.error(`获取实例 ${instanceId} 的机器人电话号码失败:`, error);
+		return null;
 	}
 }

@@ -2,6 +2,10 @@ import {
 	type KbSearcherPayload,
 	kbSearcher,
 } from "@/lib/ai-agents/kb-searcher";
+import {
+	addMessageToChatHistory,
+	getFormattedChatHistory,
+} from "@/lib/chat-history-redis";
 import { wahaApi } from "@/lib/waha-api";
 import type { Agent } from "@/types/agents";
 import type { WAMessage, WebhookNotification } from "@/types/api-responses";
@@ -37,6 +41,7 @@ export interface WhatsAppMessagePayload {
 	webhookUrl?: string;
 	instanceId: string;
 	agent?: Agent;
+	botPhoneNumber?: string;
 }
 
 // Extend the generic webhook response for WhatsApp chat
@@ -135,7 +140,14 @@ export const agentChat = task({
 export const whatsAppChat = task({
 	id: "whatsapp-chat",
 	run: async (payload: WhatsAppMessagePayload) => {
-		const { session, webhookData, webhookUrl, instanceId, agent } = payload;
+		const {
+			session,
+			webhookData,
+			webhookUrl,
+			instanceId,
+			agent,
+			botPhoneNumber,
+		} = payload;
 
 		try {
 			// Extract message data
@@ -155,11 +167,29 @@ export const whatsAppChat = task({
 				return { success: false, error: "Missing required message fields" };
 			}
 
+			// Skip processing if this is a message from the bot to itself
+			if (
+				botPhoneNumber &&
+				chatId === botPhoneNumber &&
+				messageData.to === botPhoneNumber
+			) {
+				logger.info("Skipping self-message", {
+					chatId,
+					botPhoneNumber,
+				});
+				return {
+					success: true,
+					skipped: true,
+					reason: "Self-message",
+				};
+			}
+
 			logger.info("Processing WhatsApp message", {
 				chatId,
 				messageLength: messageContent.length,
 				session,
 				instanceId,
+				fromBot: botPhoneNumber ? chatId === botPhoneNumber : undefined,
 			});
 
 			// Show typing indicator before processing
@@ -179,9 +209,55 @@ export const whatsAppChat = task({
 				});
 
 				try {
-					// Create message format for the KB searcher
+					// Get chat history for context
+					let messages: Array<{ role: "user" | "assistant"; content: string }> =
+						[{ role: "user", content: messageContent }];
+
+					if (instanceId) {
+						try {
+							// Determine the correct conversation partner ID for chat history
+							const historyKey =
+								botPhoneNumber && messageData.from !== botPhoneNumber
+									? messageData.from // Message is from user, use sender ID
+									: messageData.to; // Message is from bot, use recipient ID
+
+							if (historyKey) {
+								// Retrieve and format previous messages for context
+								const historyMessages = await getFormattedChatHistory(
+									instanceId,
+									historyKey,
+									10,
+								);
+
+								if (historyMessages.length > 0) {
+									logger.info("Retrieved chat history for context", {
+										count: historyMessages.length,
+										historyKey,
+									});
+
+									// Combine history with current message
+									// The current message should be the last one
+									messages = [
+										...historyMessages,
+										{ role: "user", content: messageContent },
+									];
+								}
+							}
+						} catch (historyError) {
+							logger.warn("Failed to retrieve chat history", {
+								error:
+									historyError instanceof Error
+										? historyError.message
+										: String(historyError),
+								chatId,
+							});
+							// Continue with just the current message
+						}
+					}
+
+					// Create message format for the KB searcher with context
 					const kbSearcherPayload: KbSearcherPayload = {
-						messages: [{ role: "user", content: messageContent }],
+						messages,
 						agent,
 					};
 
@@ -210,6 +286,37 @@ export const whatsAppChat = task({
 				linkPreview: true,
 				reply_to: messageData.id || null,
 			});
+
+			// Add sent message to chat history if we have instance ID
+			if (instanceId && sendResult) {
+				try {
+					// Determine the correct conversation partner ID for chat history
+					const historyKey =
+						messageData.from === botPhoneNumber
+							? messageData.to // If bot is sending, use recipient
+							: messageData.from; // If user is sending, use sender
+
+					if (historyKey) {
+						// Use the conversation partner ID as the history key
+						await addMessageToChatHistory(instanceId, historyKey, sendResult);
+						logger.info("Added response to chat history", {
+							instanceId,
+							historyKey,
+							messageId: sendResult.id,
+						});
+					}
+				} catch (historyError) {
+					logger.error("Failed to add message to chat history", {
+						error:
+							historyError instanceof Error
+								? historyError.message
+								: String(historyError),
+						instanceId,
+						chatId,
+					});
+					// Non-critical error, continue processing
+				}
+			}
 
 			// Stop typing indicator
 			// await wahaApi.chatting.stopTyping({

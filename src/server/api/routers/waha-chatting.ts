@@ -2,6 +2,7 @@ import { wahaApi } from "@/lib/waha-api";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import {
 	ChatRequestSchema,
+	GetChatMessagesRequestSchema,
 	MessageButtonReplySchema,
 	MessageContactVcardRequestSchema,
 	MessageFileRequestSchema,
@@ -20,6 +21,7 @@ import {
 	SendSeenRequestSchema,
 	WAMessageSchema,
 } from "@/types/schemas";
+import { z } from "zod";
 
 export const wahaChattingRouter = createTRPCRouter({
 	// Send a text message
@@ -252,6 +254,27 @@ export const wahaChattingRouter = createTRPCRouter({
 			} catch (error) {
 				throw new Error(
 					`Failed to reply to message: ${(error as Error).message}`,
+				);
+			}
+		}),
+
+	// Get chat messages
+	getChatMessages: protectedProcedure
+		.input(GetChatMessagesRequestSchema)
+		.query(async ({ input }) => {
+			try {
+				const messages = await wahaApi.chatting.getChatMessages({
+					session: input.session,
+					chatId: input.chatId,
+					limit: input.limit,
+					offset: input.offset,
+					downloadMedia: input.downloadMedia,
+					filter: input.filter,
+				});
+				return z.array(WAMessageSchema).parse(messages);
+			} catch (error) {
+				throw new Error(
+					`Failed to get chat messages: ${(error as Error).message}`,
 				);
 			}
 		}),

@@ -1,7 +1,14 @@
 import { env } from "@/env";
 import {
+	addMessageToChatHistory,
+	chatHistoryExists,
+	initializeChatHistory,
+} from "@/lib/chat-history-redis";
+import {
+	getBotPhoneNumber,
 	getChatAgentActive,
 	getInstanceAgent,
+	saveBotPhoneNumber,
 	setChatAgentActive,
 } from "@/lib/instance-redis";
 import { wahaApi } from "@/lib/waha-api";
@@ -59,10 +66,81 @@ export async function POST(
 			return NextResponse.json({ success: true, error: "Missing chatId" });
 		}
 
+		// 动态识别机器人的电话号码
+		let botPhoneNumber = await getBotPhoneNumber(instanceId);
+
+		// 如果尚未存储机器人号码，尝试从消息中确定
+		if (!botPhoneNumber) {
+			if (messageData.fromMe === true && messageData.from) {
+				// 如果是机器人发送的消息，机器人号码是 from
+				botPhoneNumber = messageData.from;
+				await saveBotPhoneNumber(instanceId, botPhoneNumber);
+				console.log(`从消息中确定并保存机器人电话号码: ${botPhoneNumber}`);
+			} else if (messageData.fromMe === false && messageData.to) {
+				// 如果是用户发送的消息，机器人号码是 to
+				botPhoneNumber = messageData.to;
+				await saveBotPhoneNumber(instanceId, botPhoneNumber);
+				console.log(`从消息中确定并保存机器人电话号码: ${botPhoneNumber}`);
+			} else {
+				// 尝试从API获取机器人信息
+				try {
+					const meInfo = await wahaApi.sessions.getMeInfo(session);
+					if (meInfo?.phoneNumber) {
+						botPhoneNumber = meInfo.phoneNumber;
+						await saveBotPhoneNumber(instanceId, botPhoneNumber);
+						console.log(`从API获取并保存机器人电话号码: ${botPhoneNumber}`);
+					}
+				} catch (error) {
+					console.error("获取机器人信息失败:", error);
+				}
+			}
+		}
+
+		// 确定另一方的ID (对方ID，而不是自己的ID)
+		// 如果消息是自己发的 (fromMe=true)，则另一方是接收者 (to)
+		// 如果消息是别人发的 (fromMe=false)，则另一方是发送者 (from)
+		const otherPartyId = messageData.fromMe ? messageData.to : chatId;
+
+		// 跳过处理机器人自己发给自己的消息
+		if (
+			botPhoneNumber &&
+			chatId === botPhoneNumber &&
+			messageData.to === botPhoneNumber
+		) {
+			console.log("跳过处理机器人自己发给自己的消息");
+			return NextResponse.json({
+				success: true,
+				ignored: true,
+				reason: "机器人自己发给自己的消息",
+			});
+		}
+
+		// 将消息添加到聊天历史记录
+		if (messageData.id && messageData.timestamp && otherPartyId) {
+			// 以对方ID为键存储聊天记录
+			const historyKey = otherPartyId;
+
+			// 首先检查这个聊天的历史是否已经存在于Redis中
+			const historyExists = await chatHistoryExists(instanceId, historyKey);
+
+			if (!historyExists) {
+				// 如果历史记录不存在，尝试从WhatsApp API初始化
+				console.log(
+					`没有找到聊天 ${historyKey} 的历史记录，正在从API初始化...`,
+				);
+				await initializeChatHistory(instanceId, session, historyKey);
+			}
+
+			// 添加当前消息到历史记录
+			await addMessageToChatHistory(
+				instanceId,
+				historyKey,
+				messageData as WAMessage,
+			);
+		}
+
 		// 处理自己发送的消息
 		if (messageData.fromMe) {
-			console.log(`检测到自己在聊天 ${chatId} 中发送的消息`);
-
 			// 获取消息内容
 			const messageContent = messageData.body || "";
 			if (!messageContent) {
@@ -115,6 +193,7 @@ export async function POST(
 			console.log(`收到来自 ${chatId} 的消息: ${messageContent}`);
 
 			// 从Redis获取代理配置
+			// 如果Redis中没有，会自动尝试从数据库加载并存入Redis
 			const agentFromRedis = await getInstanceAgent(instanceId);
 
 			// 检查此聊天是否启用了AI回复
@@ -144,15 +223,9 @@ export async function POST(
 				webhookData: body,
 				instanceId,
 				webhookUrl,
+				...(botPhoneNumber ? { botPhoneNumber } : {}),
 				// 只在代理存在且聊天已启用AI时提供
 				agent: agentFromRedis && isChatActive ? agentFromRedis : undefined,
-			});
-
-			console.log("已触发WhatsApp消息处理", {
-				triggerId: triggerResult.id,
-				status: "pending",
-				chatId,
-				usingAgent: !!(agentFromRedis && isChatActive),
 			});
 
 			// 立即返回成功响应，让trigger.dev在后台处理
