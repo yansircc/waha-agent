@@ -1,6 +1,7 @@
 export const showSuccessHtml = (email: string) => `
 <html>
   <head>
+    <meta charset="UTF-8">
     <title>邮件回复已批准</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
@@ -51,6 +52,7 @@ export const showSuccessHtml = (email: string) => `
 export const showExpiredHtml = () => `
 <html>
   <head>
+    <meta charset="UTF-8">
     <title>无效或过期的链接</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
@@ -96,6 +98,7 @@ export const showExpiredHtml = () => `
 export const showErrorHtml = (error: Error) => `
 <html>
   <head>
+    <meta charset="UTF-8">
     <title>处理错误</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>

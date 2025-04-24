@@ -1,7 +1,10 @@
 import { env } from "@/env";
+import {
+	type KbSearcherPayload,
+	kbSearcher,
+} from "@/lib/ai-agents/kb-searcher";
+import { mailSender } from "@/lib/ai-agents/mail-sender";
 import { pushWechatNotification } from "@/lib/push-wechat-notification";
-import { sendEmail } from "@/lib/send-email";
-import { type VercelAIAgentPayload, vercelAIAgent } from "@/lib/vercel-ai";
 import type { Agent } from "@/types/agents";
 import type { FormDataEmailPayload } from "@/types/email";
 import { wait } from "@trigger.dev/sdk";
@@ -22,15 +25,12 @@ interface EmailReplyWebhookResponse extends WebhookResponse {
 	email: string;
 	name: string;
 	messageReceived: string;
-	responseGenerated: string;
-	emailSent: boolean;
+	responseGenerated: string | undefined;
+	emailSent: boolean | undefined;
 }
 
 export const replyEmail = task({
 	id: "reply-email",
-	onWait: async ({ wait }) => {
-		console.log("Run paused", wait);
-	},
 	onResume: async ({ wait }) => {
 		console.log("Run resumed", wait);
 	},
@@ -68,11 +68,11 @@ Process the following email:
 - Customer Country: ${country}
 - Message: ${message}
 
-Format the response as an email (subject not required) and ensure it aligns with the customer's message language.
+Format the response as an email and ensure it aligns with the customer's message language.
 			`;
 
 			// Prepare context for the AI agent
-			const vercelAIAgentPayload: VercelAIAgentPayload = {
+			const kbSearcherPayload: KbSearcherPayload = {
 				agent,
 				messages: [
 					{
@@ -83,10 +83,15 @@ Format the response as an email (subject not required) and ensure it aligns with
 			};
 
 			// Generate response using Vercel AI agent
-			const { text } = await vercelAIAgent(vercelAIAgentPayload);
+			const { text } = await kbSearcher(kbSearcherPayload);
 
-			// Add signature if provided
-			const fullResponseText = signature ? `${text}\n\n${signature}` : text;
+			const fullEmailContext = `
+			customerName: ${name}
+			customerEmail: ${email}
+			customerCountry: ${country}
+			ourResponse: ${text}
+			${signature ? `ourSignature: ${signature}` : ""}
+			`;
 
 			// Define the expected structure of the completion payload
 			interface ApprovalPayload {
@@ -167,23 +172,11 @@ Token ID: ${approvalTokenId}
 
 			// Token completed successfully, now check the status from the payload
 			if (waitResult.output.status === "approved") {
-				// Send the email reply
-				const subject = "Re: Your inquiry about LED strips";
-
-				const emailResult = await sendEmail(
-					{
-						to: email,
-						subject,
-						body: fullResponseText,
-					},
+				const [emailResult] = await mailSender(
+					agent.apiKey,
 					plunkApiKey,
+					fullEmailContext,
 				);
-
-				logger.info("Email sending result", {
-					success: emailResult.success,
-					error: emailResult.error,
-					details: emailResult,
-				});
 
 				// Prepare webhook response if a webhook URL was provided
 				const responseData: EmailReplyWebhookResponse = {
@@ -191,16 +184,16 @@ Token ID: ${approvalTokenId}
 					email,
 					name,
 					messageReceived: message,
-					responseGenerated: text,
-					emailSent: emailResult.success,
+					responseGenerated: emailResult?.args.body,
+					emailSent: emailResult?.result.success,
 				};
 
 				// Log success
 				logger.info("Email reply completed successfully", {
 					email,
 					name,
-					responseLength: text.length,
-					emailSent: emailResult.success,
+					responseLength: emailResult?.args.body.length,
+					emailSent: emailResult?.result.success,
 				});
 
 				// Send webhook response if URL was provided

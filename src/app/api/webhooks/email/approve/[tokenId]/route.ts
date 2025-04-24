@@ -17,7 +17,7 @@ export async function GET(
 			return new Response(showExpiredHtml(), {
 				status: 400,
 				headers: {
-					"Content-Type": "text/html",
+					"Content-Type": "text/html; charset=UTF-8",
 				},
 			});
 		}
@@ -37,7 +37,7 @@ export async function GET(
 		// Return a success page
 		return new Response(showSuccessHtml(email), {
 			headers: {
-				"Content-Type": "text/html",
+				"Content-Type": "text/html; charset=UTF-8",
 			},
 		});
 	} catch (error) {
@@ -45,7 +45,7 @@ export async function GET(
 		return new Response(showErrorHtml(error as Error), {
 			status: 500,
 			headers: {
-				"Content-Type": "text/html",
+				"Content-Type": "text/html; charset=UTF-8",
 			},
 		});
 	}

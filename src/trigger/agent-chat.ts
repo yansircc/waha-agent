@@ -1,4 +1,7 @@
-import { type VercelAIAgentPayload, vercelAIAgent } from "@/lib/vercel-ai";
+import {
+	type KbSearcherPayload,
+	kbSearcher,
+} from "@/lib/ai-agents/kb-searcher";
 import type { Agent } from "@/types/agents";
 import { logger, task } from "@trigger.dev/sdk";
 import { type WebhookResponse, sendWebhookResponse } from "./utils";
@@ -41,7 +44,7 @@ export const agentChat = task({
 				messageCount: messages.length,
 			});
 
-			const vercelAIAgentPayload: VercelAIAgentPayload = {
+			const kbSearcherPayload: KbSearcherPayload = {
 				messages: messages.map((message) => ({
 					role: message.role,
 					content: message.content,
@@ -50,7 +53,7 @@ export const agentChat = task({
 			};
 
 			// 调用已更新的vercelAIAgent函数(内部已包含混合搜索逻辑)
-			const result = await vercelAIAgent(vercelAIAgentPayload);
+			const result = await kbSearcher(kbSearcherPayload);
 
 			// Prepare webhook response
 			const webhookData: ChatWebhookResponse = {

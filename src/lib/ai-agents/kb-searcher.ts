@@ -2,9 +2,8 @@ import type { Agent } from "@/types/agents";
 import { createOpenAI } from "@ai-sdk/openai";
 import { generateText, tool } from "ai";
 import { z } from "zod";
-import { qdrantService } from "./qdrant-service";
+import { qdrantService } from "../qdrant-service";
 
-// Define the search tool using Vercel AI SDK's tool function
 const searchKnowledgeBase = tool({
 	description:
 		"Search through the knowledge base to find relevant information.",
@@ -38,7 +37,7 @@ const searchKnowledgeBase = tool({
 	},
 });
 
-export interface VercelAIAgentPayload {
+export interface KbSearcherPayload {
 	agent: Agent;
 	messages: Array<{
 		role: "user" | "assistant";
@@ -46,7 +45,7 @@ export interface VercelAIAgentPayload {
 	}>;
 }
 
-export const vercelAIAgent = async (payload: VercelAIAgentPayload) => {
+export const kbSearcher = async (payload: KbSearcherPayload) => {
 	const openai = createOpenAI({
 		apiKey: payload.agent.apiKey,
 		baseURL: "https://aihubmix.com/v1",
@@ -58,7 +57,7 @@ export const vercelAIAgent = async (payload: VercelAIAgentPayload) => {
 		tools: {
 			searchKnowledgeBase,
 		},
-		maxSteps: 10,
+		maxSteps: 3,
 		system: `${payload.agent.prompt}
 When you encounter a question you cannot answer, use the searchKnowledgeBase tool to find relevant content.
 The tool requires a rewritten, specific, and professional query based on the user's question, and also need to pass the kbIds(${payload.agent.kbIds}).

@@ -6,12 +6,9 @@ interface EmailPayload {
 
 export async function sendEmail(
 	{ to, subject, body }: EmailPayload,
-	ApiKey?: string,
+	plunkApiKey: string,
 ): Promise<{ success: boolean; error?: string }> {
 	try {
-		// Use the provided API key or fall back to the environment variable
-		const apiKey = ApiKey;
-
 		// Prepare the request payload
 		const payload: EmailPayload = {
 			to,
@@ -24,7 +21,7 @@ export async function sendEmail(
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
-				Authorization: `Bearer ${apiKey}`,
+				Authorization: `Bearer ${plunkApiKey}`,
 			},
 			body: JSON.stringify(payload),
 		});
