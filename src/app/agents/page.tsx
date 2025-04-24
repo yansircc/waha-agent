@@ -115,7 +115,7 @@ export default function AgentsPage() {
 							id={agent.id}
 							name={agent.name}
 							prompt={agent.prompt}
-							kbs={agent.kbs}
+							kbs={kbs.filter((kb) => agent.kbIds?.includes(kb.id))}
 							isActive={agent.isActive}
 							onEdit={() => handleOpenEditDialog(agent.id)}
 							createdAt={agent.createdAt}

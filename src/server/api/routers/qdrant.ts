@@ -1,6 +1,43 @@
 import { qdrantService } from "@/lib/qdrant-service";
+import { cohere } from "@ai-sdk/cohere";
+import { embed } from "ai";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
+
+// 定义类型以消除any
+interface SearchResult {
+	id: string;
+	score: number;
+	payload: {
+		text: string;
+		[key: string]: unknown;
+	};
+	metadata: {
+		raw_rrf_score?: number;
+		source: "vector" | "keyword";
+		vector_rank: number;
+		keyword_rank: number;
+		originalScore?: number;
+	};
+}
+
+interface FusionResult {
+	id: string;
+	score: number;
+	payload: {
+		text: string;
+		[key: string]: unknown;
+	};
+	metadata: {
+		raw_rrf_score?: number;
+		source: "vector" | "keyword";
+		vector_rank: number;
+		keyword_rank: number;
+	};
+}
+
+// 定义规范化方法的类型
+type NormalizationMethod = "none" | "percentage" | "exponential";
 
 const pointDataSchema = z.object({
 	id: z.union([z.string(), z.number()]),
@@ -25,6 +62,18 @@ const payloadIndexSchema = z.object({
 	field_name: z.string(),
 	field_schema: z.enum(["keyword", "integer", "float", "geo", "text"]),
 	wait: z.boolean().optional(),
+});
+
+// 搜索选项的Zod模式
+const searchOptionsSchema = z.object({
+	query: z.string(),
+	kbId: z.string(),
+	limit: z.number().optional().default(10),
+	scoreNormalization: z
+		.enum(["none", "percentage", "exponential"])
+		.optional()
+		.default("percentage"),
+	candidateMultiplier: z.number().optional().default(2),
 });
 
 export const qdrantRouter = createTRPCRouter({
@@ -205,5 +254,23 @@ export const qdrantRouter = createTRPCRouter({
 				input.collectionName,
 				input.searches,
 			);
+		}),
+
+	// KB 混合搜索 - 使用通用hybridSearch方法
+	kbSearch: protectedProcedure
+		.input(searchOptionsSchema)
+		.mutation(async ({ input }) => {
+			try {
+				// 调用通用hybridSearch方法，传入单个知识库ID
+				return await qdrantService.hybridSearch(input.query, input.kbId, {
+					limit: input.limit,
+					scoreNormalization: input.scoreNormalization,
+					candidateMultiplier: input.candidateMultiplier,
+					useShould: false, // 单知识库模式
+				});
+			} catch (error) {
+				console.error("KB search error:", error);
+				throw error;
+			}
 		}),
 });

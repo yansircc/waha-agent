@@ -7,7 +7,7 @@ import { uploadFile } from "@/lib/s3-service";
 // File size limits (in bytes)
 const FILE_SIZE_LIMITS = {
 	TEXT: 4 * 1024 * 1024, // 4MB for text/markdown files
-	OTHER: 1 * 1024 * 1024, // 1MB for other file types
+	OTHER: 2 * 1024 * 1024, // 2MB for other file types
 } as const;
 
 // Text file types
@@ -35,7 +35,7 @@ async function validateFile(file: File) {
 
 	if (file.size > sizeLimit) {
 		throw new Error(
-			`File size exceeds the limit of ${isTextFile ? "4MB" : "1MB"}`,
+			`File size exceeds the limit of ${isTextFile ? "4MB" : "2MB"}`,
 		);
 	}
 

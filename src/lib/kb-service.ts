@@ -14,7 +14,7 @@ import { and, eq } from "drizzle-orm";
 // File size limits (in bytes)
 const FILE_SIZE_LIMITS = {
 	TEXT: 4 * 1024 * 1024, // 4MB for text/markdown files
-	OTHER: 1 * 1024 * 1024, // 1MB for other file types
+	OTHER: 2 * 1024 * 1024, // 2MB for other file types
 };
 
 // Text file types
@@ -201,7 +201,7 @@ export const kbService = {
 
 				if (file.size > sizeLimit) {
 					throw new Error(
-						`File size exceeds the limit of ${isFileTextType ? "4MB" : "1MB"}`,
+						`File size exceeds the limit of ${isFileTextType ? "4MB" : "2MB"}`,
 					);
 				}
 
@@ -363,7 +363,7 @@ export const kbService = {
 
 				if (file.size > sizeLimit) {
 					throw new Error(
-						`File size exceeds the limit of ${isFileTextType ? "4MB" : "1MB"}`,
+						`File size exceeds the limit of ${isFileTextType ? "4MB" : "2MB"}`,
 					);
 				}
 

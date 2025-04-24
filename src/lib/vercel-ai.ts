@@ -1,11 +1,8 @@
-import { cohere } from "@ai-sdk/cohere";
 import { openai } from "@ai-sdk/openai";
-import { embed, generateText, tool } from "ai";
+import { generateText, tool } from "ai";
 import { z } from "zod";
-import { reranker } from "./jina-reranker";
 import { qdrantService } from "./qdrant-service";
 import { sendEmail } from "./send-email";
-import { sendWahaMessageWithUrl } from "./send-waha-message";
 
 // Define the search tool using Vercel AI SDK's tool function
 const searchKnowledgeBase = tool({
@@ -22,73 +19,26 @@ const searchKnowledgeBase = tool({
 			.describe("The IDs of the knowledge bases to search."),
 	}),
 	execute: async ({ query, kbIds }) => {
-		// 1. Generate embedding for the query
-		const { embedding } = await embed({
-			model: cohere.embedding("embed-multilingual-v3.0"),
-			value: query,
-		});
+		try {
+			// 使用通用hybridSearch方法，传入多个知识库ID
+			// 在AI Agent场景中，使用should条件匹配任意知识库
+			const searchResults = await qdrantService.hybridSearch(query, kbIds, {
+				limit: 5,
+				scoreNormalization: "percentage",
+				candidateMultiplier: 2,
+				useShould: true, // 多知识库模式
+			});
 
-		if (!embedding) {
-			throw new Error("Failed to generate query embedding");
-		}
+			console.log("query", query);
+			console.log("kbIds", kbIds);
+			console.log("searchResults", searchResults);
 
-		// 2. Search in Qdrant using qdrantService
-		const initialResults = await qdrantService.search("waha", {
-			// Updated collection name and options
-			vector: embedding,
-			limit: 10, // Use limit instead of topK
-			filter: {
-				should: kbIds.map((kbId) => ({
-					key: "kbId",
-					match: {
-						value: kbId,
-					},
-				})),
-			},
-		});
-
-		// Ensure initialResults is an array before checking length
-		if (!Array.isArray(initialResults) || initialResults.length === 0) {
-			// Updated check
-			console.log("No initial results found in Qdrant.");
-			return { results: [] }; // Return an object with a results array
-		}
-
-		console.log("initialResults", initialResults);
-
-		// 3. Rerank results
-		// Extract content from results assuming it's in payload.text
-		const documentsToRerank = initialResults
-			.map((r) => {
-				// Ensure payload and text exist and are strings
-				if (r.payload && typeof r.payload.text === "string") {
-					return r.payload.text;
-				}
-				console.warn(`Result with id ${r.id} missing payload.text`);
-				return ""; // Return empty string for missing content
-			})
-			.filter((content) => content !== ""); // Filter out empty strings if necessary
-
-		if (documentsToRerank.length === 0) {
-			console.log("No valid documents found in initial results for reranking.");
+			// 返回搜索结果
+			return searchResults;
+		} catch (error) {
+			console.error("Knowledge base search error:", error);
 			return { results: [] };
 		}
-
-		const rerankedResults = await reranker(query, documentsToRerank); // Pass extracted content
-
-		console.log("rerankedResults", rerankedResults);
-
-		// Cherrypick the top N results based on reranker output
-		// Ensure rerankedResults.results is an array and contains objects with an 'index' property
-		if (!rerankedResults?.results || !Array.isArray(rerankedResults.results)) {
-			console.error("Reranker did not return expected results structure.");
-			return { results: [] };
-		}
-
-		// Map reranked indices back to the original initialResults
-		const results = rerankedResults.results.map((r) => initialResults[r.index]);
-
-		return { results }; // Return an object with the final results array
 	},
 });
 
@@ -102,22 +52,6 @@ const sendEmailTool = tool({
 	}),
 	execute: async ({ to, subject, body }) => {
 		const { success, error } = await sendEmail({ to, subject, body });
-		if (!success) {
-			throw new Error(error);
-		}
-		return { success, error };
-	},
-});
-
-// Send Waha message tool
-const sendWahaMessageTool = tool({
-	description: "Send a WhatsApp message to the user.",
-	parameters: z.object({
-		chatId: z.string().describe("The WhatsApp chat ID of the recipient."),
-		text: z.string().describe("The message to send."),
-	}),
-	execute: async ({ chatId, text }) => {
-		const { success, error } = await sendWahaMessageWithUrl(chatId, text);
 		if (!success) {
 			throw new Error(error);
 		}
@@ -141,7 +75,6 @@ export const vercelAIAgent = async (payload: VercelAIAgentPayload) => {
 		tools: {
 			searchKnowledgeBase,
 			sendEmailTool,
-			sendWahaMessageTool,
 		},
 		maxSteps: 10,
 		system: `You are a WhatsApp user trying to pass the Turing test by answering questions as accurately as possible.

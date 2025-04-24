@@ -25,7 +25,7 @@ interface AgentChatDialogProps {
 	agentName: string;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	kbIds?: string[];
+	kbIds: string[];
 }
 
 export function AgentChatDialog({
@@ -207,7 +207,7 @@ export function AgentChatDialog({
 					body: JSON.stringify({
 						messages: apiMessages,
 						agentId,
-						kbId: kbIds,
+						kbIds,
 						conversationId: dialogConversationId,
 						webhookUrl: `${window.location.origin}/api/webhooks/chat`,
 						messageId, // 发送消息ID到触发器

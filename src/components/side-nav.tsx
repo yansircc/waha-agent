@@ -9,6 +9,7 @@ import {
 	Database,
 	Home,
 	LogOut,
+	Mail,
 	Smartphone,
 } from "lucide-react";
 import Link from "next/link";
@@ -20,6 +21,7 @@ const navItems = [
 	{ name: "Agents", href: "/agents", icon: Brain },
 	{ name: "Knowledge", href: "/kb", icon: Database },
 	{ name: "Instances", href: "/instances", icon: Smartphone },
+	{ name: "Emails", href: "/emails", icon: Mail },
 ];
 
 export function SideNav() {

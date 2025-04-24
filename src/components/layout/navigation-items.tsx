@@ -1,5 +1,6 @@
 import {
 	BookOpenIcon,
+	EnvelopeIcon,
 	HomeIcon,
 	PhoneIcon,
 	RocketLaunchIcon,
@@ -40,6 +41,12 @@ export function NavigationItems() {
 			href: "/instances",
 			icon: PhoneIcon,
 			current: pathname === "/instances",
+		},
+		{
+			name: "Emails",
+			href: "/emails",
+			icon: EnvelopeIcon,
+			current: pathname === "/emails",
 		},
 	];
 

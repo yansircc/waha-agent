@@ -43,7 +43,7 @@ export const agentChat = task({
 		} = payload;
 
 		try {
-			// // Log start of processing
+			// Log start of processing
 			logger.info("Starting chat generation", {
 				userId,
 				agentId,
@@ -62,6 +62,7 @@ export const agentChat = task({
 				kbIds,
 			};
 
+			// 调用已更新的vercelAIAgent函数(内部已包含混合搜索逻辑)
 			const result = await vercelAIAgent(vercelAIAgentPayload);
 
 			// Prepare webhook response

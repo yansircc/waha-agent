@@ -14,6 +14,7 @@ export async function POST(request: NextRequest) {
 		conversationId: body.conversationId,
 		messageId: body.messageId,
 		agentId: body.agentId,
+		kbIds: body.kbIds,
 		messagesCount: body.messages?.length,
 	});
 

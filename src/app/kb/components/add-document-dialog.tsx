@@ -66,10 +66,10 @@ export function AddDocumentDialog({
 				"text/markdown",
 				"application/markdown",
 			].includes(uploadedFile.type);
-			const sizeLimit = isTextFile ? 4 * 1024 * 1024 : 1 * 1024 * 1024;
+			const sizeLimit = isTextFile ? 4 * 1024 * 1024 : 2 * 1024 * 1024;
 
 			if (uploadedFile.size > sizeLimit) {
-				alert(`File size exceeds the limit of ${isTextFile ? "4MB" : "1MB"}`);
+				alert(`File size exceeds the limit of ${isTextFile ? "4MB" : "2MB"}`);
 				setIsUploading(false);
 				return;
 			}
