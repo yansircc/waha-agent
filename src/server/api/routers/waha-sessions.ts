@@ -1,3 +1,4 @@
+import { env } from "@/env";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import type {
 	SessionConfig,
@@ -48,7 +49,7 @@ export const wahaSessionsRouter = createTRPCRouter({
 				name: z.string().optional().default("default"),
 				config: SessionConfigSchema.optional(),
 				start: z.boolean().optional().default(true),
-				userId: z.string().optional(),
+				instanceId: z.string().optional(),
 			}),
 		)
 		.mutation(async ({ input, ctx }) => {
@@ -65,10 +66,10 @@ export const wahaSessionsRouter = createTRPCRouter({
 						noweb: input.config.noweb,
 						webhooks: input.config.webhooks as WebhookConfig[] | undefined,
 					};
-				} else if (input.userId) {
+				} else if (input.instanceId) {
 					// 如果没有配置但有userId，创建带有默认webhook的配置
-					const userId = input.userId || ctx.session.user.id;
-					const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/webhooks/whatsapp/${userId}`;
+					const instanceId = input.instanceId;
+					const webhookUrl = `${env.NEXT_PUBLIC_APP_URL}/api/webhooks/whatsapp/${instanceId}`;
 
 					// 创建符合WebhookConfig接口的对象
 					const webhook: WebhookConfig = {
@@ -82,7 +83,7 @@ export const wahaSessionsRouter = createTRPCRouter({
 					sessionConfig = {
 						debug: false,
 						webhooks: [webhook],
-						metadata: { "user.id": userId },
+						metadata: { "instance.id": instanceId },
 					};
 				} else {
 					// 最小配置
