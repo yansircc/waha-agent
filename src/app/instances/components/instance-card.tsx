@@ -118,15 +118,20 @@ export function InstanceCard({
 			<div>
 				<div className="-mt-px flex divide-x divide-gray-200">
 					{status === "disconnected" ? (
-						<DisconnectedActions onScanQR={onScanQR} onStart={handleStart} />
+						<DisconnectedActions
+							onScanQR={onScanQR}
+							onStart={handleStart}
+							onDelete={onDelete}
+						/>
 					) : status === "connected" ? (
 						<ConnectedActions
 							onStop={onStop}
 							onLogout={onLogout}
 							onRefresh={onRefresh}
+							onDelete={onDelete}
 						/>
 					) : (
-						<ConnectingActions onRefresh={onRefresh} />
+						<ConnectingActions onRefresh={onRefresh} onDelete={onDelete} />
 					)}
 				</div>
 			</div>

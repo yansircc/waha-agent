@@ -1,14 +1,17 @@
 import { Button } from "@/components/ui/button";
 import { LogOutIcon, PowerIcon, RefreshCwIcon } from "lucide-react";
+import { DeleteButton } from "./delete-button";
 
 export function ConnectedActions({
 	onStop,
 	onLogout,
 	onRefresh,
+	onDelete,
 }: {
 	onStop?: () => void;
 	onLogout?: () => void;
 	onRefresh?: () => void;
+	onDelete?: () => void;
 }) {
 	return (
 		<>
@@ -42,6 +45,7 @@ export function ConnectedActions({
 					刷新
 				</Button>
 			</div>
+			<DeleteButton onDelete={onDelete} />
 		</>
 	);
 }
