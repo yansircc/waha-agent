@@ -312,3 +312,99 @@ export function isMarkdownOrTextFile(url: string): boolean {
 		return false;
 	}
 }
+
+/**
+ * 将长消息分割成自然的发送块
+ *
+ * 这个函数专为聊天应用设计，将长消息分成自然、易读的块
+ * 尝试在句子结束处分割，避免在句子中间切断消息
+ *
+ * @param message 要分割的消息
+ * @param options 配置选项
+ * @returns 消息块数组
+ */
+export function splitMessageIntoChunks(
+	message: string,
+	options: {
+		maxChunkLength?: number; // 每个块的最大长度
+		minChunkLength?: number; // 每个块的最小长度（除非是最后一块）
+	} = {},
+): string[] {
+	// 设置默认值
+	const maxChunkLength = options.maxChunkLength || 1000; // 默认1000字符
+	const minChunkLength = options.minChunkLength || 100; // 默认最小100字符
+
+	// 如果消息已经足够短，直接返回
+	if (message.length <= maxChunkLength) {
+		return [message];
+	}
+
+	const chunks: string[] = [];
+	let currentPosition = 0;
+
+	while (currentPosition < message.length) {
+		// 计算当前块的理论结束位置
+		let endPosition = Math.min(
+			currentPosition + maxChunkLength,
+			message.length,
+		);
+
+		// 如果已经到结尾，直接添加剩余文本
+		if (endPosition >= message.length) {
+			chunks.push(message.substring(currentPosition));
+			break;
+		}
+
+		// 查找句子结束的自然断点（句号、问号、感叹号后跟空格或换行）
+		const sentenceEndMatch = message
+			.substring(currentPosition, endPosition + 30)
+			.match(/[.!?。！？]\s+/g);
+
+		if (sentenceEndMatch && sentenceEndMatch.length > 0) {
+			// 找到最后一个句子结束点
+			let lastMatch = "";
+			let lastMatchIndex = -1;
+
+			for (const match of sentenceEndMatch) {
+				const matchIndex = message.indexOf(match, currentPosition);
+				if (matchIndex <= endPosition && matchIndex > lastMatchIndex) {
+					lastMatch = match;
+					lastMatchIndex = matchIndex;
+				}
+			}
+
+			// 如果找到了适合的断点，并且块长度够长
+			if (
+				lastMatchIndex > 0 &&
+				lastMatchIndex - currentPosition + lastMatch.length >= minChunkLength
+			) {
+				endPosition = lastMatchIndex + lastMatch.length;
+			} else {
+				// 没有找到合适的句子断点，尝试在最近的空格处断开
+				const lastSpace = message.lastIndexOf(" ", endPosition);
+				if (
+					lastSpace > currentPosition &&
+					lastSpace - currentPosition >= minChunkLength
+				) {
+					endPosition = lastSpace + 1;
+				}
+				// 否则就使用最大长度，不做特殊处理
+			}
+		} else {
+			// 如果没有句子断点，尝试在最近的空格处断开
+			const lastSpace = message.lastIndexOf(" ", endPosition);
+			if (
+				lastSpace > currentPosition &&
+				lastSpace - currentPosition >= minChunkLength
+			) {
+				endPosition = lastSpace + 1;
+			}
+		}
+
+		// 添加这个块
+		chunks.push(message.substring(currentPosition, endPosition));
+		currentPosition = endPosition;
+	}
+
+	return chunks;
+}

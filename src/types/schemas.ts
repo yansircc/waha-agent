@@ -231,7 +231,12 @@ export const MessageForwardRequestSchema = ChatRequestSchema.extend({
 });
 
 // 已读请求Schema
-export const SendSeenRequestSchema = ChatRequestSchema;
+export const SendSeenRequestSchema = z.object({
+	session: z.string().optional(),
+	chatId: z.string(),
+	messageId: z.string().optional(),
+	participant: z.string().nullable().optional(),
+});
 
 // 反应请求Schema
 export const MessageReactionRequestSchema = BaseRequestSchema.extend({

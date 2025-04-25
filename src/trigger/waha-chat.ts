@@ -9,7 +9,7 @@ import {
 import { wahaApi } from "@/server/api/waha-api";
 import type { Agent } from "@/types/agents";
 import type { WAMessage, WebhookNotification } from "@/types/api-responses";
-import { logger, task } from "@trigger.dev/sdk";
+import { logger, task, wait } from "@trigger.dev/sdk";
 import { type WebhookResponse, sendWebhookResponse } from "./utils";
 
 export interface AgentChatPayload {
@@ -186,11 +186,33 @@ export const whatsAppChat = task({
 
 			logger.info("Processing WhatsApp message", {
 				chatId,
+				messageId: messageData.id,
 				messageLength: messageContent.length,
 				session,
 				instanceId,
 				fromBot: botPhoneNumber ? chatId === botPhoneNumber : undefined,
 			});
+
+			// 1. 先标记消息为已读
+			await wahaApi.chatting.sendSeen({
+				session,
+				chatId,
+				messageId: messageData.id,
+				participant: null,
+			});
+
+			logger.info("Marked message as seen", {
+				chatId,
+				messageId: messageData.id,
+			});
+
+			// 2. 开始输入状态
+			await wahaApi.chatting.startTyping({
+				session,
+				chatId,
+			});
+
+			logger.info("Started typing indicator", { chatId });
 
 			let aiResponse = "";
 
@@ -264,60 +286,104 @@ export const whatsAppChat = task({
 						agentId: agent.id,
 					});
 					// Fallback response in case of AI error
-					aiResponse =
-						"I'm having trouble understanding. Could you please rephrase your question?";
+					aiResponse = "Sorry, busy handling other things.";
 				}
 			} else {
 				// Simple echo response if no agent is provided
-				aiResponse = `I received your message: "${messageContent}". How can I help you?`;
+				aiResponse = `AFK for a while, I'll be back soon.`;
 			}
 
-			// Send response through WhatsApp API
-			const sendResult = await wahaApi.chatting.sendText({
-				session,
-				chatId: chatId,
-				text: aiResponse,
-				linkPreview: true,
-				reply_to: messageData.id || null,
+			// 导入splitMessageIntoChunks函数
+			const { splitMessageIntoChunks } = await import("./utils");
+
+			// 将回复分割成更自然的消息块
+			const messageChunks = splitMessageIntoChunks(aiResponse, {
+				maxChunkLength: 1000, // WhatsApp消息长度限制约为65536字符，但我们使用较小的块
+				minChunkLength: 100,
 			});
 
-			// Add sent message to chat history if we have instance ID
-			if (instanceId && sendResult) {
-				try {
-					// Determine the correct conversation partner ID for chat history
-					const historyKey =
-						messageData.from === botPhoneNumber
-							? messageData.to // If bot is sending, use recipient
-							: messageData.from; // If user is sending, use sender
+			logger.info("Split response into chunks", {
+				count: messageChunks.length,
+				totalLength: aiResponse.length,
+			});
 
-					if (historyKey) {
-						// Use the conversation partner ID as the history key
-						await addMessageToChatHistory(instanceId, historyKey, sendResult);
-						logger.info("Added response to chat history", {
+			// 用于存储发送的最后一条消息ID
+			let lastMessageId: string | undefined;
+
+			// 逐块发送消息，模拟真人打字
+			for (let i = 0; i < messageChunks.length; i++) {
+				const chunk = messageChunks[i] || "";
+				const isFirstChunk = i === 0;
+				const isLastChunk = i === messageChunks.length - 1;
+
+				// 为第一块消息添加引用回复
+				const replyOptions =
+					isFirstChunk && messageData.id
+						? { reply_to: messageData.id }
+						: { reply_to: null };
+
+				// 短暂等待，模拟打字时间（大约每分钟450字）
+				// trigger.dev 只支持整数秒，对于短消息我们使用最小值
+				const typingTime = Math.max(1, Math.ceil(chunk.length / 150));
+				await wait.for({ seconds: typingTime });
+
+				// 发送消息块
+				const sendResult = await wahaApi.chatting.sendText({
+					session,
+					chatId,
+					text: chunk,
+					linkPreview: isLastChunk, // 只在最后一个块启用链接预览
+					...replyOptions,
+				});
+
+				// 保存最后发送的消息ID
+				lastMessageId = sendResult.id;
+
+				// 添加到聊天历史
+				if (instanceId && sendResult) {
+					try {
+						// 计算正确的历史记录键
+						const historyKey =
+							messageData.from === botPhoneNumber
+								? messageData.to // 如果是机器人发送，使用接收者
+								: messageData.from; // 如果是用户发送，使用发送者
+
+						if (historyKey) {
+							await addMessageToChatHistory(instanceId, historyKey, sendResult);
+						}
+					} catch (historyError) {
+						logger.error("Failed to add message to chat history", {
+							error:
+								historyError instanceof Error
+									? historyError.message
+									: String(historyError),
 							instanceId,
-							historyKey,
-							messageId: sendResult.id,
+							chatId,
 						});
 					}
-				} catch (historyError) {
-					logger.error("Failed to add message to chat history", {
-						error:
-							historyError instanceof Error
-								? historyError.message
-								: String(historyError),
-						instanceId,
-						chatId,
-					});
-					// Non-critical error, continue processing
+				}
+
+				// 如果不是最后一块，等待一小段时间，模拟思考
+				if (!isLastChunk) {
+					await wait.for({ seconds: 1 });
 				}
 			}
+
+			// 停止输入状态
+			await wahaApi.chatting.stopTyping({
+				session,
+				chatId,
+			});
+
+			logger.info("Stopped typing indicator", { chatId });
 
 			logger.info("Sent WhatsApp response", {
 				chatId,
 				responseLength: aiResponse.length,
+				chunks: messageChunks.length,
 				session,
 				instanceId,
-				messageId: sendResult.id,
+				messageId: lastMessageId,
 				usingAgent: !!agent,
 				aiResponse:
 					aiResponse.substring(0, 100) + (aiResponse.length > 100 ? "..." : ""),
@@ -329,7 +395,7 @@ export const whatsAppChat = task({
 					success: true,
 					response: aiResponse,
 					chatId,
-					messageId: sendResult.id,
+					messageId: lastMessageId,
 				};
 
 				await sendWebhookResponse<WhatsAppWebhookResponse>(
@@ -342,7 +408,7 @@ export const whatsAppChat = task({
 				success: true,
 				chatId,
 				response: aiResponse,
-				messageId: sendResult.id,
+				messageId: lastMessageId,
 			};
 		} catch (error) {
 			// Handle errors
@@ -361,6 +427,16 @@ export const whatsAppChat = task({
 				const chatId = messageData.from || messageData.chatId;
 
 				if (chatId) {
+					// 停止输入状态（如果错误发生时正在输入）
+					try {
+						await wahaApi.chatting.stopTyping({
+							session,
+							chatId,
+						});
+					} catch (typingError) {
+						// 忽略停止输入时的错误
+					}
+
 					await wahaApi.chatting.sendText({
 						session,
 						chatId,

@@ -104,15 +104,12 @@ export interface Result {
 }
 
 // Chatting related interfaces
-export interface MessageTextRequest {
-	session?: string;
+export interface MessageTextRequest extends SessionRequest {
 	chatId: string;
 	text: string;
-	quotedMessageId?: string;
+	linkPreview?: boolean;
 	reply_to?: string | null;
 	mentionedIds?: string[];
-	linkPreview?: boolean;
-	linkPreviewHighQuality?: boolean;
 }
 
 export interface MessageImageRequest {
@@ -175,13 +172,17 @@ export interface MessageForwardRequest {
 	messageId: string;
 }
 
-export interface SendSeenRequest {
+export interface SessionRequest {
 	session?: string;
-	chatId: string;
 }
 
-export interface ChatRequest {
-	session?: string;
+export interface SendSeenRequest extends SessionRequest {
+	chatId: string;
+	messageId?: string;
+	participant?: string | null;
+}
+
+export interface ChatRequest extends SessionRequest {
 	chatId: string;
 }
 

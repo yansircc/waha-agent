@@ -179,6 +179,8 @@ export class ChattingApi extends BaseApiClient {
 				...data,
 				session,
 			});
+			// 成功后直接返回
+			return;
 		} catch (error) {
 			throw new Error(
 				`Failed to mark chat as seen: ${(error as Error).message}`,

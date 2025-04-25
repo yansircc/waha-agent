@@ -71,11 +71,33 @@ export class BaseApiClient {
 			throw new Error(`API request failed: ${response.statusText}`);
 		}
 
-		if (response.status === 204) {
-			return {} as T; // No content
+		// 处理空响应和204状态码
+		if (
+			response.status === 204 ||
+			(response.status === 201 &&
+				response.headers.get("content-length") === "0")
+		) {
+			return {} as T; // 返回空对象
 		}
 
-		return await response.json();
+		// 检查响应类型，如果不是JSON则返回空对象
+		const contentType = response.headers.get("content-type");
+		if (!contentType || !contentType.includes("application/json")) {
+			return {} as T;
+		}
+
+		// 处理空响应体情况
+		const text = await response.text();
+		if (!text) {
+			return {} as T;
+		}
+
+		try {
+			return JSON.parse(text) as T;
+		} catch (error) {
+			console.error(`Failed to parse JSON response: ${text}`, error);
+			return {} as T;
+		}
 	}
 
 	protected async put<T, D>(url: string, data: D): Promise<T> {
