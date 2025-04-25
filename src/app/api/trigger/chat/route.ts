@@ -1,5 +1,6 @@
 import { auth } from "@/server/auth";
-import { type AgentChatPayload, agentChat } from "@/trigger/agent-chat";
+import { agentChat } from "@/trigger/agent-chat";
+import type { AgentChatPayload } from "@/trigger/types";
 import { type NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {

@@ -3,9 +3,9 @@ import { qdrantService } from "@/lib/qdrant-service";
 import { cohere } from "@ai-sdk/cohere";
 import { logger, task } from "@trigger.dev/sdk";
 import { embedMany } from "ai";
+import type { WebhookResponse } from "./types";
 import {
 	type TextChunk,
-	type WebhookResponse,
 	chunkText,
 	createCollectionIfNotExists,
 	isMarkdownOrTextFile,
