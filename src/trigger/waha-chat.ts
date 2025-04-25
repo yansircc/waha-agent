@@ -6,7 +6,7 @@ import {
 	addMessageToChatHistory,
 	getFormattedChatHistory,
 } from "@/lib/chat-history-redis";
-import { wahaApi } from "@/lib/waha-api";
+import { wahaApi } from "@/server/api/waha-api";
 import type { Agent } from "@/types/agents";
 import type { WAMessage, WebhookNotification } from "@/types/api-responses";
 import { logger, task } from "@trigger.dev/sdk";

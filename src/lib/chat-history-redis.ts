@@ -4,7 +4,7 @@ import {
 	safeRedisOperation,
 	stringifyValueIfNeeded,
 } from "@/lib/redis";
-import { wahaApi } from "@/lib/waha-api";
+import { wahaApi } from "@/server/api/waha-api";
 import type { WAMessage } from "@/types/api-responses";
 
 // Redis key prefixes for chat history

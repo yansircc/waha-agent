@@ -1,10 +1,10 @@
+import type { AppRouter } from "@/server/api/root";
 import type {
 	MyProfile,
 	ProfileNameRequest,
 	ProfilePictureRequest,
 	ProfileStatusRequest,
-} from "@/lib/waha-api";
-import type { AppRouter } from "@/server/api/root";
+} from "@/server/api/waha-api";
 import { api } from "@/utils/api";
 import type { TRPCClientErrorLike } from "@trpc/client";
 import { useState } from "react";

@@ -1,3 +1,4 @@
+import type { AppRouter } from "@/server/api/root";
 import type {
 	Button,
 	ChatRequest,
@@ -18,8 +19,7 @@ import type {
 	SendButtonsRequest,
 	SendSeenRequest,
 	WAMessage,
-} from "@/lib/waha-api";
-import type { AppRouter } from "@/server/api/root";
+} from "@/server/api/waha-api";
 import { api } from "@/utils/api";
 import type { TRPCClientErrorLike } from "@trpc/client";
 import { useState } from "react";

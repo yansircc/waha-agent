@@ -1,4 +1,3 @@
-import { wahaApi } from "@/lib/waha-api";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import type {
 	SessionConfig,
@@ -10,6 +9,7 @@ import type {
 } from "@/types/api-requests";
 import { SessionConfigSchema, SessionInfoSchema } from "@/types/schemas";
 import { z } from "zod";
+import { wahaApi } from "../waha-api";
 
 export const wahaSessionsRouter = createTRPCRouter({
 	// List all sessions
