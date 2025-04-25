@@ -7,9 +7,11 @@ import {
 } from "./helpers";
 import { handleOtherMessage } from "./other-message-handler";
 import { handleSelfMessage } from "./self-message-handler";
+import { handleSessionEvent } from "./session-event-handler";
 import {
 	isMessageEvent,
 	isSelfToSelfMessage,
+	isSessionEvent,
 	validateMessageData,
 	validateWebhook,
 } from "./utils";
@@ -35,8 +37,19 @@ export async function POST(
 			});
 		}
 
+		// 确保session存在
+		const session = body.session || "default";
+
+		// 检查是否为会话事件
+		if (isSessionEvent(body)) {
+			// 处理会话事件
+			const sessionResult = await handleSessionEvent(instanceId, body);
+			return NextResponse.json(sessionResult);
+		}
+
 		// 检查是否为消息事件
 		const { isMessage, reason } = isMessageEvent(body);
+
 		if (!isMessage) {
 			// 非消息事件，不处理，直接返回成功
 			return NextResponse.json({
@@ -45,9 +58,6 @@ export async function POST(
 				reason,
 			});
 		}
-
-		// 确保session存在
-		const session = body.session || "default";
 
 		// 解析消息数据
 		const messageData = body.payload as Partial<WAMessage>;

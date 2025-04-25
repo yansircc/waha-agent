@@ -28,7 +28,7 @@ export default function RootLayout({
 				<Providers>
 					<div className="flex min-h-screen">
 						<SideNav />
-						<div className="flex-1 overflow-hidden">{children}</div>
+						<div className="flex-1 overflow-hidden px-12">{children}</div>
 						<Toaster />
 					</div>
 				</Providers>

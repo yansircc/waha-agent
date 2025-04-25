@@ -192,12 +192,6 @@ export const whatsAppChat = task({
 				fromBot: botPhoneNumber ? chatId === botPhoneNumber : undefined,
 			});
 
-			// Show typing indicator before processing
-			// await wahaApi.chatting.startTyping({
-			// 	session,
-			// 	chatId,
-			// });
-
 			let aiResponse = "";
 
 			// Process message - either with AI agent or simple response
@@ -317,12 +311,6 @@ export const whatsAppChat = task({
 					// Non-critical error, continue processing
 				}
 			}
-
-			// Stop typing indicator
-			// await wahaApi.chatting.stopTyping({
-			// 	session,
-			// 	chatId,
-			// });
 
 			logger.info("Sent WhatsApp response", {
 				chatId,

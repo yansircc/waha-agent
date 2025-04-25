@@ -175,11 +175,10 @@ export class ChattingApi extends BaseApiClient {
 	async sendSeen(data: SendSeenRequest): Promise<void> {
 		try {
 			const session = data.session || "default";
-			const { session: _, ...requestData } = data;
-			await this.post<void, Omit<SendSeenRequest, "session">>(
-				`/api/${session}/sendSeen`,
-				requestData,
-			);
+			await this.post<void, SendSeenRequest>("/api/sendSeen", {
+				...data,
+				session,
+			});
 		} catch (error) {
 			throw new Error(
 				`Failed to mark chat as seen: ${(error as Error).message}`,
@@ -193,11 +192,10 @@ export class ChattingApi extends BaseApiClient {
 	async startTyping(data: ChatRequest): Promise<void> {
 		try {
 			const session = data.session || "default";
-			const { session: _, ...requestData } = data;
-			await this.post<void, Omit<ChatRequest, "session">>(
-				`/api/${session}/startTyping`,
-				requestData,
-			);
+			await this.post<void, ChatRequest>("/api/startTyping", {
+				...data,
+				session,
+			});
 		} catch (error) {
 			throw new Error(`Failed to start typing: ${(error as Error).message}`);
 		}
@@ -209,11 +207,10 @@ export class ChattingApi extends BaseApiClient {
 	async stopTyping(data: ChatRequest): Promise<void> {
 		try {
 			const session = data.session || "default";
-			const { session: _, ...requestData } = data;
-			await this.post<void, Omit<ChatRequest, "session">>(
-				`/api/${session}/stopTyping`,
-				requestData,
-			);
+			await this.post<void, ChatRequest>("/api/stopTyping", {
+				...data,
+				session,
+			});
 		} catch (error) {
 			throw new Error(`Failed to stop typing: ${(error as Error).message}`);
 		}

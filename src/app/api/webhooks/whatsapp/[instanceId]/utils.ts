@@ -35,6 +35,46 @@ export function isMessageEvent(body: WebhookNotification): {
 }
 
 /**
+ * 检查是否为会话相关的事件
+ */
+export function isSessionEvent(body: WebhookNotification): boolean {
+	if (!body.event) return false;
+
+	// 会话相关事件前缀
+	const sessionEventPrefixes = [
+		"session",
+		"connection",
+		"qr",
+		"ready",
+		"authenticated",
+	];
+
+	// 检查事件是否以这些前缀开头
+	return sessionEventPrefixes.some((prefix) => body.event?.startsWith(prefix));
+}
+
+/**
+ * 检查是否为QR码相关事件
+ */
+export function isQRCodeEvent(body: WebhookNotification): boolean {
+	// 检查是否为QR码事件
+	if (body.event === "qr") return true;
+
+	// 检查是否为需要QR码的会话状态更新事件
+	if (
+		body.event === "session.status" &&
+		body.payload &&
+		typeof body.payload === "object" &&
+		"status" in body.payload &&
+		body.payload.status === "SCAN_QR_CODE"
+	) {
+		return true;
+	}
+
+	return false;
+}
+
+/**
  * 验证消息数据是否有效
  */
 export function validateMessageData(messageData: Partial<WAMessage> | null): {

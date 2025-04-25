@@ -40,6 +40,14 @@ export function AddInstanceDialog({
 		await onSubmit(instanceName, selectedAgentId);
 	};
 
+	const handleInstanceNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		// 只保留小写字母、数字和连字符
+		const lowercaseValue = e.target.value
+			.toLowerCase()
+			.replace(/[^a-z0-9-]/g, "");
+		setInstanceName(lowercaseValue);
+	};
+
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-[500px]">
@@ -53,10 +61,13 @@ export function AddInstanceDialog({
 							<Input
 								id="name"
 								value={instanceName}
-								onChange={(e) => setInstanceName(e.target.value)}
-								placeholder="My WhatsApp"
+								onChange={handleInstanceNameChange}
+								placeholder="my-whatsapp"
 								required
 							/>
+							<p className="text-muted-foreground text-xs">
+								Only lowercase letters, numbers, and hyphens are allowed.
+							</p>
 						</div>
 						<div className="grid gap-2">
 							<Label htmlFor="agent">Agent (optional)</Label>

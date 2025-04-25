@@ -72,6 +72,7 @@
 		"react": "^19.1.0",
 		"react-dom": "^19.1.0",
 		"react-hook-form": "^7.55.0",
+		"react-qr-code": "^2.0.15",
 		"server-only": "^0.0.1",
 		"serverchan-sdk": "^1.0.6",
 		"socket.io": "^4.8.1",

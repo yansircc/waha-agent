@@ -131,7 +131,12 @@ export function InstanceCard({
 				</div>
 			</div>
 
-			<QRCodeDialog open={showQR} onOpenChange={setShowQR} qrCode={qrCode} />
+			<QRCodeDialog
+				open={showQR}
+				onOpenChange={setShowQR}
+				qrCode={qrCode}
+				instanceId={id}
+			/>
 		</div>
 	);
 }

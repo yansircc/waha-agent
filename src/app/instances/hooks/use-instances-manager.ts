@@ -30,6 +30,10 @@ export function useInstancesManager() {
 
 	const { agents, isLoadingAgents } = useAgents();
 
+	const { fetchSessionByName, sessions, isLoadingSessions } = useWahaSessions();
+	const { displayQRCode, startPollingQRCode, stopPollingQRCode } = useQRCode();
+	const { checkSessionStatus } = useSessionStatus();
+
 	const {
 		isLoading: isApiLoading,
 		createInstanceSession,
@@ -43,10 +47,6 @@ export function useInstancesManager() {
 			toast.error(`API Error: ${error.message}`);
 		},
 	});
-
-	const { fetchSessionByName, sessions, isLoadingSessions } = useWahaSessions();
-	const { displayQRCode } = useQRCode();
-	const { checkSessionStatus } = useSessionStatus();
 
 	// Open QR dialog for new instance
 	useEffect(() => {
@@ -74,7 +74,8 @@ export function useInstancesManager() {
 				const sanitizedName = sanitizeSessionName(instance.name);
 
 				if (instance.status === "disconnected") {
-					getInstanceQR(instance.id, sanitizedName);
+					// 如果已断开连接，先尝试自动获取QR码
+					startPollingQRCode(instance.id, sanitizedName);
 				} else if (instance.status === "connecting") {
 					startInstanceSession(instance.id, sanitizedName).catch((error) => {
 						console.error(
@@ -85,7 +86,7 @@ export function useInstancesManager() {
 				}
 			}
 		}
-	}, [isLoadingInstances, instances, startInstanceSession, getInstanceQR]);
+	}, [isLoadingInstances, instances, startInstanceSession, startPollingQRCode]);
 
 	const handleOpenAddDialog = () => setIsAddOpen(true);
 
@@ -111,8 +112,9 @@ export function useInstancesManager() {
 			if (newInstance?.id) {
 				await createInstanceSession(newInstance.id, newInstance.name);
 
-				// Get QR code immediately
-				await getInstanceQR(newInstance.id, newInstance.name);
+				// 设置轮询获取QR码
+				const sanitizedName = sanitizeSessionName(newInstance.name);
+				startPollingQRCode(newInstance.id, sanitizedName);
 
 				// Close dialog and show QR code immediately
 				setNewInstanceId(newInstance.id);
@@ -126,32 +128,35 @@ export function useInstancesManager() {
 
 	const handleDeleteInstance = async (id: string) => {
 		if (window.confirm("Are you sure you want to delete this instance?")) {
+			// 停止任何正在进行的QR码轮询
+			stopPollingQRCode(id);
 			await deleteInstance(id);
 		}
 	};
 
 	const handleScanQR = (instance: (typeof instances)[0]) => {
-		// Don't proceed if there's a pending operation
+		// 如果正在轮询，先停止轮询
 		if (pendingOperations.current[instance.id]) {
-			console.log(
-				`Operation already in progress for instance: ${instance.name}`,
-			);
+			console.log(`操作已在进行中 - 实例: ${instance.name}`);
 			return;
 		}
 
-		// Make sure we have a QR code available
-		if (!instance.qrCode) {
-			// Mark operation as in progress
-			pendingOperations.current[instance.id] = true;
+		// 不再立即获取QR码，而是启动轮询
+		// 这将更可靠地获取QR码，尤其是在QR码可能不立即可用的情况下
+		pendingOperations.current[instance.id] = true;
 
-			getInstanceQR(instance.id, instance.name).finally(() => {
-				// Clear operation flag
-				pendingOperations.current[instance.id] = false;
-			});
-		}
+		const sanitizedName = sanitizeSessionName(instance.name);
 
-		// Display QR code dialog
+		// 开始轮询
+		startPollingQRCode(instance.id, sanitizedName);
+
+		// 立即显示QR码对话框，即使QR码可能还未准备好
 		displayQRCode(instance.id);
+
+		// 设置一个延迟，以便在QR码轮询完成后清除标志
+		setTimeout(() => {
+			pendingOperations.current[instance.id] = false;
+		}, 2000);
 	};
 
 	// Instance QR code fetching
@@ -182,7 +187,8 @@ export function useInstancesManager() {
 
 			// If session needs QR code, get it
 			if (session && session.status === "SCAN_QR_CODE") {
-				await getInstanceQR(instanceId, finalSessionName);
+				// 使用轮询获取QR码而不是单次获取
+				startPollingQRCode(instanceId, finalSessionName);
 
 				// Display QR code
 				displayQRCode(instanceId);
@@ -301,8 +307,8 @@ export function useInstancesManager() {
 				const status = await checkSessionStatus(instance.id, sanitizedName);
 
 				if (session.status === "SCAN_QR_CODE") {
-					// If QR code needed, get and display it
-					await getInstanceQR(instance.id, sanitizedName);
+					// 使用轮询获取QR码
+					startPollingQRCode(instance.id, sanitizedName);
 					displayQRCode(instance.id);
 					toast.success(`QR code refreshed for ${instance.name}`);
 					return;
