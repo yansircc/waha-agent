@@ -9,7 +9,8 @@ import type { Agent } from "@/types/agents";
 import type { FormDataEmailPayload } from "@/types/email";
 import { wait } from "@trigger.dev/sdk";
 import { logger, task } from "@trigger.dev/sdk";
-import { type WebhookResponse, sendWebhookResponse } from "./utils";
+import type { WebhookResponse } from "./types";
+import { sendWebhookResponse } from "./utils";
 
 export interface EmailFormPayload extends FormDataEmailPayload {
 	webhookUrl?: string;

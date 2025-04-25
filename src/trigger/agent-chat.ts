@@ -2,32 +2,9 @@ import {
 	type KbSearcherPayload,
 	kbSearcher,
 } from "@/lib/ai-agents/kb-searcher";
-import type { Agent } from "@/types/agents";
 import { logger, task } from "@trigger.dev/sdk";
-import { type WebhookResponse, sendWebhookResponse } from "./utils";
-
-export interface AgentChatPayload {
-	messages: Array<{
-		role: "user" | "assistant";
-		content: string;
-	}>;
-	agent: Agent;
-	conversationId: string;
-	webhookUrl: string;
-	messageId?: string;
-}
-
-// Extend the generic webhook response for agent chat
-interface ChatWebhookResponse extends WebhookResponse {
-	response?: string;
-	messages?: Array<{
-		role: "user" | "assistant";
-		content: string;
-	}>;
-	agent: Agent;
-	conversationId: string;
-	messageId?: string;
-}
+import type { AgentChatPayload, ChatWebhookResponse } from "./types";
+import { sendWebhookResponse } from "./utils";
 
 export const agentChat = task({
 	id: "agent-chat",

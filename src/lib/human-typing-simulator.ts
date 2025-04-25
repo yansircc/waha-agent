@@ -73,37 +73,86 @@ export function splitIntoHumanChunks(
 			continue;
 		}
 
-		// 将长行分割成更小的块
+		// 如果行足够短，直接添加为一个块
 		if (line.length <= maxChunkLength) {
 			chunks.push(line.trim());
-		} else {
-			// 尝试在标点或空格处分割
-			let remaining = line;
-			while (remaining.length > maxChunkLength) {
-				// 找到一个合适的分割点（句子或从句边界）
-				let breakPoint = remaining
-					.substring(0, maxChunkLength)
-					.lastIndexOf(". ");
-				if (breakPoint === -1)
-					breakPoint = remaining.substring(0, maxChunkLength).lastIndexOf("? ");
-				if (breakPoint === -1)
-					breakPoint = remaining.substring(0, maxChunkLength).lastIndexOf("! ");
-				if (breakPoint === -1)
-					breakPoint = remaining.substring(0, maxChunkLength).lastIndexOf(", ");
-				if (breakPoint === -1)
-					breakPoint = remaining.substring(0, maxChunkLength).lastIndexOf(" ");
+			continue;
+		}
 
-				// 如果没有合适的分割点，就在 maxChunkLength 处分割
-				if (breakPoint === -1) breakPoint = maxChunkLength;
-				else breakPoint += 1; // 包括分隔符
-
-				chunks.push(remaining.substring(0, breakPoint).trim());
-				remaining = remaining.substring(breakPoint).trim();
+		// 处理需要分割的长行
+		let remaining = line;
+		while (remaining.length > 0) {
+			// 如果剩余文本已经很短，直接添加
+			if (remaining.length <= maxChunkLength) {
+				chunks.push(remaining.trim());
+				break;
 			}
 
-			if (remaining) {
-				chunks.push(remaining);
+			// 定义潜在的断点类型和优先级
+			// 1. 句子结束（句号、问号、感叹号后跟空格或结束）
+			// 2. 从句（分号、冒号后跟空格）
+			// 3. 短语（逗号后跟空格）
+			// 4. 任何空格
+
+			// 首先尝试找理想长度范围内的最佳断点
+			const searchEndPos = Math.min(remaining.length, maxChunkLength + 20);
+			const searchText = remaining.substring(0, searchEndPos);
+
+			// 寻找各类断点的最后位置
+			const sentenceEnd = findLastMatch(
+				searchText,
+				/[.!?。！？]\s+|[.!?。！？]$/,
+			);
+			const clauseEnd = findLastMatch(searchText, /[:;]\s+/);
+			const phraseEnd = findLastMatch(searchText, /[,，、]\s+/);
+			const spacePos = searchText.lastIndexOf(" ");
+
+			let breakPos = -1;
+
+			// 按优先级选择断点
+			if (sentenceEnd >= maxChunkLength / 3) {
+				// 如果找到句子结束且长度合理，优先使用
+				breakPos = sentenceEnd;
+			} else if (clauseEnd >= maxChunkLength / 3) {
+				// 如果找到从句结束且长度合理，使用从句
+				breakPos = clauseEnd;
+			} else if (phraseEnd >= maxChunkLength / 3) {
+				// 如果找到短语结束且长度合理，使用短语
+				breakPos = phraseEnd;
+			} else if (spacePos >= maxChunkLength / 3) {
+				// 使用最后的空格位置
+				breakPos = spacePos;
 			}
+
+			// 如果找不到任何好的断点，就在最大长度处或稍微超过处截断
+			if (breakPos === -1 || breakPos < maxChunkLength / 3) {
+				// 尝试在超出范围内找一个最近的空格
+				const extendedSearch = remaining.substring(
+					0,
+					Math.min(remaining.length, maxChunkLength * 1.5),
+				);
+				const nextSpace = extendedSearch.indexOf(" ", maxChunkLength);
+
+				if (nextSpace !== -1 && nextSpace < maxChunkLength * 1.2) {
+					// 找到了接近限制的空格，使用它
+					breakPos = nextSpace;
+				} else {
+					// 找不到任何好的位置，强制在最大长度处截断或使用整个剩余文本
+					breakPos = Math.min(maxChunkLength, remaining.length);
+				}
+			}
+
+			// 检查括号、引号的完整性
+			breakPos = ensureClosedParentheses(remaining, breakPos);
+
+			// 提取当前块
+			const currentChunk = remaining.substring(0, breakPos).trim();
+			if (currentChunk) {
+				chunks.push(currentChunk);
+			}
+
+			// 更新剩余文本
+			remaining = remaining.substring(breakPos).trim();
 		}
 	}
 
@@ -112,6 +161,61 @@ export function splitIntoHumanChunks(
 		if (i === chunks.length - 1) return chunk;
 		return chunk.replace(/[.,]+$/, "");
 	});
+}
+
+/**
+ * 在文本中查找最后一个匹配模式的位置
+ * 返回匹配结束位置
+ */
+function findLastMatch(text: string, pattern: RegExp): number {
+	const matches = [...text.matchAll(new RegExp(pattern, "g"))];
+	if (matches.length === 0) return -1;
+
+	const lastMatch = matches[matches.length - 1];
+	if (!lastMatch || lastMatch.index === undefined) return -1;
+
+	return lastMatch.index + lastMatch[0].length;
+}
+
+/**
+ * 确保括号和引号的完整性
+ * 如果断点在未闭合的括号或引号内，尝试调整位置
+ */
+function ensureClosedParentheses(text: string, breakPos: number): number {
+	const textToBreak = text.substring(0, breakPos);
+
+	// 检查括号是否配对
+	const openParens = (textToBreak.match(/\(/g) || []).length;
+	const closeParens = (textToBreak.match(/\)/g) || []).length;
+
+	// 检查引号是否成对
+	const quotes = (textToBreak.match(/"/g) || []).length;
+
+	// 如果括号或引号不配对
+	if (openParens !== closeParens || quotes % 2 !== 0) {
+		// 尝试找到下一个闭合位置
+		let adjustedPos = breakPos;
+
+		// 处理括号不平衡
+		if (openParens > closeParens) {
+			const nextCloseParen = text.indexOf(")", breakPos);
+			if (nextCloseParen !== -1 && nextCloseParen < breakPos + 50) {
+				adjustedPos = Math.max(adjustedPos, nextCloseParen + 1);
+			}
+		}
+
+		// 处理引号不平衡
+		if (quotes % 2 !== 0) {
+			const nextQuote = text.indexOf('"', breakPos);
+			if (nextQuote !== -1 && nextQuote < breakPos + 50) {
+				adjustedPos = Math.max(adjustedPos, nextQuote + 1);
+			}
+		}
+
+		return adjustedPos;
+	}
+
+	return breakPos;
 }
 
 /**
