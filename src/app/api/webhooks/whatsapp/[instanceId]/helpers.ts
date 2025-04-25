@@ -5,7 +5,7 @@ import {
 	initializeChatHistory,
 } from "@/lib/chat-history-redis";
 import { getBotPhoneNumber, saveBotPhoneNumber } from "@/lib/instance-redis";
-import { wahaApi } from "@/server/api/waha-api";
+import { wahaApi } from "@/server/api/routers/waha-api";
 import type { WAMessage } from "@/types/api-responses";
 
 /**

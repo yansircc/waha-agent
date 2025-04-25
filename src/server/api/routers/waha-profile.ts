@@ -7,7 +7,7 @@ import {
 	ResultSchema,
 } from "@/types/schemas";
 import { z } from "zod";
-import { wahaApi } from "../waha-api";
+import { wahaApi } from "./waha-api";
 
 export const wahaProfileRouter = createTRPCRouter({
 	// Get profile information

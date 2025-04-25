@@ -2,7 +2,7 @@ import type { AppRouter } from "@/server/api/root";
 import type {
 	SessionCreateRequest,
 	SessionUpdateRequest,
-} from "@/server/api/waha-api";
+} from "@/server/api/routers/waha-api";
 import { api } from "@/utils/api";
 import type { TRPCClientErrorLike } from "@trpc/client";
 import { useCallback, useState } from "react";

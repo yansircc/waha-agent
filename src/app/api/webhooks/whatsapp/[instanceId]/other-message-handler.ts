@@ -1,5 +1,5 @@
 import { getChatAgentActive, getInstanceAgent } from "@/lib/instance-redis";
-import { wahaApi } from "@/server/api/waha-api";
+import { wahaApi } from "@/server/api/routers/waha-api";
 import { whatsAppChat } from "@/trigger/waha-chat";
 import type { WAMessage, WebhookNotification } from "@/types/api-responses";
 import { createWebhookUrl } from "./helpers";

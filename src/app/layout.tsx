@@ -1,6 +1,6 @@
 import "@/styles/globals.css";
 
-import { SideNav } from "@/components/side-nav";
+import { SideNav } from "@/components/layout/side-nav";
 import { Toaster } from "@/components/ui/sonner";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";

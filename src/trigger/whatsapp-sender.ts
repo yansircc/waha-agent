@@ -1,5 +1,5 @@
 import { addMessageToChatHistory } from "@/lib/chat-history-redis";
-import { wahaApi } from "@/server/api/waha-api";
+import { wahaApi } from "@/server/api/routers/waha-api";
 import type { WAMessage } from "@/types/api-responses";
 import { logger, wait } from "@trigger.dev/sdk";
 import type { MessageSendResult } from "./types";

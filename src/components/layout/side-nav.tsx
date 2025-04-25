@@ -81,15 +81,15 @@ export function SideNav() {
 			</nav>
 
 			<div className="mt-auto border-t px-2 pt-2">
-				<button
-					type="button"
+				<Link
+					href="/api/auth/signout?callbackUrl=/dashboard"
 					className={cn(
 						"flex w-full items-center gap-3 rounded-md px-3 py-2 font-medium text-muted-foreground text-sm transition-colors hover:bg-muted hover:text-foreground",
 					)}
 				>
 					<LogOut className="h-5 w-5" />
 					{!collapsed && <span>Sign out</span>}
-				</button>
+				</Link>
 			</div>
 		</div>
 	);

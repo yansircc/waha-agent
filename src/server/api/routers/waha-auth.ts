@@ -3,7 +3,7 @@ import type { RequestCodeRequest } from "@/types/api-requests";
 import type { QRCodeResponse } from "@/types/api-responses";
 import { QRCodeRequestSchema, RequestCodeRequestSchema } from "@/types/schemas";
 import { z } from "zod";
-import { wahaApi } from "../waha-api";
+import { wahaApi } from "./waha-api";
 
 export const wahaAuthRouter = createTRPCRouter({
 	// Get QR code for pairing WhatsApp API

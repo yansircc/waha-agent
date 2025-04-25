@@ -1,4 +1,4 @@
-import { wahaApi } from "@/server/api/waha-api";
+import { wahaApi } from "@/server/api/routers/waha-api";
 import { db } from "@/server/db";
 import { instances } from "@/server/db/schema";
 import { eq } from "drizzle-orm";

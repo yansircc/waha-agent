@@ -9,7 +9,7 @@ import type {
 } from "@/types/api-requests";
 import { SessionConfigSchema, SessionInfoSchema } from "@/types/schemas";
 import { z } from "zod";
-import { wahaApi } from "../waha-api";
+import { wahaApi } from "./waha-api";
 
 export const wahaSessionsRouter = createTRPCRouter({
 	// List all sessions

@@ -1,140 +1,173 @@
-import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import { Button } from "@/components/ui/button";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
+import { auth } from "@/server/auth";
+import { api } from "@/trpc/server";
+import { formatDistance } from "date-fns";
+import Link from "next/link";
 
-export default function DashboardPage() {
-	return (
-		<DashboardLayout>
-			<div className="py-10">
-				<header>
-					<div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-						<h1 className="font-bold text-3xl text-gray-900 leading-tight tracking-tight">
-							WhatsApp AI Platform Dashboard
-						</h1>
-					</div>
-				</header>
-				<main>
-					<div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
-						<div className="px-4 py-8 sm:px-0">
-							<div className="rounded-lg border-4 border-gray-200 border-dashed p-8">
-								<p className="text-gray-600 text-lg">
-									Welcome to your WhatsApp AI Bot management platform. Manage
-									your agents, knowledge bases, and WhatsApp instances from
-									here.
-								</p>
-								<div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-									{/* Dashboard metrics will go here */}
-									<div className="overflow-hidden rounded-lg bg-white shadow">
-										<div className="p-5">
-											<div className="flex items-center">
-												<div className="flex-shrink-0">
-													<svg
-														className="h-6 w-6 text-gray-400"
-														xmlns="http://www.w3.org/2000/svg"
-														fill="none"
-														viewBox="0 0 24 24"
-														stroke="currentColor"
-														aria-hidden="true"
-													>
-														<path
-															strokeLinecap="round"
-															strokeLinejoin="round"
-															strokeWidth={2}
-															d="M13 10V3L4 14h7v7l9-11h-7z"
-														/>
-													</svg>
-												</div>
-												<div className="ml-5 w-0 flex-1">
-													<dl>
-														<dt className="truncate font-medium text-gray-500 text-sm">
-															Active Agents
-														</dt>
-														<dd>
-															<div className="font-medium text-gray-900 text-lg">
-																0
-															</div>
-														</dd>
-													</dl>
-												</div>
-											</div>
-										</div>
-									</div>
+export default async function Dashboard() {
+	const session = await auth();
 
-									<div className="overflow-hidden rounded-lg bg-white shadow">
-										<div className="p-5">
-											<div className="flex items-center">
-												<div className="flex-shrink-0">
-													<svg
-														className="h-6 w-6 text-gray-400"
-														xmlns="http://www.w3.org/2000/svg"
-														fill="none"
-														viewBox="0 0 24 24"
-														stroke="currentColor"
-														aria-hidden="true"
-													>
-														<path
-															strokeLinecap="round"
-															strokeLinejoin="round"
-															strokeWidth={2}
-															d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-														/>
-													</svg>
-												</div>
-												<div className="ml-5 w-0 flex-1">
-													<dl>
-														<dt className="truncate font-medium text-gray-500 text-sm">
-															Connected Instances
-														</dt>
-														<dd>
-															<div className="font-medium text-gray-900 text-lg">
-																0
-															</div>
-														</dd>
-													</dl>
-												</div>
-											</div>
-										</div>
-									</div>
-
-									<div className="overflow-hidden rounded-lg bg-white shadow">
-										<div className="p-5">
-											<div className="flex items-center">
-												<div className="flex-shrink-0">
-													<svg
-														className="h-6 w-6 text-gray-400"
-														xmlns="http://www.w3.org/2000/svg"
-														fill="none"
-														viewBox="0 0 24 24"
-														stroke="currentColor"
-														aria-hidden="true"
-													>
-														<path
-															strokeLinecap="round"
-															strokeLinejoin="round"
-															strokeWidth={2}
-															d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-														/>
-													</svg>
-												</div>
-												<div className="ml-5 w-0 flex-1">
-													<dl>
-														<dt className="truncate font-medium text-gray-500 text-sm">
-															Knowledge Bases
-														</dt>
-														<dd>
-															<div className="font-medium text-gray-900 text-lg">
-																0
-															</div>
-														</dd>
-													</dl>
-												</div>
-											</div>
-										</div>
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
-				</main>
+	if (!session) {
+		return (
+			<div className="flex h-[80vh] items-center justify-center">
+				<Card className="w-full max-w-lg">
+					<CardHeader>
+						<CardTitle>Authentication Required</CardTitle>
+						<CardDescription>
+							Please sign in to access the dashboard.
+							<Button asChild variant="link">
+								<Link href="/api/auth/signin">Sign in</Link>
+							</Button>
+						</CardDescription>
+					</CardHeader>
+				</Card>
 			</div>
-		</DashboardLayout>
+		);
+	}
+
+	// Fetch data for dashboard
+	const agents = await api.agents.getAll();
+	const kbs = await api.kbs.getAll();
+	const instances = await api.instances.getAll();
+	const emails = await api.emails.getAll();
+
+	return (
+		<div className="space-y-6 py-8">
+			<h1 className="font-bold text-3xl">Dashboard</h1>
+			<p className="text-gray-500">
+				Welcome back, {session.user?.name || "User"}
+			</p>
+
+			<div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+				<DashboardCard
+					title="Agents"
+					count={agents.length}
+					description="AI agents configured"
+				/>
+				<DashboardCard
+					title="Knowledge Bases"
+					count={kbs.length}
+					description="Knowledge bases created"
+				/>
+				<DashboardCard
+					title="Instances"
+					count={instances.length}
+					description="WhatsApp instances"
+				/>
+				<DashboardCard
+					title="Email Configs"
+					count={emails.length}
+					description="Email configs set up"
+				/>
+			</div>
+
+			<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+				<Card>
+					<CardHeader>
+						<CardTitle>Recent Agents</CardTitle>
+						<CardDescription>Recently created AI agents</CardDescription>
+					</CardHeader>
+					<CardContent>
+						{agents.length > 0 ? (
+							<ul className="space-y-2">
+								{agents.slice(0, 5).map((agent) => (
+									<li
+										key={agent.id}
+										className="flex items-center justify-between"
+									>
+										<div>
+											<p className="font-medium">{agent.name}</p>
+											<p className="text-gray-500 text-sm">
+												Model: {agent.model}
+											</p>
+										</div>
+										<p className="text-gray-500 text-xs">
+											{formatDistance(new Date(agent.createdAt), new Date(), {
+												addSuffix: true,
+											})}
+										</p>
+									</li>
+								))}
+							</ul>
+						) : (
+							<p className="text-gray-500">No agents created yet</p>
+						)}
+					</CardContent>
+				</Card>
+
+				<Card>
+					<CardHeader>
+						<CardTitle>Recent Instances</CardTitle>
+						<CardDescription>
+							Recently created WhatsApp instances
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						{instances.length > 0 ? (
+							<ul className="space-y-2">
+								{instances.slice(0, 5).map((instance) => (
+									<li
+										key={instance.id}
+										className="flex items-center justify-between"
+									>
+										<div>
+											<p className="font-medium">{instance.name}</p>
+											<p className="text-gray-500 text-sm">
+												Status:{" "}
+												<span
+													className={`${instance.status === "connected" ? "text-green-500" : "text-amber-500"}`}
+												>
+													{instance.status}
+												</span>
+											</p>
+										</div>
+										<p className="text-gray-500 text-xs">
+											{formatDistance(
+												new Date(instance.createdAt),
+												new Date(),
+												{ addSuffix: true },
+											)}
+										</p>
+									</li>
+								))}
+							</ul>
+						) : (
+							<p className="text-gray-500">No instances created yet</p>
+						)}
+					</CardContent>
+				</Card>
+			</div>
+		</div>
+	);
+}
+
+function DashboardCard({
+	title,
+	count,
+	description,
+}: {
+	title: string;
+	count: number;
+	description: string;
+}) {
+	return (
+		<Card>
+			<CardHeader className="pb-2">
+				<CardTitle className="font-medium text-gray-500 text-sm">
+					{title}
+				</CardTitle>
+			</CardHeader>
+			<CardContent>
+				<div className="font-bold text-2xl">{count}</div>
+				<p className="mt-1 text-gray-500 text-xs">{description}</p>
+			</CardContent>
+		</Card>
 	);
 }

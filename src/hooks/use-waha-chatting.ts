@@ -19,7 +19,7 @@ import type {
 	SendButtonsRequest,
 	SendSeenRequest,
 	WAMessage,
-} from "@/server/api/waha-api";
+} from "@/server/api/routers/waha-api";
 import { api } from "@/utils/api";
 import type { TRPCClientErrorLike } from "@trpc/client";
 import { useState } from "react";

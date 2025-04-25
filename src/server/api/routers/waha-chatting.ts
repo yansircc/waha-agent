@@ -21,7 +21,7 @@ import {
 	WAMessageSchema,
 } from "@/types/schemas";
 import { z } from "zod";
-import { wahaApi } from "../waha-api";
+import { wahaApi } from "./waha-api";
 
 export const wahaChattingRouter = createTRPCRouter({
 	// Send a text message
