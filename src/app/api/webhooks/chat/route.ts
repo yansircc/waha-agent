@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
 			messageId,
 		} = parsedData;
 
-		console.log("[Webhook] Received chat response:", {
+		console.log("[Webhook] 收到聊天响应:", {
 			success,
 			agent,
 			conversationId,
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
 			if (conversationId && messageId) {
 				await storeResponse(conversationId, "", error, messageId);
 				console.log(
-					`[Webhook] Stored error response for conversation: ${conversationId}, messageId: ${messageId}`,
+					`[Webhook] 存储错误响应用于对话: ${conversationId}, 消息ID: ${messageId}`,
 				);
 			}
 
@@ -76,8 +76,8 @@ export async function POST(req: NextRequest) {
 
 		// 验证必要数据是否存在
 		if (!response || !messages) {
-			const missingDataError = "Missing required data";
-			console.error("[Webhook] Missing required data:", {
+			const missingDataError = "缺少必要数据";
+			console.error("[Webhook] 缺少必要数据:", {
 				response,
 				messages,
 			});
@@ -97,19 +97,19 @@ export async function POST(req: NextRequest) {
 		if (conversationId) {
 			await storeResponse(conversationId, response, undefined, messageId);
 			console.log(
-				`[Webhook] Stored response for conversationId: ${conversationId}, messageId: ${messageId || "not provided"}`,
+				`[Webhook] 存储响应用于对话ID: ${conversationId}, 消息ID: ${messageId || "未提供"}`,
 			);
 		}
 
 		// 使用 revalidatePath 来刷新相关页面的数据
 		revalidatePath("/agents");
 
-		// 如果存在agentId，重新验证特定代理路径
+		// 如果存在agentId，重新验证特定机器人路径
 		if (agent.id) {
 			revalidatePath(`/agents/${agent.id}`);
 		}
 
-		console.log("[Webhook] Successfully processed chat response", {
+		console.log("[Webhook] 成功处理聊天响应", {
 			agent,
 			conversationId,
 			messageId,
@@ -117,10 +117,10 @@ export async function POST(req: NextRequest) {
 
 		return NextResponse.json({
 			success: true,
-			message: "Chat response processed successfully",
+			message: "聊天响应处理成功",
 		});
 	} catch (error) {
-		console.error("[Webhook] Error processing request:", {
+		console.error("[Webhook] 处理请求时出错:", {
 			error: error instanceof Error ? error.message : String(error),
 		});
 		return NextResponse.json(

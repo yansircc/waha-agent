@@ -33,7 +33,7 @@ export async function handleOtherMessage(
 
 		console.log(`收到来自 ${chatId} 的消息: ${messageContent}`);
 
-		// 从Redis获取代理配置
+		// 从Redis获取机器人配置
 		const agentFromRedis = await getInstanceAgent(instanceId);
 
 		// 检查此聊天是否启用了AI回复
@@ -43,7 +43,7 @@ export async function handleOtherMessage(
 		if (agentFromRedis) {
 			if (isChatActive) {
 				console.log(
-					`与 ${chatId} 的聊天已启用AI回复，将使用代理 ID: ${agentFromRedis.id}`,
+					`与 ${chatId} 的聊天已启用AI回复，将使用机器人 ID: ${agentFromRedis.id}`,
 				);
 			} else {
 				console.log(`与 ${chatId} 的聊天已禁用AI回复，跳过处理`);
@@ -54,7 +54,7 @@ export async function handleOtherMessage(
 				};
 			}
 		} else {
-			console.log(`实例 ${instanceId} 没有关联的代理配置，将使用默认回复`);
+			console.log(`账号 ${instanceId} 没有关联的机器人配置，将使用默认回复`);
 		}
 
 		// 创建webhook回调URL
@@ -67,7 +67,7 @@ export async function handleOtherMessage(
 			instanceId,
 			webhookUrl,
 			...(botPhoneNumber ? { botPhoneNumber } : {}),
-			// 只在代理存在且聊天已启用AI时提供
+			// 只在机器人存在且聊天已启用AI时提供
 			agent: agentFromRedis && isChatActive ? agentFromRedis : undefined,
 		});
 

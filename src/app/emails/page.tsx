@@ -86,9 +86,9 @@ export default function EmailsPage() {
 	return (
 		<div className="container py-8">
 			<div className="mb-8 flex items-center justify-between">
-				<h1 className="font-bold text-3xl">Email Configurations</h1>
+				<h1 className="font-bold text-3xl">邮件配置</h1>
 				<Button onClick={handleOpenCreateDialog}>
-					<Plus className="mr-2 h-4 w-4" /> Add Email Config
+					<Plus className="mr-2 h-4 w-4" /> 添加邮件配置
 				</Button>
 			</div>
 
@@ -103,15 +103,12 @@ export default function EmailsPage() {
 				</div>
 			) : emails.length === 0 ? (
 				<div className="flex flex-col items-center justify-center rounded-lg border bg-background p-12 text-center">
-					<h2 className="mb-2 font-semibold text-xl">
-						No email configurations yet
-					</h2>
+					<h2 className="mb-2 font-semibold text-xl">还没有邮件配置</h2>
 					<p className="mb-6 text-muted-foreground">
-						Create your first email configuration to start handling form
-						submissions automatically.
+						创建你的第一个邮件配置来开始自动处理表单提交
 					</p>
 					<Button onClick={handleOpenCreateDialog}>
-						<Plus className="mr-2 h-4 w-4" /> Add Email Config
+						<Plus className="mr-2 h-4 w-4" /> 添加邮件配置
 					</Button>
 				</div>
 			) : (

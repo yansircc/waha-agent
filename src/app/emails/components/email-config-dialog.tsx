@@ -34,13 +34,11 @@ import * as z from "zod";
 const formSchema = z.object({
 	id: z.string().optional(),
 	signature: z.string().optional(),
-	plunkApiKey: z.string().min(1, "Plunk API key is required"),
-	wechatPushApiKey: z.string().min(1, "Wechat push API key is required"),
-	formDataFormId: z.string().min(1, "Form-Data form ID is required"),
-	formDataWebhookSecret: z
-		.string()
-		.min(1, "Form-Data webhook secret is required"),
-	agentId: z.string().min(1, "Agent ID is required"),
+	plunkApiKey: z.string().min(1, "请输入Plunk API 密钥"),
+	wechatPushApiKey: z.string().min(1, "请输入Wechat push API 密钥"),
+	formDataFormId: z.string().min(1, "请输入Form-Data 表单ID"),
+	formDataWebhookSecret: z.string().min(1, "请输入Form-Data webhook secret"),
+	agentId: z.string().min(1, "请选择AI Agent"),
 });
 
 // Define the type using zod inference
@@ -86,9 +84,7 @@ export function EmailConfigDialog({
 			<DialogContent className="sm:max-w-[600px]">
 				<DialogHeader>
 					<DialogTitle>
-						{mode === "create"
-							? "Create new email config"
-							: "Edit email config"}
+						{mode === "create" ? "创建新的邮件配置" : "编辑邮件配置"}
 					</DialogTitle>
 				</DialogHeader>
 
@@ -97,28 +93,6 @@ export function EmailConfigDialog({
 						onSubmit={form.handleSubmit(handleSubmit)}
 						className="space-y-6"
 					>
-						<FormField
-							control={form.control}
-							name="signature"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Email Signature (HTML)</FormLabel>
-									<FormControl>
-										<Textarea
-											placeholder="<p>Best regards,<br>Your Company Team</p>"
-											className="min-h-[100px]"
-											{...field}
-											value={field.value || ""}
-										/>
-									</FormControl>
-									<FormDescription>
-										Optional HTML signature to append to emails
-									</FormDescription>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-
 						<FormField
 							control={form.control}
 							name="agentId"
@@ -131,7 +105,7 @@ export function EmailConfigDialog({
 									>
 										<FormControl>
 											<SelectTrigger>
-												<SelectValue placeholder="Select an agent" />
+												<SelectValue placeholder="请选择AI Agent" />
 											</SelectTrigger>
 										</FormControl>
 										<SelectContent>
@@ -142,47 +116,7 @@ export function EmailConfigDialog({
 											))}
 										</SelectContent>
 									</Select>
-									<FormDescription>
-										The AI agent that will generate email responses
-									</FormDescription>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-
-						<FormField
-							control={form.control}
-							name="plunkApiKey"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Plunk API Key</FormLabel>
-									<FormControl>
-										<Input placeholder="plunk_..." type="password" {...field} />
-									</FormControl>
-									<FormDescription>
-										API key for the Plunk email service
-									</FormDescription>
-									<FormMessage />
-								</FormItem>
-							)}
-						/>
-
-						<FormField
-							control={form.control}
-							name="wechatPushApiKey"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel>Wechat Push API Key</FormLabel>
-									<FormControl>
-										<Input
-											placeholder="SCT218011TXuUKrk52rbczON8RCPHNiLaG"
-											type="password"
-											{...field}
-										/>
-									</FormControl>
-									<FormDescription>
-										API key for the Wechat push service
-									</FormDescription>
+									<FormDescription>将生成邮件回复的AI Agent</FormDescription>
 									<FormMessage />
 								</FormItem>
 							)}
@@ -191,15 +125,51 @@ export function EmailConfigDialog({
 						<div className="grid grid-cols-2 gap-4">
 							<FormField
 								control={form.control}
+								name="plunkApiKey"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Plunk API Key</FormLabel>
+										<FormControl>
+											<Input
+												placeholder="plunk_..."
+												type="password"
+												{...field}
+											/>
+										</FormControl>
+										<FormDescription>用于Plunk邮件服务</FormDescription>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+
+							<FormField
+								control={form.control}
+								name="wechatPushApiKey"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Wechat Push API Key</FormLabel>
+										<FormControl>
+											<Input placeholder="SCT2..." type="password" {...field} />
+										</FormControl>
+										<FormDescription>用于Wechat push服务</FormDescription>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						</div>
+
+						<div className="grid grid-cols-2 gap-4">
+							<FormField
+								control={form.control}
 								name="formDataFormId"
 								render={({ field }) => (
 									<FormItem>
-										<FormLabel>Form-Data Form ID</FormLabel>
+										<FormLabel>Form-Data 表单ID</FormLabel>
 										<FormControl>
-											<Input placeholder="gf25yb51m5wa936sa8ak" {...field} />
+											<Input placeholder="gf2..." {...field} />
 										</FormControl>
 										<FormDescription>
-											ID from your Form-Data form
+											表单ID来自你的Form-Data表单
 										</FormDescription>
 										<FormMessage />
 									</FormItem>
@@ -213,26 +183,40 @@ export function EmailConfigDialog({
 									<FormItem>
 										<FormLabel>Form-Data Webhook Secret</FormLabel>
 										<FormControl>
-											<Input
-												placeholder="9cb15j74e0b5zixcmb..."
-												type="password"
-												{...field}
-											/>
+											<Input placeholder="9cb..." type="password" {...field} />
 										</FormControl>
-										<FormDescription>
-											Secret for webhook verification
-										</FormDescription>
+										<FormDescription>用于webhook验证</FormDescription>
 										<FormMessage />
 									</FormItem>
 								)}
 							/>
 						</div>
 
+						<FormField
+							control={form.control}
+							name="signature"
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>邮件签名 (HTML)</FormLabel>
+									<FormControl>
+										<Textarea
+											placeholder="<p>Best regards,<br>Your Company Team</p>"
+											className="min-h-[100px]"
+											{...field}
+											value={field.value || ""}
+										/>
+									</FormControl>
+									<FormDescription>
+										HTML签名，附加到邮件中，选填
+									</FormDescription>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+
 						<DialogFooter>
 							<Button type="submit">
-								{mode === "create"
-									? "Create email config"
-									: "Update email config"}
+								{mode === "create" ? "创建邮件配置" : "更新邮件配置"}
 							</Button>
 						</DialogFooter>
 					</form>

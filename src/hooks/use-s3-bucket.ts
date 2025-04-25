@@ -195,9 +195,7 @@ export function useS3Bucket({
 					return true;
 				}
 
-				throw new Error(
-					"Unsupported content type. Expected string, File, or Blob",
-				);
+				throw new Error("不支持的内容类型。预期字符串、文件或Blob");
 			} catch (err) {
 				setError(err instanceof Error ? err : new Error(String(err)));
 				return false;
@@ -211,7 +209,7 @@ export function useS3Bucket({
 	// Create a user folder/namespace
 	const createBucket = useCallback(async (): Promise<boolean> => {
 		if (!userId) {
-			setError(new Error("userId is required to create a bucket"));
+			setError(new Error("userId 是必需的以创建一个桶"));
 			return false;
 		}
 

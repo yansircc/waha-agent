@@ -57,7 +57,7 @@ export function QRCodeDialog({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-[425px]">
 				<DialogHeader>
-					<DialogTitle>Scan QR Code</DialogTitle>
+					<DialogTitle>扫描二维码</DialogTitle>
 				</DialogHeader>
 				<div className="flex flex-col items-center justify-center p-4">
 					{localQrCode ? (
@@ -68,18 +68,18 @@ export function QRCodeDialog({
 								className="h-64 w-64"
 							/>
 							<p className="mt-4 text-gray-500 text-sm">
-								Scan this QR code with your WhatsApp app to connect
+								使用你的WhatsApp应用扫描这个二维码来连接
 							</p>
 						</>
 					) : (
 						<div className="flex flex-col items-center justify-center p-8">
 							<Loader2 className="mb-4 h-8 w-8 animate-spin text-gray-400" />
-							<p className="text-gray-500 text-sm">Loading QR code...</p>
+							<p className="text-gray-500 text-sm">加载二维码...</p>
 						</div>
 					)}
 				</div>
 				<DialogFooter>
-					<Button onClick={() => onOpenChange(false)}>Close</Button>
+					<Button onClick={() => onOpenChange(false)}>关闭</Button>
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>

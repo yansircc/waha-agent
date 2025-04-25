@@ -58,9 +58,9 @@ export function KbList({
 		return (
 			<EmptyState
 				icon={Database}
-				title="No knowledge bases yet"
-				description="Add your first knowledge base to enhance your agents with domain-specific knowledge."
-				actionLabel="Add Knowledge Base"
+				title="没有知识库"
+				description="添加你的第一个知识库以增强你的机器人的领域特定知识。"
+				actionLabel="添加知识库"
 				onAction={onAdd}
 			/>
 		);
@@ -122,7 +122,7 @@ export function KbList({
 						<div className="mt-auto flex items-center justify-between pt-4 text-sm">
 							<span className="flex items-center gap-1">
 								<FilesIcon className="h-4 w-4" />
-								{kb.documents?.length || 0} documents
+								{kb.documents?.length || 0} 文档
 							</span>
 							<div className="flex items-center gap-1">
 								<span className="text-muted-foreground">

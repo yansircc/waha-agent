@@ -83,9 +83,9 @@ export const whatsAppChat = task({
 			// 3. 生成回复内容
 			let aiResponse = "";
 
-			// 使用AI代理或简单响应处理消息
+			// 使用AI机器人或简单响应处理消息
 			if (agent) {
-				// 使用AI代理生成响应
+				// 使用AI机器人生成响应
 				logger.info("Using AI agent for response", {
 					agent,
 					chatId,
@@ -156,7 +156,7 @@ export const whatsAppChat = task({
 					aiResponse = "Sorry, busy handling other things.";
 				}
 			} else {
-				// 如果没有提供代理，则简单回复
+				// 如果没有提供机器人，则简单回复
 				aiResponse = `AFK for a while, I'll be back soon.`;
 			}
 

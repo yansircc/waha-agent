@@ -4,7 +4,7 @@ import type { Agent } from "@/types/agents";
 import { eq } from "drizzle-orm";
 
 /**
- * 从数据库获取实例关联的代理
+ * 从数据库获取实例关联的机器人
  * 这个函数分离出来是为了避免循环依赖
  */
 export async function getInstanceAgentFromDb(
@@ -20,14 +20,14 @@ export async function getInstanceAgentFromDb(
 			return null;
 		}
 
-		// 获取关联的代理
+		// 获取关联的机器人
 		const agent = await db.query.agents.findFirst({
 			where: eq(agents.id, instance.agentId),
 		});
 
 		return agent || null;
 	} catch (error) {
-		console.error(`从数据库获取实例 ${instanceId} 的代理失败:`, error);
+		console.error(`从数据库获取实例 ${instanceId} 的机器人失败:`, error);
 		return null;
 	}
 }

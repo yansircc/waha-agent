@@ -17,11 +17,11 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 const navItems = [
-	{ name: "Dashboard", href: "/dashboard", icon: Home },
-	{ name: "Agents", href: "/agents", icon: Brain },
-	{ name: "Knowledge", href: "/kb", icon: Database },
-	{ name: "Instances", href: "/instances", icon: Smartphone },
-	{ name: "Emails", href: "/emails", icon: Mail },
+	{ name: "仪表盘", href: "/dashboard", icon: Home },
+	{ name: "机器人", href: "/agents", icon: Brain },
+	{ name: "知识库", href: "/kb", icon: Database },
+	{ name: "WS 账号", href: "/instances", icon: Smartphone },
+	{ name: "邮箱", href: "/emails", icon: Mail },
 ];
 
 export function SideNav() {
@@ -39,7 +39,7 @@ export function SideNav() {
 		>
 			<div className="flex items-center px-4 pb-6">
 				{!collapsed && (
-					<span className="font-bold text-foreground text-xl">Waha Mastra</span>
+					<span className="font-bold text-foreground text-xl">Waha Master</span>
 				)}
 				<Button
 					variant="ghost"
@@ -88,7 +88,7 @@ export function SideNav() {
 					)}
 				>
 					<LogOut className="h-5 w-5" />
-					{!collapsed && <span>Sign out</span>}
+					{!collapsed && <span>登出</span>}
 				</Link>
 			</div>
 		</div>

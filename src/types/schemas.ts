@@ -129,7 +129,7 @@ export const InstanceSchema = z.object({
 	updatedAt: z.date().optional(),
 });
 
-// 代理相关验证模式
+// 机器人相关验证模式
 export const AgentSchema = z.object({
 	id: z.string(),
 	name: z.string(),

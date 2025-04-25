@@ -77,7 +77,7 @@ export function DocumentCard({
 			await onVectorize(document.id);
 			// The UI will immediately update to processing state, actual status updates via polling
 		} catch (error) {
-			toast.error("Vectorization request failed, please try again later");
+			toast.error("投喂请求失败，请稍后再试");
 			setIsLocalProcessing(false);
 		}
 	};
@@ -86,9 +86,9 @@ export function DocumentCard({
 	const copyFileLink = () => {
 		if (document.fileUrl) {
 			navigator.clipboard.writeText(document.fileUrl);
-			toast.success("File link copied to clipboard");
+			toast.success("文件链接已复制到剪贴板");
 		} else {
-			toast.error("File link not available");
+			toast.error("文件链接不可用");
 		}
 	};
 
@@ -97,7 +97,7 @@ export function DocumentCard({
 		if (document.fileUrl) {
 			window.open(document.fileUrl, "_blank");
 		} else {
-			toast.error("File link not available");
+			toast.error("文件链接不可用");
 		}
 	};
 
@@ -111,7 +111,7 @@ export function DocumentCard({
 			// The parent component will handle removing this card from the list
 		} catch (error) {
 			setIsDeleting(false);
-			toast.error("Failed to delete document");
+			toast.error("删除文档失败");
 		}
 	};
 
@@ -134,7 +134,7 @@ export function DocumentCard({
 						<div className="text-muted-foreground">
 							{document.createdAt
 								? new Date(document.createdAt).toLocaleDateString()
-								: "No date"}
+								: "没有日期"}
 						</div>
 					</div>
 				</CardContent>
@@ -210,7 +210,7 @@ export function DocumentCard({
 									) : (
 										<>
 											<Wand2 className="mr-2 h-4 w-4" />
-											向量化
+											投喂文档
 										</>
 									)}
 								</Button>
@@ -233,10 +233,10 @@ export function DocumentCard({
 								<TooltipTrigger asChild>
 									<Button variant="outline" size="sm" onClick={openFile}>
 										<ExternalLink className="mr-2 h-4 w-4" />
-										Preview
+										预览
 									</Button>
 								</TooltipTrigger>
-								<TooltipContent>Open file in new window</TooltipContent>
+								<TooltipContent>在新窗口中打开文件</TooltipContent>
 							</Tooltip>
 						</TooltipProvider>
 					)}
@@ -247,10 +247,10 @@ export function DocumentCard({
 								<TooltipTrigger asChild>
 									<Button variant="outline" size="sm" onClick={copyFileLink}>
 										<Link className="mr-2 h-4 w-4" />
-										Copy link
+										复制链接
 									</Button>
 								</TooltipTrigger>
-								<TooltipContent>Copy file link to clipboard</TooltipContent>
+								<TooltipContent>复制文件链接到剪贴板</TooltipContent>
 							</Tooltip>
 						</TooltipProvider>
 					)}
@@ -267,7 +267,7 @@ export function DocumentCard({
 								<Trash2 className="h-4 w-4" />
 							</Button>
 						</TooltipTrigger>
-						<TooltipContent>Delete document</TooltipContent>
+						<TooltipContent>删除文档</TooltipContent>
 					</Tooltip>
 				</TooltipProvider>
 			</CardFooter>

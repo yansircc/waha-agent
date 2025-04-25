@@ -27,7 +27,7 @@ export function useSessionStatus({
 			// Check if a status check is already in progress for this instance
 			const checkKey = `${instanceId}:${sessionName}`;
 			if (statusChecksInProgress.current[checkKey]) {
-				console.log(`Status check already in progress for ${sessionName}`);
+				console.log(`状态检查已在进行中 - ${sessionName}`);
 				return null;
 			}
 
@@ -39,10 +39,7 @@ export function useSessionStatus({
 				const session = await fetchSessionByName(sessionName);
 
 				if (session) {
-					console.log(
-						`Checking session status for ${sessionName}:`,
-						session.status,
-					);
+					console.log(`检查会话状态 - ${sessionName}:`, session.status);
 
 					// Map WAHA API status to our application status
 					let instanceStatus: InstanceStatus = "connecting";
@@ -73,13 +70,13 @@ export function useSessionStatus({
 					return instanceStatus;
 				}
 
-				console.log(`No session data found for ${sessionName}`);
+				console.log(`未找到会话数据 - ${sessionName}`);
 
 				// Clear in-progress flag
 				statusChecksInProgress.current[checkKey] = false;
 				return null;
 			} catch (error) {
-				console.error("Error checking session status:", error);
+				console.error("检查会话状态时出错:", error);
 				onError?.(error as Error);
 
 				// Clear in-progress flag even on error

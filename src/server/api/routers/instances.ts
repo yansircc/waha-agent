@@ -68,24 +68,24 @@ export const instancesRouter = createTRPCRouter({
 				throw new Error("Failed to create instance - no result returned");
 			}
 
-			// 如果指定了代理ID，将代理配置保存到Redis
+			// 如果指定了机器人ID，将机器人配置保存到Redis
 			if (input.agentId) {
 				try {
-					// 获取完整的代理信息
+					// 获取完整的机器人信息
 					const agent = await ctx.db.query.agents.findFirst({
 						where: (agentRecord) => eq(agentRecord.id, input.agentId as string),
 					});
 
 					if (agent) {
-						// 保存代理配置，并设置活跃状态
+						// 保存机器人配置，并设置活跃状态
 						await saveInstanceAgent(newInstance.id, agent, input.isAgentActive);
 						console.log(
-							`已将实例 ${newInstance.id} 的代理配置保存至Redis (isActive: ${input.isAgentActive})`,
+							`已将实例 ${newInstance.id} 的机器人配置保存至Redis (isActive: ${input.isAgentActive})`,
 						);
 					}
 				} catch (error) {
 					console.error(
-						`保存实例 ${newInstance.id} 的代理配置到Redis失败:`,
+						`保存实例 ${newInstance.id} 的机器人配置到Redis失败:`,
 						error,
 					);
 					// 不阻止创建实例，仅记录错误
@@ -148,54 +148,56 @@ export const instancesRouter = createTRPCRouter({
 				throw new Error("Failed to update instance - no result returned");
 			}
 
-			// 如果更新了代理ID或代理活跃状态，更新Redis中的配置
+			// 如果更新了机器人ID或机器人活跃状态，更新Redis中的配置
 			if (input.agentId !== undefined || input.isAgentActive !== undefined) {
 				try {
 					if (input.agentId) {
-						// 获取最新的代理ID
+						// 获取最新的机器人ID
 						const agent = await ctx.db.query.agents.findFirst({
 							where: (agentRecord) =>
 								eq(agentRecord.id, input.agentId as string),
 						});
 
 						if (agent) {
-							// 确定代理活跃状态
+							// 确定机器人活跃状态
 							const isActive =
 								input.isAgentActive !== undefined ? input.isAgentActive : true;
 
-							// 保存代理配置
+							// 保存机器人配置
 							await saveInstanceAgent(updatedInstance.id, agent, isActive);
 							console.log(
-								`已更新实例 ${updatedInstance.id} 的代理配置到Redis (isActive: ${isActive})`,
+								`已更新实例 ${updatedInstance.id} 的机器人配置到Redis (isActive: ${isActive})`,
 							);
 						}
 					} else if (input.agentId === null || input.agentId === "") {
-						// 如果移除了代理，清除Redis中的配置
+						// 如果移除了机器人，清除Redis中的配置
 						await saveInstanceAgent(updatedInstance.id, null);
-						console.log(`已从Redis中移除实例 ${updatedInstance.id} 的代理配置`);
+						console.log(
+							`已从Redis中移除实例 ${updatedInstance.id} 的机器人配置`,
+						);
 					} else if (input.isAgentActive !== undefined && instance.agentId) {
-						// 如果只是更新代理活跃状态
-						// 获取当前的代理配置
+						// 如果只是更新机器人活跃状态
+						// 获取当前的机器人配置
 						const agent = await ctx.db.query.agents.findFirst({
 							where: (agentRecord) =>
 								eq(agentRecord.id, instance.agentId as string),
 						});
 
 						if (agent) {
-							// 更新代理活跃状态
+							// 更新机器人活跃状态
 							await saveInstanceAgent(
 								updatedInstance.id,
 								agent,
 								input.isAgentActive,
 							);
 							console.log(
-								`已更新实例 ${updatedInstance.id} 的代理活跃状态为: ${input.isAgentActive}`,
+								`已更新实例 ${updatedInstance.id} 的机器人活跃状态为: ${input.isAgentActive}`,
 							);
 						}
 					}
 				} catch (error) {
 					console.error(
-						`更新实例 ${updatedInstance.id} 的Redis代理配置失败:`,
+						`更新实例 ${updatedInstance.id} 的Redis机器人配置失败:`,
 						error,
 					);
 					// 不阻止更新实例，仅记录错误
@@ -262,7 +264,7 @@ export const instancesRouter = createTRPCRouter({
 				);
 			}
 
-			// 如果实例没有代理，无法设置状态
+			// 如果实例没有机器人，无法设置状态
 			if (!instance.agent) {
 				throw new Error(
 					"Instance does not have an agent to activate/deactivate",
@@ -270,10 +272,10 @@ export const instancesRouter = createTRPCRouter({
 			}
 
 			try {
-				// 保存更新后的代理活跃状态
+				// 保存更新后的机器人活跃状态
 				await saveInstanceAgent(input.id, instance.agent, input.isActive);
 				console.log(
-					`已将实例 ${input.id} 的代理活跃状态设置为: ${input.isActive}`,
+					`已将实例 ${input.id} 的机器人活跃状态设置为: ${input.isActive}`,
 				);
 
 				return {

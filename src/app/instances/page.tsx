@@ -35,9 +35,9 @@ export default function InstancesPage() {
 	return (
 		<div className="container py-8">
 			<div className="mb-8 flex items-center justify-between">
-				<h1 className="font-bold text-3xl">WhatsApp Instances</h1>
+				<h1 className="font-bold text-3xl">WhatsApp账号</h1>
 				<Button onClick={handleOpenAddDialog} disabled={isApiLoading}>
-					<PlusIcon className="mr-2 h-4 w-4" /> Add Instance
+					<PlusIcon className="mr-2 h-4 w-4" /> 添加账号
 				</Button>
 			</div>
 

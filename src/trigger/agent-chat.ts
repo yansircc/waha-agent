@@ -13,7 +13,7 @@ export const agentChat = task({
 
 		try {
 			// Log start of processing
-			logger.info("Starting chat generation", {
+			logger.info("开始聊天生成", {
 				agentId: agent.id,
 				kbIds: agent.kbIds,
 				conversationId,
@@ -43,7 +43,7 @@ export const agentChat = task({
 			};
 
 			// Log success
-			logger.info("Chat generation completed", {
+			logger.info("聊天生成完成", {
 				agent,
 				conversationId,
 				messageId,
@@ -52,7 +52,7 @@ export const agentChat = task({
 			});
 
 			// Send webhook response
-			logger.debug("Sending webhook response", {
+			logger.debug("发送webhook响应", {
 				url: webhookUrl,
 				success: true,
 			});
@@ -73,7 +73,7 @@ export const agentChat = task({
 			};
 
 			// Log error
-			logger.error("Chat generation failed", {
+			logger.error("聊天生成失败", {
 				error: errorMessage,
 				agent,
 				conversationId,
@@ -81,7 +81,7 @@ export const agentChat = task({
 			});
 
 			// Send error webhook response
-			logger.debug("Sending error webhook response", {
+			logger.debug("发送错误webhook响应", {
 				url: webhookUrl,
 				success: false,
 			});

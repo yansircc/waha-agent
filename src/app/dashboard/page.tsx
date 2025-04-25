@@ -19,11 +19,11 @@ export default async function Dashboard() {
 			<div className="flex h-[80vh] items-center justify-center">
 				<Card className="w-full max-w-lg">
 					<CardHeader>
-						<CardTitle>Authentication Required</CardTitle>
+						<CardTitle>需要认证</CardTitle>
 						<CardDescription>
-							Please sign in to access the dashboard.
+							请登录以访问仪表板。
 							<Button asChild variant="link">
-								<Link href="/api/auth/signin">Sign in</Link>
+								<Link href="/api/auth/signin">登录</Link>
 							</Button>
 						</CardDescription>
 					</CardHeader>
@@ -40,39 +40,36 @@ export default async function Dashboard() {
 
 	return (
 		<div className="space-y-6 py-8">
-			<h1 className="font-bold text-3xl">Dashboard</h1>
-			<p className="text-gray-500">
-				Welcome back, {session.user?.name || "User"}
-			</p>
+			<h1 className="font-bold text-3xl">仪表板</h1>
+			<p className="text-gray-500">欢迎回来, {session.user?.name || "用户"}</p>
 
 			<div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
 				<DashboardCard
-					title="Agents"
+					title="AI机器人"
 					count={agents.length}
 					description="AI agents configured"
 				/>
 				<DashboardCard
-					title="Knowledge Bases"
+					title="知识库"
 					count={kbs.length}
-					description="Knowledge bases created"
+					description="知识库创建"
 				/>
 				<DashboardCard
-					title="Instances"
+					title="WhatsApp账号"
 					count={instances.length}
-					description="WhatsApp instances"
+					description="WhatsApp账号"
 				/>
 				<DashboardCard
-					title="Email Configs"
+					title="邮件配置"
 					count={emails.length}
-					description="Email configs set up"
+					description="邮件配置设置"
 				/>
 			</div>
 
 			<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
 				<Card>
 					<CardHeader>
-						<CardTitle>Recent Agents</CardTitle>
-						<CardDescription>Recently created AI agents</CardDescription>
+						<CardTitle>最近创建的AI机器人</CardTitle>
 					</CardHeader>
 					<CardContent>
 						{agents.length > 0 ? (
@@ -85,7 +82,7 @@ export default async function Dashboard() {
 										<div>
 											<p className="font-medium">{agent.name}</p>
 											<p className="text-gray-500 text-sm">
-												Model: {agent.model}
+												模型: {agent.model}
 											</p>
 										</div>
 										<p className="text-gray-500 text-xs">
@@ -97,17 +94,14 @@ export default async function Dashboard() {
 								))}
 							</ul>
 						) : (
-							<p className="text-gray-500">No agents created yet</p>
+							<p className="text-gray-500">还没有创建AI机器人</p>
 						)}
 					</CardContent>
 				</Card>
 
 				<Card>
 					<CardHeader>
-						<CardTitle>Recent Instances</CardTitle>
-						<CardDescription>
-							Recently created WhatsApp instances
-						</CardDescription>
+						<CardTitle>最近创建的WhatsApp账号</CardTitle>
 					</CardHeader>
 					<CardContent>
 						{instances.length > 0 ? (
@@ -120,7 +114,7 @@ export default async function Dashboard() {
 										<div>
 											<p className="font-medium">{instance.name}</p>
 											<p className="text-gray-500 text-sm">
-												Status:{" "}
+												状态:{" "}
 												<span
 													className={`${instance.status === "connected" ? "text-green-500" : "text-amber-500"}`}
 												>
@@ -139,7 +133,7 @@ export default async function Dashboard() {
 								))}
 							</ul>
 						) : (
-							<p className="text-gray-500">No instances created yet</p>
+							<p className="text-gray-500">还没有创建WhatsApp账号</p>
 						)}
 					</CardContent>
 				</Card>

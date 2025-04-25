@@ -37,7 +37,7 @@ export function KbDetail({
 		<>
 			<div className="mb-4">
 				<Button variant="outline" onClick={onBack}>
-					&larr; Back to Knowledge Bases
+					&larr; 返回知识库
 				</Button>
 			</div>
 
@@ -49,7 +49,7 @@ export function KbDetail({
 					)}
 				</div>
 				<Button onClick={onAddDocument}>
-					<Plus className="mr-2 h-4 w-4" /> Add Document
+					<Plus className="mr-2 h-4 w-4" /> 添加文档
 				</Button>
 			</div>
 
@@ -65,9 +65,9 @@ export function KbDetail({
 			) : documents.length === 0 ? (
 				<EmptyState
 					icon={FileText}
-					title="No documents yet"
-					description="Add your first document to this knowledge base."
-					actionLabel="Add Document"
+					title="没有文档"
+					description="添加你的第一个文档到这个知识库。"
+					actionLabel="添加文档"
 					onAction={onAddDocument}
 				/>
 			) : (

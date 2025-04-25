@@ -85,7 +85,7 @@ export function useQRCode({
 		document.dispatchEvent(event);
 	}, []);
 
-	// 清理特定实例的轮询
+	// 清理特定账号的轮询
 	const clearPollingForInstance = useCallback((instanceId: string) => {
 		if (pollingTimers.current[instanceId]) {
 			clearTimeout(pollingTimers.current[instanceId]);
@@ -98,7 +98,7 @@ export function useQRCode({
 				return newState;
 			});
 
-			console.log(`已停止为实例 ${instanceId} 轮询QR码`);
+			console.log(`已停止为账号 ${instanceId} 轮询QR码`);
 		}
 	}, []);
 
@@ -121,7 +121,7 @@ export function useQRCode({
 				return;
 			}
 
-			console.log(`开始为实例 ${instanceId} 轮询QR码`);
+			console.log(`开始为账号 ${instanceId} 轮询QR码`);
 
 			// 标记为正在轮询
 			setPollingInstances((prev) => ({ ...prev, [instanceId]: true }));
@@ -137,7 +137,7 @@ export function useQRCode({
 						(pollingAttempts.current[instanceId] || 0) + 1;
 
 					console.log(
-						`QR码轮询 - 实例 ${instanceId} - 尝试 ${pollingAttempts.current[instanceId]}/${maxAttempts}`,
+						`QR码轮询 - 账号 ${instanceId} - 尝试 ${pollingAttempts.current[instanceId]}/${maxAttempts}`,
 					);
 
 					// 获取QR码
@@ -145,7 +145,7 @@ export function useQRCode({
 
 					// 如果获取到QR码，停止轮询
 					if (qrData) {
-						console.log(`已获取到实例 ${instanceId} 的QR码，停止轮询`);
+						console.log(`已获取到账号 ${instanceId} 的QR码，停止轮询`);
 						clearPollingForInstance(instanceId);
 
 						// 显示QR码对话框
@@ -157,7 +157,7 @@ export function useQRCode({
 					// 如果达到最大尝试次数，停止轮询
 					if (pollingAttempts.current[instanceId] >= maxAttempts) {
 						console.log(
-							`实例 ${instanceId} 的QR码轮询达到最大尝试次数 ${maxAttempts}，停止轮询`,
+							`账号 ${instanceId} 的QR码轮询达到最大尝试次数 ${maxAttempts}，停止轮询`,
 						);
 						clearPollingForInstance(instanceId);
 
@@ -168,7 +168,7 @@ export function useQRCode({
 					// 继续轮询
 					pollingTimers.current[instanceId] = setTimeout(poll, pollingInterval);
 				} catch (error) {
-					console.error(`QR码轮询错误 - 实例 ${instanceId}:`, error);
+					console.error(`QR码轮询错误 - 账号 ${instanceId}:`, error);
 
 					// 继续轮询，除非达到最大尝试次数
 					if (
@@ -176,7 +176,7 @@ export function useQRCode({
 						pollingAttempts.current[instanceId] >= maxAttempts
 					) {
 						console.log(
-							`实例 ${instanceId} 的QR码轮询出错且达到最大尝试次数，停止轮询`,
+							`账号 ${instanceId} 的QR码轮询出错且达到最大尝试次数，停止轮询`,
 						);
 						clearPollingForInstance(instanceId);
 

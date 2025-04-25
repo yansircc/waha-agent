@@ -48,7 +48,7 @@ export default function KnowledgePage() {
 	};
 
 	const handleDeleteKb = async (id: string) => {
-		if (confirm("Are you sure you want to delete this knowledge base?")) {
+		if (confirm("确定要删除这个知识库吗？")) {
 			await deleteKb(id);
 			if (selectedKb?.id === id) {
 				setSelectedKb(null);
@@ -72,7 +72,7 @@ export default function KnowledgePage() {
 	};
 
 	const handleDeleteDocument = async (id: string, kbId: string) => {
-		if (confirm("Are you sure you want to delete this document?")) {
+		if (confirm("确定要删除这个文档吗？")) {
 			await deleteDocument(id, kbId);
 		}
 	};
@@ -92,7 +92,7 @@ export default function KnowledgePage() {
 			// 重新加载文档列表，以获取更新的状态
 			await docsQuery.refetch();
 		} catch (error) {
-			console.error("Failed to vectorize document:", error);
+			console.error("投喂文档失败:", error);
 		}
 	};
 
@@ -116,9 +116,9 @@ export default function KnowledgePage() {
 			{tab === "list" ? (
 				<>
 					<div className="mb-8 flex items-center justify-between">
-						<h1 className="font-bold text-3xl">Knowledge Bases</h1>
+						<h1 className="font-bold text-3xl">知识库</h1>
 						<Button onClick={handleOpenAddKbDialog}>
-							<Plus className="mr-2 h-4 w-4" /> Add Knowledge Base
+							<Plus className="mr-2 h-4 w-4" /> 添加知识库
 						</Button>
 					</div>
 

@@ -44,7 +44,7 @@ export function useInstancesManager() {
 		refreshInstanceSession,
 	} = useInstancesApi({
 		onError: (error) => {
-			toast.error(`API Error: ${error.message}`);
+			toast.error(`API错误: ${error.message}`);
 		},
 	});
 
@@ -78,10 +78,7 @@ export function useInstancesManager() {
 					startPollingQRCode(instance.id, sanitizedName);
 				} else if (instance.status === "connecting") {
 					startInstanceSession(instance.id, sanitizedName).catch((error) => {
-						console.error(
-							`Error starting session for ${instance.name}:`,
-							error,
-						);
+						console.error(`启动会话时出错: ${instance.name}:`, error);
 					});
 				}
 			}
@@ -122,12 +119,12 @@ export function useInstancesManager() {
 				handleCloseAddDialog();
 			}
 		} catch (error) {
-			toast.error(`Failed to create instance: ${(error as Error).message}`);
+			toast.error(`创建账号时出错: ${(error as Error).message}`);
 		}
 	};
 
 	const handleDeleteInstance = async (id: string) => {
-		if (window.confirm("Are you sure you want to delete this instance?")) {
+		if (window.confirm("确定要删除这个账号吗？")) {
 			// 停止任何正在进行的QR码轮询
 			stopPollingQRCode(id);
 			await deleteInstance(id);
@@ -137,7 +134,7 @@ export function useInstancesManager() {
 	const handleScanQR = (instance: (typeof instances)[0]) => {
 		// 如果正在轮询，先停止轮询
 		if (pendingOperations.current[instance.id]) {
-			console.log(`操作已在进行中 - 实例: ${instance.name}`);
+			console.log(`操作已在进行中 - 账号: ${instance.name}`);
 			return;
 		}
 
@@ -163,9 +160,7 @@ export function useInstancesManager() {
 	const fetchInstanceQR = async (instanceId: string, sessionName: string) => {
 		// Don't proceed if there's a pending operation
 		if (pendingOperations.current[instanceId]) {
-			console.log(
-				`Operation already in progress for instance ID: ${instanceId}`,
-			);
+			console.log(`操作已在进行中 - 账号ID: ${instanceId}`);
 			return;
 		}
 
@@ -201,13 +196,11 @@ export function useInstancesManager() {
 					id: instanceId,
 					status: "connected",
 				});
-				toast.success(
-					`WhatsApp session for ${sessionName} is already connected`,
-				);
+				toast.success(`WhatsApp账号 ${sessionName} 已连接`);
 			}
 		} catch (error) {
-			console.error("Error fetching QR code:", error);
-			toast.error("Failed to get QR code. Please try again.");
+			console.error("获取二维码时出错:", error);
+			toast.error("获取二维码失败。请再试一次。");
 		} finally {
 			// Clear operation flag
 			pendingOperations.current[instanceId] = false;
@@ -217,9 +210,7 @@ export function useInstancesManager() {
 	const handleStartSession = async (instance: (typeof instances)[0]) => {
 		// Don't proceed if there's a pending operation
 		if (pendingOperations.current[instance.id]) {
-			console.log(
-				`Operation already in progress for instance: ${instance.name}`,
-			);
+			console.log(`操作已在进行中 - 账号: ${instance.name}`);
 			return;
 		}
 
@@ -229,9 +220,9 @@ export function useInstancesManager() {
 		try {
 			const sanitizedName = sanitizeSessionName(instance.name);
 			await startInstanceSession(instance.id, sanitizedName);
-			toast.success(`Started WhatsApp session for ${instance.name}`);
+			toast.success(`WhatsApp账号 ${instance.name} 已启动`);
 		} catch (error) {
-			toast.error(`Failed to start session: ${(error as Error).message}`);
+			toast.error(`启动会话时出错: ${(error as Error).message}`);
 		} finally {
 			// Clear operation flag
 			pendingOperations.current[instance.id] = false;
@@ -250,9 +241,9 @@ export function useInstancesManager() {
 		try {
 			const sanitizedName = sanitizeSessionName(instance.name);
 			await stopInstanceSession(instance.id, sanitizedName);
-			toast.success(`Stopped WhatsApp session for ${instance.name}`);
+			toast.success(`WhatsApp账号 ${instance.name} 已停止`);
 		} catch (error) {
-			toast.error(`Failed to stop session: ${(error as Error).message}`);
+			toast.error(`停止会话时出错: ${(error as Error).message}`);
 		} finally {
 			// Clear operation flag
 			pendingOperations.current[instance.id] = false;
@@ -260,11 +251,7 @@ export function useInstancesManager() {
 	};
 
 	const handleLogoutSession = async (instance: (typeof instances)[0]) => {
-		if (
-			window.confirm(
-				"Are you sure you want to log out? You'll need to scan the QR code again to reconnect.",
-			)
-		) {
+		if (window.confirm("确定要登出吗？你需要再次扫描二维码来重新连接。")) {
 			// Don't proceed if there's a pending operation
 			if (pendingOperations.current[instance.id]) {
 				return;
@@ -276,9 +263,9 @@ export function useInstancesManager() {
 			try {
 				const sanitizedName = sanitizeSessionName(instance.name);
 				await logoutInstanceSession(instance.id, sanitizedName);
-				toast.success(`Logged out WhatsApp session for ${instance.name}`);
+				toast.success(`WhatsApp账号 ${instance.name} 已登出`);
 			} catch (error) {
-				toast.error(`Failed to logout: ${(error as Error).message}`);
+				toast.error(`登出时出错: ${(error as Error).message}`);
 			} finally {
 				// Clear operation flag
 				pendingOperations.current[instance.id] = false;
@@ -310,7 +297,7 @@ export function useInstancesManager() {
 					// 使用轮询获取QR码
 					startPollingQRCode(instance.id, sanitizedName);
 					displayQRCode(instance.id);
-					toast.success(`QR code refreshed for ${instance.name}`);
+					toast.success(`QR码已刷新 - ${instance.name}`);
 					return;
 				}
 
@@ -320,10 +307,10 @@ export function useInstancesManager() {
 			} else {
 				// If session doesn't exist, try to restart
 				await refreshInstanceSession(instance.id, sanitizedName);
-				toast.success(`Refreshed WhatsApp session for ${instance.name}`);
+				toast.success(`WhatsApp账号 ${instance.name} 已刷新`);
 			}
 		} catch (error) {
-			toast.error(`Failed to refresh session: ${(error as Error).message}`);
+			toast.error(`刷新会话时出错: ${(error as Error).message}`);
 		} finally {
 			// Clear operation flag
 			pendingOperations.current[instance.id] = false;

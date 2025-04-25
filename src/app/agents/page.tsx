@@ -89,9 +89,9 @@ export default function AgentsPage() {
 	return (
 		<div className="container py-8">
 			<div className="mb-8 flex items-center justify-between">
-				<h1 className="font-bold text-3xl">Agents</h1>
+				<h1 className="font-bold text-3xl">机器人</h1>
 				<Button onClick={handleOpenCreateDialog}>
-					<Plus className="mr-2 h-4 w-4" /> Create Agent
+					<Plus className="mr-2 h-4 w-4" /> 创建机器人
 				</Button>
 			</div>
 
@@ -106,12 +106,12 @@ export default function AgentsPage() {
 				</div>
 			) : agents.length === 0 ? (
 				<div className="flex flex-col items-center justify-center rounded-lg border bg-background p-12 text-center">
-					<h2 className="mb-2 font-semibold text-xl">No agents yet</h2>
+					<h2 className="mb-2 font-semibold text-xl">没有机器人</h2>
 					<p className="mb-6 text-muted-foreground">
-						Create your first AI agent to start automating WhatsApp responses.
+						创建你的第一个AI机器人以开始自动回复WhatsApp消息。
 					</p>
 					<Button onClick={handleOpenCreateDialog}>
-						<Plus className="mr-2 h-4 w-4" /> Create Agent
+						<Plus className="mr-2 h-4 w-4" /> 创建机器人
 					</Button>
 				</div>
 			) : (

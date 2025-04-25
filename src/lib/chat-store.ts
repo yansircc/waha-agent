@@ -97,10 +97,10 @@ export async function storeResponse(
 		});
 
 		console.log(
-			`[Chat Store] Stored response for conversation: ${conversationId}, messageId: ${responseMessageId}${error ? `, with error: ${error}` : ""}`,
+			`[Chat Store] 存储响应用于对话: ${conversationId}, 消息ID: ${responseMessageId}${error ? `, 错误: ${error}` : ""}`,
 		);
 	} catch (err) {
-		console.error("[Chat Store] Failed to store response:", err);
+		console.error("[Chat Store] 存储响应失败:", err);
 	}
 }
 
@@ -147,12 +147,12 @@ export async function storeUserMessage(
 		});
 
 		console.log(
-			`[Chat Store] Stored user message for conversation: ${conversationId}, messageId: ${messageId}`,
+			`[Chat Store] 存储用户消息用于对话: ${conversationId}, 消息ID: ${messageId}`,
 		);
 
 		return messageId;
 	} catch (err) {
-		console.error("[Chat Store] Failed to store user message:", err);
+		console.error("[Chat Store] 存储用户消息失败:", err);
 		return messageId; // 即使出错也返回messageId，以便前端能继续
 	}
 }
@@ -207,7 +207,7 @@ export async function getResponseByConversationId(
 			return latestResponse;
 		});
 	} catch (err) {
-		console.error("[Chat Store] Failed to get response:", err);
+		console.error("[Chat Store] 获取响应失败:", err);
 		return null;
 	}
 }
@@ -270,7 +270,7 @@ export async function getAllStoredMessages(): Promise<
 			return result;
 		});
 	} catch (err) {
-		console.error("[Chat Store] Failed to get all stored messages:", err);
+		console.error("[Chat Store] 获取所有存储的消息失败:", err);
 		return {};
 	}
 }
@@ -322,7 +322,7 @@ export async function findMessageById(
 			return results;
 		});
 	} catch (err) {
-		console.error("[Chat Store] Failed to find message by ID:", err);
+		console.error("[Chat Store] 查找消息失败:", err);
 		return [];
 	}
 }

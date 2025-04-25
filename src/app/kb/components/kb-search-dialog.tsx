@@ -104,15 +104,15 @@ export function KbSearchDialog({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="flex max-h-[80vh] max-w-3xl flex-col">
 				<DialogHeader>
-					<DialogTitle>Search Knowledge Base: {kb.name}</DialogTitle>
+					<DialogTitle>搜索知识库: {kb.name}</DialogTitle>
 					<DialogDescription>
-						Test your knowledge base retrieval without AI involvement
+						在不涉及AI的情况下测试你的知识库检索
 					</DialogDescription>
 				</DialogHeader>
 
 				<div className="my-4 flex items-center gap-2">
 					<Input
-						placeholder="Enter search query..."
+						placeholder="输入搜索查询..."
 						value={query}
 						onChange={(e) => setQuery(e.target.value)}
 						onKeyDown={(e) => {
@@ -141,9 +141,7 @@ export function KbSearchDialog({
 function SearchResultsList({ results }: { results: SearchResult[] }) {
 	if (results.length === 0) {
 		return (
-			<div className="py-8 text-center text-muted-foreground">
-				No results found
-			</div>
+			<div className="py-8 text-center text-muted-foreground">没有结果</div>
 		);
 	}
 
@@ -178,7 +176,7 @@ function SearchResultsList({ results }: { results: SearchResult[] }) {
 							{/* 展示元数据 */}
 							<div className="space-y-1 text-xs">
 								<div className="text-muted-foreground">
-									<strong>Document Metadata:</strong>{" "}
+									<strong>文档元数据:</strong>{" "}
 									{Object.entries(result.payload)
 										.filter(([key]) => key !== "text")
 										.map(([key, value]) => `${key}: ${value}`)
@@ -187,25 +185,23 @@ function SearchResultsList({ results }: { results: SearchResult[] }) {
 
 								{result.metadata && (
 									<div className="text-muted-foreground">
-										<strong>Search Metadata:</strong>{" "}
+										<strong>搜索元数据:</strong>{" "}
 										{result.metadata.source && (
-											<span>Source: {result.metadata.source}, </span>
+											<span>来源: {result.metadata.source}, </span>
 										)}
 										{typeof result.metadata.vector_rank === "number" &&
 											result.metadata.vector_rank >= 0 && (
-												<span>
-													Vector Rank: {result.metadata.vector_rank},{" "}
-												</span>
+												<span>向量排名: {result.metadata.vector_rank}, </span>
 											)}
 										{typeof result.metadata.keyword_rank === "number" &&
 											result.metadata.keyword_rank >= 0 && (
 												<span>
-													Keyword Rank: {result.metadata.keyword_rank},{" "}
+													关键词排名: {result.metadata.keyword_rank},{" "}
 												</span>
 											)}
 										{result.metadata.raw_rrf_score && (
 											<span>
-												Raw Score: {result.metadata.raw_rrf_score.toFixed(4)}
+												原始分数: {result.metadata.raw_rrf_score.toFixed(4)}
 											</span>
 										)}
 									</div>

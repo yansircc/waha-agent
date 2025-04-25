@@ -72,9 +72,7 @@ export function AgentChatDialog({
 			pollingInterval.current = null;
 		}
 
-		console.log(
-			`Starting polling for conversation ${conversationId}, messageId ${currentMessageId}`,
-		);
+		console.log(`开始轮询对话 ${conversationId}, 消息ID ${currentMessageId}`);
 
 		const checkStatus = async () => {
 			try {
@@ -85,8 +83,8 @@ export function AgentChatDialog({
 				if (!response.ok) {
 					const errorData = await response
 						.json()
-						.catch(() => ({ error: "Server error" }));
-					setError(errorData.error || "Failed to get message status");
+						.catch(() => ({ error: "服务器错误" }));
+					setError(errorData.error || "获取消息状态失败");
 					setIsProcessing(false);
 					setCurrentMessageId(null);
 
@@ -135,7 +133,7 @@ export function AgentChatDialog({
 					// 有响应消息
 					if (data.response) {
 						console.log(
-							`Received response for messageId ${currentMessageId}:`,
+							`收到消息ID ${currentMessageId} 的响应:`,
 							`${data.response.substring(0, 50)}...`,
 						);
 
@@ -159,7 +157,7 @@ export function AgentChatDialog({
 					}
 				}
 			} catch (error) {
-				console.error("Error polling for updates:", error);
+				console.error("轮询更新错误:", error);
 			}
 		};
 
@@ -204,11 +202,11 @@ export function AgentChatDialog({
 				});
 
 				if (!registerResponse.ok) {
-					throw new Error("Failed to register message");
+					throw new Error("注册消息失败");
 				}
 
 				const { messageId } = await registerResponse.json();
-				console.log(`User message registered with ID: ${messageId}`);
+				console.log(`用户消息注册成功，ID: ${messageId}`);
 
 				// 设置当前消息ID用于轮询
 				setCurrentMessageId(messageId);
@@ -247,14 +245,14 @@ export function AgentChatDialog({
 
 				if (!response.ok) {
 					const errorData = await response.json();
-					throw new Error(errorData.error || "Failed to send message");
+					throw new Error(errorData.error || "发送消息失败");
 				}
 
 				// 响应成功，开始轮询
 				startPolling();
 			} catch (err) {
-				console.error("Error sending message:", err);
-				setError(err instanceof Error ? err.message : "Failed to send message");
+				console.error("发送消息错误:", err);
+				setError(err instanceof Error ? err.message : "发送消息失败");
 				setIsProcessing(false);
 				setCurrentMessageId(null);
 			}
@@ -304,8 +302,7 @@ export function AgentChatDialog({
 			<DialogContent className="sm:max-w-[500px]">
 				<DialogHeader>
 					<DialogTitle className="flex items-center gap-2">
-						<Cloud className="h-5 w-5" />
-						Chat with {agentName}
+						<Cloud className="h-5 w-5" />和 {agentName} 聊天
 					</DialogTitle>
 				</DialogHeader>
 
@@ -313,9 +310,9 @@ export function AgentChatDialog({
 					{messages.length === 0 ? (
 						<div className="flex h-full flex-col items-center justify-center text-center">
 							<Cloud className="mb-2 h-12 w-12 text-muted-foreground/50" />
-							<p className="font-medium text-lg">Ask me anything</p>
+							<p className="font-medium text-lg">问我任何问题</p>
 							<p className="text-muted-foreground text-sm">
-								Try asking a question about this agent
+								尝试询问关于这个机器人的问题
 							</p>
 						</div>
 					) : (
@@ -366,7 +363,7 @@ export function AgentChatDialog({
 
 				<div className="flex items-center gap-2">
 					<Input
-						placeholder="Ask a question..."
+						placeholder="问我任何问题..."
 						value={inputValue}
 						onChange={(e) => setInputValue(e.target.value)}
 						onKeyDown={handleKeyDown}
@@ -379,7 +376,7 @@ export function AgentChatDialog({
 						size="icon"
 					>
 						<Send className="h-4 w-4" />
-						<span className="sr-only">Send message</span>
+						<span className="sr-only">发送消息</span>
 					</Button>
 				</div>
 			</DialogContent>

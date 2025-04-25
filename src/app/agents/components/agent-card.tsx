@@ -56,11 +56,11 @@ export function AgentCard({
 						<DropdownMenuTrigger asChild>
 							<Button variant="ghost" size="icon" className="h-8 w-8">
 								<PenIcon className="h-4 w-4" />
-								<span className="sr-only">Open menu</span>
+								<span className="sr-only">打开菜单</span>
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end" className="w-[160px]">
-							<DropdownMenuItem onClick={onEdit}>Edit agent</DropdownMenuItem>
+							<DropdownMenuItem onClick={onEdit}>编辑机器人</DropdownMenuItem>
 						</DropdownMenuContent>
 					</DropdownMenu>
 				</div>
@@ -87,7 +87,7 @@ export function AgentCard({
 					className="gap-1"
 					onClick={() => setIsChatOpen(true)}
 				>
-					<MessageCircle className="h-4 w-4" /> Chat
+					<MessageCircle className="h-4 w-4" /> 聊天测试
 				</Button>
 
 				<div className="flex flex-1 items-center justify-end gap-2">
@@ -96,14 +96,14 @@ export function AgentCard({
 							<TooltipTrigger asChild>
 								<Button variant="ghost" size="icon" className="h-8 w-8">
 									<InfoIcon className="h-4 w-4" />
-									<span className="sr-only">Agent details</span>
+									<span className="sr-only">机器人详情</span>
 								</Button>
 							</TooltipTrigger>
 							<TooltipContent className="max-w-xs p-4">
 								<div className="space-y-2">
 									{createdAt && (
 										<div>
-											<p className="font-semibold text-xs">Created:</p>
+											<p className="font-semibold text-xs">创建时间:</p>
 											<p className="text-muted-foreground text-xs">
 												{new Date(createdAt).toLocaleString()}
 											</p>
@@ -111,14 +111,14 @@ export function AgentCard({
 									)}
 									{updatedAt && (
 										<div>
-											<p className="font-semibold text-xs">Updated:</p>
+											<p className="font-semibold text-xs">更新时间:</p>
 											<p className="text-muted-foreground text-xs">
 												{new Date(updatedAt).toLocaleString()}
 											</p>
 										</div>
 									)}
 									<div>
-										<p className="font-semibold text-xs">Model:</p>
+										<p className="font-semibold text-xs">模型:</p>
 										<p className="text-muted-foreground text-xs">{model}</p>
 									</div>
 								</div>

@@ -42,38 +42,38 @@ export function AddKbDialog({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-[500px]">
 				<DialogHeader>
-					<DialogTitle>Add Knowledge Base</DialogTitle>
+					<DialogTitle>添加知识库</DialogTitle>
 				</DialogHeader>
 				<form onSubmit={handleSubmit}>
 					<div className="grid gap-6 py-4">
 						<div className="grid gap-2">
-							<Label htmlFor="kb-name">Name</Label>
+							<Label htmlFor="kb-name">名称</Label>
 							<Input
 								id="kb-name"
 								value={name}
 								onChange={(e) => setName(e.target.value)}
-								placeholder="Product Manual"
+								placeholder="产品手册"
 								required
 							/>
 						</div>
 
 						<div className="grid gap-2">
-							<Label htmlFor="kb-description">Description (Optional)</Label>
+							<Label htmlFor="kb-description">描述 (可选)</Label>
 							<Input
 								id="kb-description"
 								value={description}
 								onChange={(e) => setDescription(e.target.value)}
-								placeholder="Knowledge about our products and services"
+								placeholder="我们的产品和服务知识"
 							/>
 						</div>
 					</div>
 
 					<DialogFooter>
 						<Button type="button" variant="outline" onClick={handleClose}>
-							Cancel
+							取消
 						</Button>
 						<Button type="submit" disabled={!name}>
-							Create Knowledge Base
+							创建知识库
 						</Button>
 					</DialogFooter>
 				</form>

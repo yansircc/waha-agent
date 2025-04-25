@@ -52,12 +52,12 @@ export function AddInstanceDialog({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-[500px]">
 				<DialogHeader>
-					<DialogTitle>Add WhatsApp Instance</DialogTitle>
+					<DialogTitle>添加WhatsApp账号</DialogTitle>
 				</DialogHeader>
 				<form onSubmit={handleSubmit}>
 					<div className="grid gap-4 py-4">
 						<div className="grid gap-2">
-							<Label htmlFor="name">Instance Name</Label>
+							<Label htmlFor="name">账号名称</Label>
 							<Input
 								id="name"
 								value={instanceName}
@@ -66,18 +66,18 @@ export function AddInstanceDialog({
 								required
 							/>
 							<p className="text-muted-foreground text-xs">
-								Only lowercase letters, numbers, and hyphens are allowed.
+								只允许小写字母、数字和连字符。
 							</p>
 						</div>
 						<div className="grid gap-2">
-							<Label htmlFor="agent">Agent (optional)</Label>
+							<Label htmlFor="agent">AI机器人 (可选)</Label>
 							<select
 								id="agent"
 								value={selectedAgentId}
 								onChange={(e) => setSelectedAgentId(e.target.value)}
 								className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 							>
-								<option value="">Select an agent</option>
+								<option value="">选择一个AI机器人</option>
 								{!isLoadingAgents &&
 									agents.map((agent) => (
 										<option key={agent.id} value={agent.id}>
@@ -93,15 +93,15 @@ export function AddInstanceDialog({
 							variant="outline"
 							onClick={() => onOpenChange(false)}
 						>
-							Cancel
+							取消
 						</Button>
 						<Button type="submit" disabled={!instanceName || isLoading}>
 							{isLoading ? (
 								<>
-									<Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating...
+									<Loader2 className="mr-2 h-4 w-4 animate-spin" /> 创建中...
 								</>
 							) : (
-								"Add Instance"
+								"添加账号"
 							)}
 						</Button>
 					</DialogFooter>

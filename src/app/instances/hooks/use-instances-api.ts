@@ -89,17 +89,17 @@ export function useInstancesApi({
 					await checkSessionStatus(instanceId, sanitizedName);
 				} catch (error) {
 					// Continue even if QR fetch fails on first attempt
-					console.warn("Initial QR code fetch failed", error);
+					console.warn("初始二维码获取失败", error);
 				}
 
 				onSuccess?.();
-				toast.success(`WhatsApp session for ${instanceName} has been created`);
+				toast.success(`WhatsApp账号 ${instanceName} 已创建`);
 
 				return sessionData;
 			} catch (error) {
 				const err = error as Error;
 				onError?.(err);
-				toast.error(`Error creating session: ${err.message}`);
+				toast.error(`创建会话时出错: ${err.message}`);
 				throw error;
 			} finally {
 				setIsLoading(false);
@@ -134,9 +134,7 @@ export function useInstancesApi({
 					});
 
 					onSuccess?.();
-					toast.success(
-						`WhatsApp session for ${sessionName} is already running`,
-					);
+					toast.success(`WhatsApp账号 ${sessionName} 已连接`);
 
 					return session;
 				}
@@ -198,7 +196,7 @@ export function useInstancesApi({
 				}
 
 				onSuccess?.();
-				toast.success(`WhatsApp session for ${sessionName} has been started`);
+				toast.success(`WhatsApp账号 ${sessionName} 已启动`);
 
 				return sessionData;
 			} catch (error) {
@@ -211,7 +209,7 @@ export function useInstancesApi({
 				});
 
 				onError?.(err);
-				toast.error(`Error starting session: ${err.message}`);
+				toast.error(`启动会话时出错: ${err.message}`);
 				throw error;
 			} finally {
 				setIsLoading(false);
@@ -244,13 +242,13 @@ export function useInstancesApi({
 				});
 
 				onSuccess?.();
-				toast.success(`WhatsApp session for ${sessionName} has been stopped`);
+				toast.success(`WhatsApp账号 ${sessionName} 已停止`);
 
 				return sessionData;
 			} catch (error) {
 				const err = error as Error;
 				onError?.(err);
-				toast.error(`Error stopping session: ${err.message}`);
+				toast.error(`停止会话时出错: ${err.message}`);
 				throw error;
 			} finally {
 				setIsLoading(false);
@@ -276,15 +274,13 @@ export function useInstancesApi({
 				});
 
 				onSuccess?.();
-				toast.success(
-					`WhatsApp session for ${sessionName} has been logged out`,
-				);
+				toast.success(`WhatsApp账号 ${sessionName} 已登出`);
 
 				return sessionData;
 			} catch (error) {
 				const err = error as Error;
 				onError?.(err);
-				toast.error(`Error logging out: ${err.message}`);
+				toast.error(`登出时出错: ${err.message}`);
 				throw error;
 			} finally {
 				setIsLoading(false);
@@ -315,7 +311,7 @@ export function useInstancesApi({
 				});
 
 				onSuccess?.();
-				toast.success(`WhatsApp session for ${sessionName} has been refreshed`);
+				toast.success(`WhatsApp账号 ${sessionName} 已刷新`);
 
 				return sessionData;
 			} catch (error) {
@@ -328,7 +324,7 @@ export function useInstancesApi({
 				});
 
 				onError?.(err);
-				toast.error(`Error refreshing session: ${err.message}`);
+				toast.error(`刷新会话时出错: ${err.message}`);
 				throw error;
 			} finally {
 				setIsLoading(false);

@@ -41,7 +41,7 @@ export function useWahaAuth({ onSuccess, onError }: UseWahaAuthProps = {}) {
 			setIsLoading(false);
 			return result;
 		} catch (error) {
-			console.error("Error fetching QR code:", error);
+			console.error("获取二维码时出错:", error);
 			setIsLoading(false);
 			// Return null instead of throwing to allow for graceful fallback
 			return null;

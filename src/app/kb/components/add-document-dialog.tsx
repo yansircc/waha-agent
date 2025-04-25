@@ -69,7 +69,7 @@ export function AddDocumentDialog({
 			const sizeLimit = isTextFile ? 4 * 1024 * 1024 : 2 * 1024 * 1024;
 
 			if (uploadedFile.size > sizeLimit) {
-				alert(`File size exceeds the limit of ${isTextFile ? "4MB" : "2MB"}`);
+				alert(`文件大小超过限制 - ${isTextFile ? "4MB" : "2MB"}`);
 				setIsUploading(false);
 				return;
 			}
@@ -77,10 +77,8 @@ export function AddDocumentDialog({
 			await onSubmit(uploadedFile);
 			handleClose();
 		} catch (error) {
-			console.error("Error uploading document:", error);
-			alert(
-				`Failed to upload document. ${error instanceof Error ? error.message : ""}`,
-			);
+			console.error("上传文档时出错:", error);
+			alert(`上传文档失败。${error instanceof Error ? error.message : ""}`);
 			setIsUploading(false);
 		}
 	};
@@ -96,12 +94,12 @@ export function AddDocumentDialog({
 		<Dialog open={open} onOpenChange={isUploading ? undefined : onOpenChange}>
 			<DialogContent className="sm:max-w-[600px]">
 				<DialogHeader>
-					<DialogTitle>Upload Document</DialogTitle>
+					<DialogTitle>上传文档</DialogTitle>
 				</DialogHeader>
 				<form onSubmit={handleSubmit}>
 					<div className="grid gap-6 py-4">
 						<div className="grid gap-2">
-							<Label>Upload File</Label>
+							<Label>上传文件</Label>
 							<button
 								type="button"
 								className={`flex min-h-[200px] w-full cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed p-6 text-left transition-colors ${
@@ -132,9 +130,9 @@ export function AddDocumentDialog({
 								{isUploading ? (
 									<>
 										<Loader2 className="mb-2 h-10 w-10 animate-spin text-blue-500" />
-										<p className="font-medium">Uploading...</p>
+										<p className="font-medium">上传中...</p>
 										<p className="text-muted-foreground text-sm">
-											Please wait while we upload your document
+											请稍候，我们正在上传您的文档
 										</p>
 									</>
 								) : uploadedFile ? (
@@ -148,11 +146,9 @@ export function AddDocumentDialog({
 								) : (
 									<>
 										<UploadCloud className="mb-2 h-10 w-10 text-muted-foreground" />
-										<p className="mb-1 font-medium">
-											Drag and drop a file or click to browse
-										</p>
+										<p className="mb-1 font-medium">拖放文件或点击浏览</p>
 										<p className="text-muted-foreground text-sm">
-											Support for TXT, PDF, DOCX, and other document formats
+											支持TXT、PDF、DOCX等文档格式
 										</p>
 									</>
 								)}
@@ -167,16 +163,16 @@ export function AddDocumentDialog({
 							onClick={handleClose}
 							disabled={isUploading}
 						>
-							Cancel
+							取消
 						</Button>
 						<Button type="submit" disabled={!uploadedFile || isUploading}>
 							{isUploading ? (
 								<>
 									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-									Uploading...
+									上传中...
 								</>
 							) : (
-								"Upload Document"
+								"上传文档"
 							)}
 						</Button>
 					</DialogFooter>

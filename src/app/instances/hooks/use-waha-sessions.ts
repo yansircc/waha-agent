@@ -35,7 +35,7 @@ export function useWahaSessions({
 			setIsLoading(false);
 			return result;
 		} catch (error) {
-			console.error("Error fetching session:", error);
+			console.error("获取会话时出错:", error);
 			setIsLoading(false);
 			return null;
 		}

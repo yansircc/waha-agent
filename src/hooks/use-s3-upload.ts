@@ -67,24 +67,23 @@ export function useS3Upload(options: UseS3UploadOptions = {}) {
 								expiresAt: response.expiresAt,
 							});
 						} catch (e) {
-							reject(new Error("Invalid response from server"));
+							reject(new Error("服务器响应无效"));
 						}
 					} else {
 						try {
 							const errorResponse = JSON.parse(xhr.responseText);
 							reject(
 								new Error(
-									errorResponse.error ||
-										`Upload failed with status ${xhr.status}`,
+									errorResponse.error || `上传失败，状态码 ${xhr.status}`,
 								),
 							);
 						} catch (e) {
-							reject(new Error(`Upload failed with status ${xhr.status}`));
+							reject(new Error(`上传失败，状态码 ${xhr.status}`));
 						}
 					}
 				};
 
-				xhr.onerror = () => reject(new Error("Network error during upload"));
+				xhr.onerror = () => reject(new Error("网络错误上传期间"));
 				xhr.send(formData);
 			});
 
@@ -96,9 +95,9 @@ export function useS3Upload(options: UseS3UploadOptions = {}) {
 			setProgress(100);
 			return result;
 		} catch (err) {
-			console.error("Upload error:", err);
+			console.error("上传错误:", err);
 			const uploadError =
-				err instanceof Error ? err : new Error("Unknown upload error");
+				err instanceof Error ? err : new Error("未知上传错误");
 			setError(uploadError);
 			options.onError?.(uploadError);
 			throw uploadError;
@@ -115,9 +114,9 @@ export function useS3Upload(options: UseS3UploadOptions = {}) {
 		try {
 			return await longLivedUrlMutation.mutateAsync({ key });
 		} catch (err) {
-			console.error("Error getting long-lived URL:", err);
+			console.error("获取长期访问链接错误:", err);
 			const urlError =
-				err instanceof Error ? err : new Error("Failed to get long-lived URL");
+				err instanceof Error ? err : new Error("获取长期访问链接失败");
 			throw urlError;
 		}
 	};

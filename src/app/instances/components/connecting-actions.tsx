@@ -14,7 +14,7 @@ export function ConnectingActions({ onRefresh }: { onRefresh?: () => void }) {
 						className="h-5 w-5 animate-spin text-gray-400"
 						aria-hidden="true"
 					/>
-					Connecting...
+					连接中...
 				</Button>
 			</div>
 			<div className="-ml-px flex w-0 flex-1">
@@ -24,7 +24,7 @@ export function ConnectingActions({ onRefresh }: { onRefresh?: () => void }) {
 					onClick={onRefresh}
 				>
 					<RefreshCwIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
-					Refresh
+					刷新
 				</Button>
 			</div>
 		</div>

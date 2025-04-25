@@ -14,7 +14,7 @@ export interface AgentWithState extends Agent {
 }
 
 /**
- * 保存实例的代理配置到Redis
+ * 保存实例的机器人配置到Redis
  */
 export async function saveInstanceAgent(
 	instanceId: string,
@@ -25,34 +25,34 @@ export async function saveInstanceAgent(
 		const key = `${INSTANCE_PREFIX}${instanceId}:agent`;
 
 		if (agent) {
-			// 扩展代理配置，添加活动状态
+			// 扩展机器人配置，添加活动状态
 			const agentWithState: AgentWithState = {
 				...agent,
 				isActive,
 			};
 
-			// 保存代理配置
+			// 保存机器人配置
 			await safeRedisOperation(() =>
 				redis.set(key, JSON.stringify(agentWithState)),
 			);
 			console.log(
-				`保存实例 ${instanceId} 的代理配置到Redis成功 (isActive: ${isActive})`,
+				`保存实例 ${instanceId} 的机器人配置到Redis成功 (isActive: ${isActive})`,
 			);
 		} else {
 			// 如果agent为null，移除配置
 			await safeRedisOperation(() => redis.del(key));
-			console.log(`移除实例 ${instanceId} 的代理配置`);
+			console.log(`移除实例 ${instanceId} 的机器人配置`);
 		}
 
 		return true;
 	} catch (error) {
-		console.error(`保存实例 ${instanceId} 的代理配置失败:`, error);
+		console.error(`保存实例 ${instanceId} 的机器人配置失败:`, error);
 		return false;
 	}
 }
 
 /**
- * 从Redis获取实例的代理配置
+ * 从Redis获取实例的机器人配置
  * 如果Redis中没有，会尝试从数据库加载并存入Redis
  */
 export async function getInstanceAgent(
@@ -61,19 +61,19 @@ export async function getInstanceAgent(
 	try {
 		const key = `${INSTANCE_PREFIX}${instanceId}:agent`;
 
-		// 获取代理配置
+		// 获取机器人配置
 		const agentData = await safeRedisOperation(() => redis.get(key));
 
 		if (!agentData) {
 			console.log(
-				`实例 ${instanceId} 在Redis中没有关联的代理配置，尝试从数据库获取`,
+				`实例 ${instanceId} 在Redis中没有关联的机器人配置，尝试从数据库获取`,
 			);
 
-			// 尝试从数据库获取代理
+			// 尝试从数据库获取机器人
 			const dbAgent = await getInstanceAgentFromDb(instanceId);
 
 			if (dbAgent) {
-				console.log(`从数据库找到实例 ${instanceId} 的代理配置，保存到Redis`);
+				console.log(`从数据库找到实例 ${instanceId} 的机器人配置，保存到Redis`);
 
 				// 保存到Redis并返回
 				const agentWithState: AgentWithState = {
@@ -85,11 +85,11 @@ export async function getInstanceAgent(
 				return agentWithState;
 			}
 
-			console.log(`实例 ${instanceId} 没有关联的代理配置`);
+			console.log(`实例 ${instanceId} 没有关联的机器人配置`);
 			return null;
 		}
 
-		// 解析代理配置
+		// 解析机器人配置
 		const agent = parseJsonValueIfNeeded(agentData) as AgentWithState;
 
 		// 确保isActive字段存在
@@ -99,13 +99,13 @@ export async function getInstanceAgent(
 
 		return agent;
 	} catch (error) {
-		console.error(`获取实例 ${instanceId} 的代理配置失败:`, error);
+		console.error(`获取实例 ${instanceId} 的机器人配置失败:`, error);
 		return null;
 	}
 }
 
 /**
- * 设置特定聊天的代理活动状态
+ * 设置特定聊天的机器人活动状态
  * 支持单独控制每个聊天的AI回复开关
  */
 export async function setChatAgentActive(
@@ -122,17 +122,17 @@ export async function setChatAgentActive(
 		await safeRedisOperation(() => redis.set(key, value));
 
 		console.log(
-			`已将聊天 ${chatId} 的代理控制状态设置为: ${isActive ? "激活" : "禁用"} (聊天级别设置)`,
+			`已将聊天 ${chatId} 的机器人控制状态设置为: ${isActive ? "激活" : "禁用"} (聊天级别设置)`,
 		);
 		return true;
 	} catch (error) {
-		console.error(`设置聊天 ${chatId} 的代理活动状态失败:`, error);
+		console.error(`设置聊天 ${chatId} 的机器人活动状态失败:`, error);
 		return false;
 	}
 }
 
 /**
- * 获取特定聊天的代理活动状态
+ * 获取特定聊天的机器人活动状态
  * 如果没有特定设置，默认为全局设置
  */
 export async function getChatAgentActive(
@@ -151,7 +151,7 @@ export async function getChatAgentActive(
 			// 支持字符串"1"和数字1作为激活状态
 			const isActive = chatActive === "1" || chatActive === 1;
 			console.log(
-				`聊天 ${chatId} 的特定代理控制状态为: ${isActive ? "激活" : "禁用"}`,
+				`聊天 ${chatId} 的特定机器人控制状态为: ${isActive ? "激活" : "禁用"}`,
 			);
 			return isActive;
 		}
@@ -162,14 +162,14 @@ export async function getChatAgentActive(
 
 		return instanceActive;
 	} catch (error) {
-		console.error(`获取聊天 ${chatId} 的代理活动状态失败:`, error);
+		console.error(`获取聊天 ${chatId} 的机器人活动状态失败:`, error);
 		// 默认激活
 		return true;
 	}
 }
 
 /**
- * 设置代理的活动状态 (实例级别)
+ * 设置机器人的活动状态 (实例级别)
  * 为保持向后兼容性保留，但推荐使用 setChatAgentActive
  */
 export async function setAgentActive(
@@ -182,7 +182,7 @@ export async function setAgentActive(
 
 		// 如果没有配置，无法更新
 		if (!agent) {
-			console.log(`实例 ${instanceId} 没有代理配置，无法设置活动状态`);
+			console.log(`实例 ${instanceId} 没有机器人配置，无法设置活动状态`);
 			return false;
 		}
 
@@ -195,11 +195,11 @@ export async function setAgentActive(
 		);
 
 		console.log(
-			`已将实例 ${instanceId} 的全局代理状态设置为: ${isActive ? "激活" : "禁用"} (实例级别设置)`,
+			`已将实例 ${instanceId} 的全局机器人状态设置为: ${isActive ? "激活" : "禁用"} (实例级别设置)`,
 		);
 		return true;
 	} catch (error) {
-		console.error(`设置实例 ${instanceId} 的代理活动状态失败:`, error);
+		console.error(`设置实例 ${instanceId} 的机器人活动状态失败:`, error);
 		return false;
 	}
 }

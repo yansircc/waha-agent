@@ -73,8 +73,8 @@ export function AgentConfigDialog({
 		);
 	};
 
-	const modeTitle = mode === "create" ? "Create new agent" : "Edit agent";
-	const actionLabel = mode === "create" ? "Create" : "Update";
+	const modeTitle = mode === "create" ? "创建新机器人" : "编辑机器人";
+	const actionLabel = mode === "create" ? "创建" : "更新";
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -96,18 +96,18 @@ export function AgentConfigDialog({
 						</div>
 
 						<div className="grid gap-2">
-							<Label htmlFor="name">Name</Label>
+							<Label htmlFor="name">名称</Label>
 							<Input
 								id="name"
 								value={name}
 								onChange={(e) => setName(e.target.value)}
-								placeholder="Customer Service Bot"
+								placeholder="客户服务机器人"
 								required
 							/>
 						</div>
 
 						<div className="grid gap-2">
-							<Label htmlFor="model">Model</Label>
+							<Label htmlFor="model">模型</Label>
 							<Input
 								id="model"
 								value={model}
@@ -118,12 +118,12 @@ export function AgentConfigDialog({
 						</div>
 
 						<div className="grid gap-2">
-							<Label htmlFor="prompt">System Prompt</Label>
+							<Label htmlFor="prompt">系统提示</Label>
 							<Textarea
 								id="prompt"
 								value={prompt}
 								onChange={(e) => setPrompt(e.target.value)}
-								placeholder="You are a helpful customer service agent..."
+								placeholder="你是一个有用的客户服务机器人..."
 								className="min-h-[120px]"
 								required
 							/>
@@ -131,7 +131,7 @@ export function AgentConfigDialog({
 
 						{kbs.length > 0 && (
 							<div className="grid gap-2">
-								<Label>Knowledge Bases</Label>
+								<Label>知识库</Label>
 								<div className="flex flex-wrap gap-2">
 									{kbs.map((kb) => (
 										<Badge
@@ -150,7 +150,7 @@ export function AgentConfigDialog({
 									))}
 								</div>
 								<p className="text-muted-foreground text-xs">
-									Select knowledge bases to connect to this agent
+									选择知识库以连接到这个机器人
 								</p>
 							</div>
 						)}
@@ -163,10 +163,10 @@ export function AgentConfigDialog({
 							onClick={() => onOpenChange(false)}
 							disabled={isLoading}
 						>
-							Cancel
+							取消
 						</Button>
 						<Button type="submit" disabled={!name || !prompt || isLoading}>
-							{isLoading ? "Saving..." : actionLabel}
+							{isLoading ? "保存中..." : actionLabel}
 						</Button>
 					</DialogFooter>
 				</form>

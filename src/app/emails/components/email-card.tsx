@@ -44,32 +44,22 @@ export function EmailCard({
 	createdAt,
 	updatedAt,
 }: EmailCardProps) {
-	const { isLoading } = useEmails();
-
-	// Truncate API keys for display
-	const truncatedPlunkKey = plunkApiKey ? `${plunkApiKey.slice(0, 8)}...` : "";
-	const truncatedWebhookSecret = formDataWebhookSecret
-		? `${formDataWebhookSecret.slice(0, 8)}...`
-		: "";
-
 	return (
 		<div className="group relative flex flex-col overflow-hidden rounded-lg border bg-background p-6 shadow transition-all hover:shadow-md">
 			<div className="mb-4 flex items-center justify-between">
 				<h3 className="font-semibold text-xl tracking-tight">
-					{formDataFormId}
+					表单ID: {formDataFormId}
 				</h3>
 				<div className="flex items-center gap-2">
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
 							<Button variant="ghost" size="icon" className="h-8 w-8">
 								<PenIcon className="h-4 w-4" />
-								<span className="sr-only">Open menu</span>
+								<span className="sr-only">打开菜单</span>
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end" className="w-[160px]">
-							<DropdownMenuItem onClick={onEdit}>
-								Edit email config
-							</DropdownMenuItem>
+							<DropdownMenuItem onClick={onEdit}>编辑邮件配置</DropdownMenuItem>
 						</DropdownMenuContent>
 					</DropdownMenu>
 				</div>
@@ -77,13 +67,13 @@ export function EmailCard({
 
 			{agent && (
 				<div className="mb-6 flex">
-					<Badge variant="secondary">Agent: {agent.name}</Badge>
+					<Badge variant="secondary">AI Agent: {agent.name}</Badge>
 				</div>
 			)}
 
 			<div className="mt-auto flex items-center gap-2 pt-4">
 				<Button variant="outline" size="sm" className="gap-1" onClick={onEdit}>
-					<MailIcon className="h-4 w-4" /> Configure
+					<MailIcon className="h-4 w-4" /> 配置
 				</Button>
 
 				<div className="flex flex-1 items-center justify-end gap-2">
@@ -92,14 +82,14 @@ export function EmailCard({
 							<TooltipTrigger asChild>
 								<Button variant="ghost" size="icon" className="h-8 w-8">
 									<InfoIcon className="h-4 w-4" />
-									<span className="sr-only">Email details</span>
+									<span className="sr-only">邮件详情</span>
 								</Button>
 							</TooltipTrigger>
 							<TooltipContent className="max-w-xs p-4">
 								<div className="space-y-2">
 									{createdAt && (
 										<div>
-											<p className="font-semibold text-xs">Created:</p>
+											<p className="font-semibold text-xs">创建时间:</p>
 											<p className="text-muted-foreground text-xs">
 												{new Date(createdAt).toLocaleString()}
 											</p>
@@ -107,7 +97,7 @@ export function EmailCard({
 									)}
 									{updatedAt && (
 										<div>
-											<p className="font-semibold text-xs">Updated:</p>
+											<p className="font-semibold text-xs">更新时间:</p>
 											<p className="text-muted-foreground text-xs">
 												{new Date(updatedAt).toLocaleString()}
 											</p>

@@ -55,7 +55,7 @@ export function UploadButton({
 					disabled={isUploading}
 				/>
 				<UploadCloud className="mr-2 h-4 w-4" />
-				{isUploading ? "Uploading..." : "Upload File"}
+				{isUploading ? "上传中..." : "上传文件"}
 			</Button>
 			{isUploading && <Progress value={progress} />}
 			{error && <p className="text-red-500 text-sm">{error.message}</p>}

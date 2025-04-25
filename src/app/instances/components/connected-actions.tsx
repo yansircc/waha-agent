@@ -19,7 +19,7 @@ export function ConnectedActions({
 					onClick={onStop}
 				>
 					<PowerIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
-					Stop
+					停止
 				</Button>
 			</div>
 			<div className="-ml-px flex w-0 flex-1">
@@ -29,7 +29,7 @@ export function ConnectedActions({
 					onClick={onLogout}
 				>
 					<LogOutIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
-					Logout
+					登出
 				</Button>
 			</div>
 			<div className="-ml-px flex w-0 flex-1">
@@ -39,7 +39,7 @@ export function ConnectedActions({
 					onClick={onRefresh}
 				>
 					<RefreshCwIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
-					Refresh
+					刷新
 				</Button>
 			</div>
 		</>

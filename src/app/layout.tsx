@@ -12,8 +12,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-	title: "Waha Mastra - WhatsApp AI Bot Platform",
-	description: "WhatsApp AI automation platform for businesses",
+	title: "Waha Master - WhatsApp AI Bot Platform",
+	description: "WhatsApp AI自动化平台",
 	icons: [{ rel: "icon", url: "/favicon.ico" }],
 };
 

@@ -63,10 +63,7 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 					);
 
 					if (!response.ok) {
-						console.error(
-							"Failed to fetch document updates:",
-							response.statusText,
-						);
+						console.error("获取文档更新失败:", response.statusText);
 						return;
 					}
 
@@ -102,9 +99,9 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 						}
 					}
 				} catch (error) {
-					console.error("Error polling for document updates:", error);
+					console.error("获取文档更新失败:", error);
 				}
-			}, 3000); // Poll every 3 seconds
+			}, 3000); // 每3秒轮询一次
 		},
 		[utils.kbs.getDocuments],
 	);
@@ -133,7 +130,7 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 		setIsProcessing(true);
 
 		try {
-			console.log("Starting document creation:", {
+			console.log("开始创建文档:", {
 				name: data.name,
 				kbId: data.kbId,
 				fileName: data.file.name,
@@ -176,11 +173,9 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 			setIsProcessing(false);
 
 			const errorMessage =
-				error instanceof Error
-					? error.message
-					: "Failed to upload document. Please try again.";
+				error instanceof Error ? error.message : "上传文档失败。请再试一次。";
 
-			console.error("Document creation error:", error);
+			console.error("文档创建失败:", error);
 			onError?.(
 				new Error(errorMessage) as unknown as TRPCClientErrorLike<AppRouter>,
 			);
@@ -255,7 +250,7 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 					});
 				} catch (qdrantError) {
 					// Log but don't fail the entire operation if Qdrant deletion fails
-					console.error("Error deleting Qdrant points:", qdrantError);
+					console.error("删除Qdrant点失败:", qdrantError);
 				}
 			}
 
@@ -295,7 +290,7 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 				});
 
 				if (!docResponse?.fileUrl) {
-					throw new Error("Document URL not found");
+					throw new Error("文档URL未找到");
 				}
 
 				documentUrl = docResponse.fileUrl;
@@ -331,7 +326,7 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 
 			onSuccess?.();
 		} catch (error) {
-			console.error("Vectorize document error:", error);
+			console.error("投喂文档失败:", error);
 			onError?.(error as TRPCClientErrorLike<AppRouter>);
 			throw error;
 		} finally {

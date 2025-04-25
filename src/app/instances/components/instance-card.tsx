@@ -102,15 +102,15 @@ export function InstanceCard({
 						className="mr-1.5 h-5 w-5 flex-shrink-0 text-gray-400"
 						aria-hidden="true"
 					/>
-					{phoneNumber || "No phone number"}
+					{phoneNumber || "没有手机号码"}
 				</div>
 				<div className="mt-4 space-y-3">
 					<div>
 						<h4 className="font-medium text-gray-500 text-sm">
-							Connected Agent
+							连接的AI机器人
 						</h4>
 						<p className="mt-1 font-medium text-gray-900 text-sm">
-							{agentName || "No agent connected"}
+							{agentName || "没有AI机器人"}
 						</p>
 					</div>
 				</div>
