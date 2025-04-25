@@ -14,7 +14,8 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { InfoIcon, MailIcon, PenIcon } from "lucide-react";
-import { useEmails } from "../hooks/use-emails";
+import { useState } from "react";
+import { EmailTestDialog } from "./email-test-dialog";
 
 interface EmailCardProps {
 	id: string;
@@ -44,6 +45,8 @@ export function EmailCard({
 	createdAt,
 	updatedAt,
 }: EmailCardProps) {
+	const [isTestDialogOpen, setIsTestDialogOpen] = useState(false);
+
 	return (
 		<div className="group relative flex flex-col overflow-hidden rounded-lg border bg-background p-6 shadow transition-all hover:shadow-md">
 			<div className="mb-4 flex items-center justify-between">
@@ -72,8 +75,13 @@ export function EmailCard({
 			)}
 
 			<div className="mt-auto flex items-center gap-2 pt-4">
-				<Button variant="outline" size="sm" className="gap-1" onClick={onEdit}>
-					<MailIcon className="h-4 w-4" /> 配置
+				<Button
+					variant="outline"
+					size="sm"
+					className="gap-1"
+					onClick={() => setIsTestDialogOpen(true)}
+				>
+					<MailIcon className="h-4 w-4" /> 测试
 				</Button>
 
 				<div className="flex flex-1 items-center justify-end gap-2">
@@ -109,6 +117,12 @@ export function EmailCard({
 					)}
 				</div>
 			</div>
+
+			<EmailTestDialog
+				open={isTestDialogOpen}
+				onOpenChange={setIsTestDialogOpen}
+				formDataFormId={formDataFormId}
+			/>
 		</div>
 	);
 }
