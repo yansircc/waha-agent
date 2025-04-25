@@ -1,14 +1,14 @@
 "use client";
 
 import { useAgents } from "@/app/agents/hooks/use-agents";
-import { useInstances } from "@/hooks/use-instances";
-import { useInstancesApi } from "@/hooks/use-instances-api";
-import { useQRCode } from "@/hooks/use-qr-code";
-import { useSessionStatus } from "@/hooks/use-session-status";
-import { useWahaSessions } from "@/hooks/use-waha-sessions";
 import { sanitizeSessionName } from "@/utils/session-utils";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useInstances } from "./use-instances";
+import { useInstancesApi } from "./use-instances-api";
+import { useQRCode } from "./use-qr-code";
+import { useSessionStatus } from "./use-session-status";
+import { useWahaSessions } from "./use-waha-sessions";
 
 // Core functionality hook
 export function useInstancesManager() {

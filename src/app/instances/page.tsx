@@ -1,13 +1,13 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useInstancesManager } from "@/hooks/use-instances-manager";
 import type { InstanceStatus } from "@/types";
 import { PlusIcon } from "lucide-react";
 import { AddInstanceDialog } from "./components/add-instance-dialog";
 import { EmptyState } from "./components/empty-state";
 import { InstanceCard } from "./components/instance-card";
 import { LoadingState } from "./components/loading-state";
+import { useInstancesManager } from "./hooks/use-instances-manager";
 
 export default function InstancesPage() {
 	const {
