@@ -153,52 +153,88 @@ export function useInstancesApi({
 				}
 
 				// Session doesn't exist or is stopped, try to start it
-				// Update instance status
+				// Update instance status to "connecting"
 				await updateInstance({
 					id: instanceId,
 					status: "connecting",
 				});
 
-				// Start the session in WAHA
-				const sessionData = await startSession(sessionName);
+				// Start the session in WAHA (this now returns queue info instead of session data)
+				const queueResult = await startSession(sessionName);
 
-				// Check session status after starting
-				if (
-					sessionData.status === "RUNNING" ||
-					sessionData.status === "WORKING"
-				) {
-					// Successfully connected
-					await updateInstance({
-						id: instanceId,
-						sessionData: sessionData as unknown as Record<string, unknown>,
-						status: "connected",
-					});
-				} else if (sessionData.status === "SCAN_QR_CODE") {
-					// Needs QR code
-					await updateInstance({
-						id: instanceId,
-						sessionData: sessionData as unknown as Record<string, unknown>,
-						status: "disconnected",
-					});
+				// Queue the session and check status periodically
+				if (queueResult.success) {
+					toast.info(
+						`WhatsApp账号 ${sessionName} 已加入队列，位置: ${queueResult.queuePosition}`,
+					);
 
-					// Trigger QR code display
-					displayQRCode(instanceId);
-				} else {
-					// Other status (usually starting up)
-					await updateInstance({
-						id: instanceId,
-						sessionData: sessionData as unknown as Record<string, unknown>,
-						status: "connecting",
-					});
+					// Fetch current session data to display accurate status
+					try {
+						const currentSession = await fetchSessionByName(sessionName);
 
-					// Check status immediately without polling
-					await checkSessionStatus(instanceId, sessionName);
+						if (currentSession) {
+							if (currentSession.status === "SCAN_QR_CODE") {
+								// Needs QR code
+								await updateInstance({
+									id: instanceId,
+									sessionData: currentSession as unknown as Record<
+										string,
+										unknown
+									>,
+									status: "disconnected",
+								});
+
+								// Trigger QR code display
+								displayQRCode(instanceId);
+							} else if (
+								currentSession.status === "RUNNING" ||
+								currentSession.status === "WORKING"
+							) {
+								// Already connected
+								await updateInstance({
+									id: instanceId,
+									sessionData: currentSession as unknown as Record<
+										string,
+										unknown
+									>,
+									status: "connected",
+								});
+							} else {
+								// Other status (connecting, starting, etc.)
+								await updateInstance({
+									id: instanceId,
+									sessionData: currentSession as unknown as Record<
+										string,
+										unknown
+									>,
+									status: "connecting",
+								});
+
+								// Start periodic status checks
+								void checkSessionStatus(instanceId, sessionName);
+							}
+						} else {
+							// No session data yet, keep connecting state
+							await updateInstance({
+								id: instanceId,
+								status: "connecting",
+							});
+
+							// Start periodic status checks
+							void checkSessionStatus(instanceId, sessionName);
+						}
+					} catch (error) {
+						console.warn("Failed to get session data after queuing:", error);
+						// Keep connecting state and check status later
+						void checkSessionStatus(instanceId, sessionName);
+					}
 				}
 
 				onSuccess?.();
-				toast.success(`WhatsApp账号 ${sessionName} 已启动`);
 
-				return sessionData;
+				// Return the session data if available, otherwise the queue result
+				const currentSession = await fetchSessionByName(sessionName);
+				return currentSession || queueResult;
 			} catch (error) {
 				const err = error as Error;
 

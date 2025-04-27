@@ -1,4 +1,5 @@
 import { env } from "@/env";
+import { queueSessionStart } from "@/lib/session-queue";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import type {
 	SessionConfig,
@@ -172,16 +173,57 @@ export const wahaSessionsRouter = createTRPCRouter({
 			}
 		}),
 
-	// Start the session
+	// Start the session (now using the queue system)
 	start: protectedProcedure
-		.input(z.object({ session: z.string().default("default") }))
+		.input(
+			z.object({
+				session: z.string().default("default"),
+				instanceId: z.string().optional(),
+			}),
+		)
 		.mutation(async ({ input }) => {
 			try {
-				return await wahaApi.sessions.startSession(input.session);
+				// Instead of directly calling the API, add to the queue
+				const queueResult = await queueSessionStart(
+					input.session,
+					input.instanceId,
+				);
+
+				return {
+					success: true,
+					message: `Session queued for starting at position ${queueResult.position}`,
+					queuePosition: queueResult.position,
+				};
 			} catch (error) {
-				throw new Error(`Failed to start session: ${(error as Error).message}`);
+				throw new Error(
+					`Failed to queue session start: ${(error as Error).message}`,
+				);
 			}
 		}),
+
+	// Get queue status
+	getQueueStatus: protectedProcedure.query(async () => {
+		try {
+			// Import only when needed to avoid circular dependencies
+			const { getQueueStatus } = await import("@/lib/session-queue");
+			return await getQueueStatus();
+		} catch (error) {
+			console.error("Failed to get queue status:", error);
+			return { waiting: 0, processing: 0 };
+		}
+	}),
+
+	// Clear the queue (admin only)
+	clearQueue: protectedProcedure.mutation(async () => {
+		try {
+			// Import only when needed to avoid circular dependencies
+			const { clearQueue } = await import("@/lib/session-queue");
+			await clearQueue();
+			return { success: true };
+		} catch (error) {
+			throw new Error(`Failed to clear queue: ${(error as Error).message}`);
+		}
+	}),
 
 	// Stop the session
 	stop: protectedProcedure
@@ -228,10 +270,15 @@ export const wahaSessionsRouter = createTRPCRouter({
 		)
 		.mutation(async ({ input }) => {
 			try {
-				const request: SessionStartRequest = {
-					session: input.name,
+				// Use queue system for legacy start as well
+				const { queueSessionStart } = await import("@/lib/session-queue");
+				const queueResult = await queueSessionStart(input.name);
+
+				return {
+					success: true,
+					message: `Session queued for starting at position ${queueResult.position}`,
+					queuePosition: queueResult.position,
 				};
-				return await wahaApi.sessions.legacyStartSession(request);
 			} catch (error) {
 				throw new Error(`Failed to start session: ${(error as Error).message}`);
 			}
