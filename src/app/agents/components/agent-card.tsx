@@ -3,18 +3,13 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
 	Tooltip,
 	TooltipContent,
+	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { Agent } from "@/types/agents";
-import { InfoIcon, MessageCircle, PenIcon } from "lucide-react";
+import { MessageCircle, PenIcon, TrashIcon } from "lucide-react";
 import { useState } from "react";
 import { AgentChatDialog } from "./agent-chat-dialog";
 
@@ -28,6 +23,7 @@ interface AgentCardProps {
 		name: string;
 	}[];
 	onEdit?: () => void;
+	onDelete?: () => void;
 	createdAt?: Date | null;
 	updatedAt?: Date | null;
 }
@@ -39,6 +35,7 @@ export function AgentCard({
 	model,
 	kbs = [],
 	onEdit,
+	onDelete,
 	createdAt,
 	updatedAt,
 }: AgentCardProps) {
@@ -48,83 +45,90 @@ export function AgentCard({
 	const kbIds = kbs.map((kb) => kb.id);
 
 	return (
-		<div className="group relative flex flex-col overflow-hidden rounded-lg border bg-background p-6 shadow transition-all hover:shadow-md">
-			<div className="mb-4 flex items-center justify-between">
-				<h3 className="font-semibold text-xl tracking-tight">{name}</h3>
-				<div className="flex items-center gap-2">
-					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button variant="ghost" size="icon" className="h-8 w-8">
-								<PenIcon className="h-4 w-4" />
-								<span className="sr-only">打开菜单</span>
-							</Button>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end" className="w-[160px]">
-							<DropdownMenuItem onClick={onEdit}>编辑机器人</DropdownMenuItem>
-						</DropdownMenuContent>
-					</DropdownMenu>
+		<div className="group relative flex flex-col overflow-hidden rounded-lg border bg-background shadow transition-all hover:shadow-md">
+			<div className="flex flex-col gap-4 p-6">
+				<div className="flex items-center justify-between">
+					<h3 className="font-semibold text-xl tracking-tight">{name}</h3>
 				</div>
+
+				<p className="line-clamp-3 text-muted-foreground text-sm">{prompt}</p>
+
+				{kbs.length > 0 && (
+					<div className="flex flex-wrap gap-2">
+						{kbs.map((kb) => (
+							<Badge key={kb.id} variant="secondary">
+								{kb.name}
+							</Badge>
+						))}
+					</div>
+				)}
 			</div>
 
-			<p className="mb-4 line-clamp-3 text-muted-foreground text-sm">
-				{prompt}
-			</p>
-
-			{kbs.length > 0 && (
-				<div className="mb-6 flex flex-wrap gap-2">
-					{kbs.map((kb) => (
-						<Badge key={kb.id} variant="secondary">
-							{kb.name}
-						</Badge>
-					))}
-				</div>
-			)}
-
-			<div className="mt-auto flex items-center gap-2 pt-4">
-				<Button
-					variant="outline"
-					size="sm"
-					className="gap-1"
-					onClick={() => setIsChatOpen(true)}
-				>
-					<MessageCircle className="h-4 w-4" /> 聊天测试
-				</Button>
-
-				<div className="flex flex-1 items-center justify-end gap-2">
-					{(createdAt || updatedAt) && (
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button variant="ghost" size="icon" className="h-8 w-8">
-									<InfoIcon className="h-4 w-4" />
-									<span className="sr-only">机器人详情</span>
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent className="max-w-xs p-4">
-								<div className="space-y-2">
-									{createdAt && (
-										<div>
-											<p className="font-semibold text-xs">创建时间:</p>
-											<p className="text-muted-foreground text-xs">
-												{new Date(createdAt).toLocaleString()}
-											</p>
-										</div>
-									)}
-									{updatedAt && (
-										<div>
-											<p className="font-semibold text-xs">更新时间:</p>
-											<p className="text-muted-foreground text-xs">
-												{new Date(updatedAt).toLocaleString()}
-											</p>
-										</div>
-									)}
-									<div>
-										<p className="font-semibold text-xs">模型:</p>
-										<p className="text-muted-foreground text-xs">{model}</p>
-									</div>
-								</div>
-							</TooltipContent>
-						</Tooltip>
-					)}
+			<div className="mt-auto border-t">
+				<div className="-mt-px flex divide-x divide-gray-200">
+					<div className="flex w-0 flex-1">
+						<TooltipProvider>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button
+										variant="ghost"
+										className="relative inline-flex w-0 flex-1 cursor-pointer items-center justify-center rounded-bl-lg border border-transparent py-4"
+										onClick={() => setIsChatOpen(true)}
+									>
+										<MessageCircle
+											className="h-5 w-5 text-gray-500"
+											aria-hidden="true"
+										/>
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent>
+									<p>聊天测试</p>
+								</TooltipContent>
+							</Tooltip>
+						</TooltipProvider>
+					</div>
+					<div className="-ml-px flex w-0 flex-1">
+						<TooltipProvider>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button
+										variant="ghost"
+										className="relative inline-flex w-0 flex-1 cursor-pointer items-center justify-center border border-transparent py-4"
+										onClick={onEdit}
+									>
+										<PenIcon
+											className="h-5 w-5 text-gray-500"
+											aria-hidden="true"
+										/>
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent>
+									<p>编辑</p>
+								</TooltipContent>
+							</Tooltip>
+						</TooltipProvider>
+					</div>
+					<div className="-ml-px flex w-0 flex-1">
+						<TooltipProvider>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button
+										variant="ghost"
+										className="relative inline-flex w-0 flex-1 cursor-pointer items-center justify-center rounded-br-lg border border-transparent py-4"
+										onClick={onDelete}
+									>
+										<TrashIcon
+											className="h-5 w-5 text-red-400"
+											aria-hidden="true"
+										/>
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent>
+									<p>删除</p>
+								</TooltipContent>
+							</Tooltip>
+						</TooltipProvider>
+					</div>
 				</div>
 			</div>
 

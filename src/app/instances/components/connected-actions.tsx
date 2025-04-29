@@ -1,5 +1,11 @@
 import { Button } from "@/components/ui/button";
-import { LogOutIcon, PowerIcon } from "lucide-react";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { LogOutIcon, StopCircleIcon } from "lucide-react";
 import { DeleteButton } from "./delete-button";
 
 export function ConnectedActions({
@@ -14,24 +20,46 @@ export function ConnectedActions({
 	return (
 		<>
 			<div className="flex w-0 flex-1">
-				<Button
-					variant="ghost"
-					className="-mr-px relative inline-flex w-0 flex-1 items-center justify-center gap-x-3 rounded-bl-lg border border-transparent py-4 font-semibold text-gray-900 text-sm"
-					onClick={onStop}
-				>
-					<PowerIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
-					停止
-				</Button>
+				<TooltipProvider>
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<Button
+								variant="ghost"
+								className="relative inline-flex w-0 flex-1 cursor-pointer items-center justify-center rounded-bl-lg border border-transparent py-4"
+								onClick={onStop}
+							>
+								<StopCircleIcon
+									className="h-5 w-5 text-gray-500"
+									aria-hidden="true"
+								/>
+							</Button>
+						</TooltipTrigger>
+						<TooltipContent>
+							<p>停止</p>
+						</TooltipContent>
+					</Tooltip>
+				</TooltipProvider>
 			</div>
 			<div className="-ml-px flex w-0 flex-1">
-				<Button
-					variant="ghost"
-					className="relative inline-flex w-0 flex-1 items-center justify-center gap-x-3 border border-transparent py-4 font-semibold text-gray-900 text-sm"
-					onClick={onLogout}
-				>
-					<LogOutIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
-					登出
-				</Button>
+				<TooltipProvider>
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<Button
+								variant="ghost"
+								className="relative inline-flex w-0 flex-1 cursor-pointer items-center justify-center border border-transparent py-4"
+								onClick={onLogout}
+							>
+								<LogOutIcon
+									className="h-5 w-5 text-gray-500"
+									aria-hidden="true"
+								/>
+							</Button>
+						</TooltipTrigger>
+						<TooltipContent>
+							<p>退出登录</p>
+						</TooltipContent>
+					</Tooltip>
+				</TooltipProvider>
 			</div>
 			<DeleteButton onDelete={onDelete} />
 		</>

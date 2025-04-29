@@ -19,8 +19,6 @@ import type { Document } from "@/types/document";
 import {
 	Check,
 	ExternalLink,
-	FileDown,
-	Link,
 	Loader2,
 	Trash2,
 	Wand2,
@@ -28,6 +26,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { DocumentStatusBadge } from "./status-badge";
 
 interface DocumentCardProps {
 	document: Document;
@@ -61,15 +60,6 @@ export function DocumentCard({
 	const isFailed = document.vectorizationStatus === "failed";
 	const isCompleted = document.vectorizationStatus === "completed";
 
-	// Status label
-	const statusLabel = isProcessing
-		? "处理中"
-		: isCompleted
-			? "已完成"
-			: isFailed
-				? "处理失败"
-				: "待处理";
-
 	// Handle vectorization request
 	const handleVectorize = async () => {
 		setIsLocalProcessing(true);
@@ -79,16 +69,6 @@ export function DocumentCard({
 		} catch (error) {
 			toast.error("投喂请求失败，请稍后再试");
 			setIsLocalProcessing(false);
-		}
-	};
-
-	// Copy file link
-	const copyFileLink = () => {
-		if (document.fileUrl) {
-			navigator.clipboard.writeText(document.fileUrl);
-			toast.success("文件链接已复制到剪贴板");
-		} else {
-			toast.error("文件链接不可用");
 		}
 	};
 
@@ -146,24 +126,18 @@ export function DocumentCard({
 	}
 
 	return (
-		<Card>
-			<CardHeader className="flex flex-row items-center justify-between pb-2">
-				<CardTitle className="font-medium text-base">{document.name}</CardTitle>
-				<div
-					className={`rounded-full px-2 py-1 text-xs ${
-						isProcessing
-							? "bg-blue-100 text-blue-800"
-							: isCompleted
-								? "bg-green-100 text-green-800"
-								: isFailed
-									? "bg-red-100 text-red-800"
-									: "bg-gray-100 text-gray-800"
-					}`}
-				>
-					{statusLabel}
+		<div className="group relative flex flex-col overflow-hidden rounded-lg border bg-background shadow transition-all hover:shadow-md">
+			<div className="flex flex-col gap-4 p-6">
+				<div className="flex items-center justify-between">
+					<h3 className="font-semibold text-xl tracking-tight">
+						{document.name}
+					</h3>
+					<DocumentStatusBadge
+						status={document.vectorizationStatus}
+						isProcessing={isLocalProcessing}
+					/>
 				</div>
-			</CardHeader>
-			<CardContent>
+
 				<div className="flex items-center justify-between text-sm">
 					<div className="text-muted-foreground">
 						{formatFileSize(document.fileSize || 0)}
@@ -171,106 +145,90 @@ export function DocumentCard({
 					<div className="text-muted-foreground">
 						{document.createdAt
 							? new Date(document.createdAt).toLocaleDateString()
-							: "No date"}
+							: "没有日期"}
 					</div>
 				</div>
-			</CardContent>
-			<CardFooter className="flex justify-between gap-2">
-				<div className="flex gap-2">
-					<TooltipProvider>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									variant={
-										isCompleted
-											? "default"
-											: isFailed
-												? "destructive"
-												: "outline"
-									}
-									size="sm"
-									disabled={isProcessing || isCompleted}
-									onClick={handleVectorize}
-								>
-									{isProcessing ? (
-										<>
-											<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-											处理中
-										</>
-									) : isCompleted ? (
-										<>
-											<Check className="mr-2 h-4 w-4" />
-											已完成
-										</>
-									) : isFailed ? (
-										<>
-											<XCircle className="mr-2 h-4 w-4" />
-											重试
-										</>
-									) : (
-										<>
-											<Wand2 className="mr-2 h-4 w-4" />
-											投喂文档
-										</>
-									)}
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent>
-								{isProcessing
-									? "Document is being processed, please wait"
-									: isCompleted
-										? "Document has been vectorized, can be used for knowledge base query"
-										: isFailed
-											? "Processing failed, click retry"
-											: "Vectorize document to support knowledge base query"}
-							</TooltipContent>
-						</Tooltip>
-					</TooltipProvider>
+			</div>
 
-					{document.fileUrl && (
-						<TooltipProvider>
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<Button variant="outline" size="sm" onClick={openFile}>
-										<ExternalLink className="mr-2 h-4 w-4" />
-										预览
-									</Button>
-								</TooltipTrigger>
-								<TooltipContent>在新窗口中打开文件</TooltipContent>
-							</Tooltip>
-						</TooltipProvider>
+			<div className="mt-auto border-t">
+				<div className="-mt-px flex divide-x divide-gray-200">
+					{!isCompleted && !isProcessing && (
+						<div className="flex w-0 flex-1">
+							<TooltipProvider>
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<Button
+											variant="ghost"
+											className="relative inline-flex w-0 flex-1 cursor-pointer items-center justify-center rounded-bl-lg border border-transparent py-4"
+											disabled={isProcessing}
+											onClick={handleVectorize}
+										>
+											{isProcessing ? (
+												<Loader2 className="h-5 w-5 animate-spin text-gray-500" />
+											) : isFailed ? (
+												<XCircle className="h-5 w-5 text-red-500" />
+											) : (
+												<Wand2 className="h-5 w-5 text-gray-500" />
+											)}
+										</Button>
+									</TooltipTrigger>
+									<TooltipContent>
+										<p>投喂文档</p>
+									</TooltipContent>
+								</Tooltip>
+							</TooltipProvider>
+						</div>
 					)}
 
 					{document.fileUrl && (
+						<div
+							className={`flex w-0 flex-1 ${!isCompleted && !isProcessing ? "-ml-px" : ""}`}
+						>
+							<TooltipProvider>
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<Button
+											variant="ghost"
+											className={`relative inline-flex w-0 flex-1 cursor-pointer items-center justify-center border border-transparent py-4 ${!isCompleted && !isProcessing ? "" : "rounded-bl-lg"}`}
+											onClick={openFile}
+										>
+											<ExternalLink
+												className="h-5 w-5 text-gray-500"
+												aria-hidden="true"
+											/>
+										</Button>
+									</TooltipTrigger>
+									<TooltipContent>
+										<p>预览</p>
+									</TooltipContent>
+								</Tooltip>
+							</TooltipProvider>
+						</div>
+					)}
+
+					<div className="-ml-px flex w-0 flex-1">
 						<TooltipProvider>
 							<Tooltip>
 								<TooltipTrigger asChild>
-									<Button variant="outline" size="sm" onClick={copyFileLink}>
-										<Link className="mr-2 h-4 w-4" />
-										复制链接
+									<Button
+										variant="ghost"
+										className="relative inline-flex w-0 flex-1 cursor-pointer items-center justify-center rounded-br-lg border border-transparent py-4"
+										onClick={handleDelete}
+									>
+										<Trash2
+											className="h-5 w-5 text-red-400"
+											aria-hidden="true"
+										/>
 									</Button>
 								</TooltipTrigger>
-								<TooltipContent>复制文件链接到剪贴板</TooltipContent>
+								<TooltipContent>
+									<p>删除</p>
+								</TooltipContent>
 							</Tooltip>
 						</TooltipProvider>
-					)}
+					</div>
 				</div>
-				<TooltipProvider>
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Button
-								variant="ghost"
-								size="sm"
-								onClick={handleDelete}
-								className="text-destructive hover:text-destructive"
-							>
-								<Trash2 className="h-4 w-4" />
-							</Button>
-						</TooltipTrigger>
-						<TooltipContent>删除文档</TooltipContent>
-					</Tooltip>
-				</TooltipProvider>
-			</CardFooter>
-		</Card>
+			</div>
+		</div>
 	);
 }
