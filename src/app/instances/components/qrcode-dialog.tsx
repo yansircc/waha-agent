@@ -63,7 +63,9 @@ export function QRCodeDialog({
 					) : (
 						<div className="flex flex-col items-center justify-center p-8">
 							<Loader2 className="mb-4 h-8 w-8 animate-spin text-gray-400" />
-							<p className="text-gray-500 text-sm">等待二维码生成...</p>
+							<p className="text-gray-500 text-sm">
+								等待二维码生成...可刷新页面加速
+							</p>
 						</div>
 					)}
 				</div>

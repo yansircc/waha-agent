@@ -2,9 +2,9 @@ import type { InstanceStatus } from "@/types";
 import { PhoneIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ConnectedActions } from "./connected-actions";
-import { ConnectingActions } from "./connecting-actions";
 import { DisconnectedActions } from "./disconnected-actions";
 import { QRCodeDialog } from "./qrcode-dialog";
+import { ScanQRCodeHandler } from "./scan-qr-code-handler";
 import { StatusBadge } from "./status-badge";
 
 interface InstanceCardProps {
@@ -19,7 +19,6 @@ interface InstanceCardProps {
 	onStart?: () => void;
 	onStop?: () => void;
 	onLogout?: () => void;
-	onRefresh?: () => void;
 }
 
 export function InstanceCard({
@@ -34,7 +33,6 @@ export function InstanceCard({
 	onStart,
 	onStop,
 	onLogout,
-	onRefresh,
 }: InstanceCardProps) {
 	const [showQR, setShowQR] = useState(false);
 	const hasRequestedQR = useRef(false);
@@ -128,25 +126,23 @@ export function InstanceCard({
 						<ConnectedActions
 							onStop={onStop}
 							onLogout={onLogout}
-							onRefresh={onRefresh}
 							onDelete={onDelete}
 						/>
 					) : (
-						<ConnectingActions
-							onScanQR={handleScanQR}
-							onRefresh={onRefresh}
-							onDelete={onDelete}
-						/>
+						<ScanQRCodeHandler instanceId={id} onDelete={onDelete} />
 					)}
 				</div>
 			</div>
 
-			<QRCodeDialog
-				open={showQR}
-				onOpenChange={setShowQR}
-				qrCode={qrCode}
-				instanceId={id}
-			/>
+			{/* Only show QR dialog for disconnected status - connecting status now uses ScanQRCodeHandler */}
+			{status !== "connecting" && (
+				<QRCodeDialog
+					open={showQR}
+					onOpenChange={setShowQR}
+					qrCode={qrCode}
+					instanceId={id}
+				/>
+			)}
 		</div>
 	);
 }

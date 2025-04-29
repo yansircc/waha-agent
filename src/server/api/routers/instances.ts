@@ -380,4 +380,91 @@ export const instancesRouter = createTRPCRouter({
 				);
 			}
 		}),
+
+	checkForQRCode: protectedProcedure
+		.input(z.object({ id: z.string() }))
+		.mutation(async ({ ctx, input }) => {
+			// First check if the instance belongs to the user
+			const instance = await ctx.db.query.instances.findFirst({
+				where: (instance, { eq, and }) =>
+					and(
+						eq(instance.id, input.id),
+						eq(instance.createdById, ctx.session.user.id),
+					),
+			});
+
+			if (!instance) {
+				throw new Error(
+					"Instance not found or you don't have permission to check it",
+				);
+			}
+
+			// First check if the QR code is already in the database, use it regardless of status
+			if (instance.qrCode) {
+				// Update status to connecting if it's not already
+				if (instance.status !== "connecting") {
+					await ctx.db
+						.update(instances)
+						.set({ status: "connecting" })
+						.where(eq(instances.id, input.id));
+				}
+
+				return {
+					hasQRCode: true,
+					status: "connecting",
+					qrCode: instance.qrCode,
+				};
+			}
+
+			// If not in database, try the Waha API
+			try {
+				const sessionInfo = await wahaApi.sessions.getSession(instance.id);
+
+				// Check if QR code is available
+				const hasQRCode =
+					sessionInfo.status === "SCAN_QR_CODE" && !!sessionInfo.qrCode;
+				const newStatus = mapWahaStatusToInstanceStatus(sessionInfo.status);
+
+				// If found in API, update DB
+				if (hasQRCode && sessionInfo.qrCode) {
+					await ctx.db
+						.update(instances)
+						.set({
+							qrCode: sessionInfo.qrCode,
+							status: "connecting",
+						})
+						.where(eq(instances.id, input.id));
+
+					return {
+						hasQRCode: true,
+						status: "connecting",
+						qrCode: sessionInfo.qrCode,
+					};
+				}
+
+				// Status is SCAN_QR_CODE but no QR code yet, set status and wait
+				if (sessionInfo.status === "SCAN_QR_CODE") {
+					await ctx.db
+						.update(instances)
+						.set({ status: "connecting" })
+						.where(eq(instances.id, input.id));
+				}
+
+				// Return result
+				return {
+					hasQRCode: hasQRCode === true,
+					status: newStatus,
+					qrCode: hasQRCode ? sessionInfo.qrCode : null,
+				};
+			} catch (error) {
+				console.error(`Failed to get QR code for ${instance.id}:`, error);
+
+				return {
+					hasQRCode: false,
+					status: instance.status,
+					qrCode: null,
+					error: `Failed to get QR code: ${error instanceof Error ? error.message : String(error)}`,
+				};
+			}
+		}),
 });

@@ -31,7 +31,7 @@ export function useWhatsAppSession() {
 					start: true,
 					config: {
 						debug: false,
-						metadata: { instanceId },
+						// metadata: { instanceId },
 						webhooks: [
 							{
 								url: webhookUrl,

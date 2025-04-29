@@ -12,6 +12,11 @@ export function validateWebhook(body: WebhookNotification | null): {
 		return { isValid: false, errorMessage: "Invalid webhook data" };
 	}
 
+	// 确保event字段存在且为字符串
+	if (!body.event || typeof body.event !== "string") {
+		return { isValid: false, errorMessage: "Missing or invalid event field" };
+	}
+
 	return { isValid: true };
 }
 
@@ -49,6 +54,11 @@ export function isMessageEvent(body: WebhookNotification): {
 	isMessage: boolean;
 	reason?: string;
 } {
+	// 确保event字段存在
+	if (!body.event || typeof body.event !== "string") {
+		return { isMessage: false, reason: "Missing or invalid event field" };
+	}
+
 	// 不是消息类型事件
 	if (!body.event.startsWith("message")) {
 		return { isMessage: false, reason: "Not message event" };

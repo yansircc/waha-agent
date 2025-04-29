@@ -59,7 +59,6 @@ export default function InstancesPage() {
 							onStart={() => handleStartSession(instance)}
 							onStop={() => handleStopSession(instance)}
 							onLogout={() => handleLogoutSession(instance)}
-							onRefresh={() => handleRefreshSession(instance)}
 						/>
 					))}
 				</div>

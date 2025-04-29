@@ -101,6 +101,20 @@ export function useInstances({ onSuccess, onError }: UseInstancesProps = {}) {
 		}
 	};
 
+	// Check for QR code
+	const checkForQRCodeMutation = api.instances.checkForQRCode.useMutation({
+		onSuccess: () => {
+			utils.instances.getAll.invalidate();
+		},
+		onError: (error) => {
+			onError?.(error);
+		},
+	});
+
+	const checkForQRCode = async (id: string) => {
+		return await checkForQRCodeMutation.mutateAsync({ id });
+	};
+
 	return {
 		instances: instancesQuery.data || [],
 		isLoadingInstances: instancesQuery.isLoading,
@@ -108,6 +122,7 @@ export function useInstances({ onSuccess, onError }: UseInstancesProps = {}) {
 		createInstance,
 		updateInstance,
 		deleteInstance,
+		checkForQRCode,
 		isLoading,
 	};
 }
