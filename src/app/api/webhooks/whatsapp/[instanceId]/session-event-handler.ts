@@ -19,7 +19,7 @@ function mapSessionStatusToInstanceStatus(wahaStatus: string): InstanceStatus {
 			return "connected";
 		case "SCAN_QR_CODE":
 		case "STOPPED":
-		case "ERROR":
+		case "FAILED":
 			return "disconnected";
 		default:
 			return "disconnected";
@@ -70,8 +70,8 @@ export async function handleSessionEvent(
 	// 检查是否为QR码相关事件
 	if (isQRCodeEvent(body)) {
 		console.log(`[${instanceId}] 检测到QR码相关事件，正在处理...`);
-		// 调用QR码处理函数
-		await handleQRCodeEvent(instanceId, sessionName);
+		// 调用QR码处理函数，传递webhook body
+		await handleQRCodeEvent(instanceId, sessionName, body);
 		instanceStatus = "disconnected";
 	}
 	// 根据事件类型处理
@@ -102,81 +102,6 @@ export async function handleSessionEvent(
 			} catch (error) {
 				console.error(`[${instanceId}] 更新实例状态失败:`, error);
 			}
-		}
-	}
-
-	// 处理连接事件
-	else if (eventType === "connection.update") {
-		const payload = body.payload as ConnectionUpdatePayload;
-
-		if (payload?.connection === "open") {
-			// 连接已建立
-			try {
-				await db
-					.update(instances)
-					.set({
-						status: "connected",
-						updatedAt: new Date(),
-					})
-					.where(eq(instances.id, instanceId));
-
-				instanceStatus = "connected";
-				console.log(`[${instanceId}] 已更新实例连接状态为: 已连接`);
-			} catch (error) {
-				console.error(`[${instanceId}] 更新连接状态失败:`, error);
-			}
-		} else if (payload?.connection === "close") {
-			// 连接已关闭
-			try {
-				await db
-					.update(instances)
-					.set({
-						status: "disconnected",
-						updatedAt: new Date(),
-					})
-					.where(eq(instances.id, instanceId));
-
-				instanceStatus = "disconnected";
-				console.log(`[${instanceId}] 已更新实例连接状态为: 已断开`);
-			} catch (error) {
-				console.error(`[${instanceId}] 更新连接状态失败:`, error);
-			}
-		}
-	}
-
-	// 处理身份验证事件
-	else if (eventType === "authenticated") {
-		try {
-			await db
-				.update(instances)
-				.set({
-					status: "connected",
-					updatedAt: new Date(),
-				})
-				.where(eq(instances.id, instanceId));
-
-			instanceStatus = "connected";
-			console.log(`[${instanceId}] 已更新实例认证状态为: 已连接`);
-		} catch (error) {
-			console.error(`[${instanceId}] 更新认证状态失败:`, error);
-		}
-	}
-
-	// 处理准备就绪事件
-	else if (eventType === "ready") {
-		try {
-			await db
-				.update(instances)
-				.set({
-					status: "connected",
-					updatedAt: new Date(),
-				})
-				.where(eq(instances.id, instanceId));
-
-			instanceStatus = "connected";
-			console.log(`[${instanceId}] 已更新实例状态为: 已连接 (ready)`);
-		} catch (error) {
-			console.error(`[${instanceId}] 更新就绪状态失败:`, error);
 		}
 	}
 

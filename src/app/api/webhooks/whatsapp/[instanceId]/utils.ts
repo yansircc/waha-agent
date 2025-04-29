@@ -16,51 +16,19 @@ export function validateWebhook(body: WebhookNotification | null): {
 }
 
 /**
- * 检查是否为消息类型的webhook
+ * 检查是否为会话事件
  */
-export function isMessageEvent(body: WebhookNotification): {
-	isMessage: boolean;
-	reason?: string;
-} {
-	// 只处理消息类型的webhook
-	if (!body.event || !body.event.startsWith("message")) {
-		// 非消息事件或缺少event字段
-		return {
-			isMessage: false,
-			reason: body.event ? "非消息事件" : "缺少event字段",
-		};
-	}
-
-	return { isMessage: true };
-}
-
-/**
- * 检查是否为会话相关的事件
- */
-export function isSessionEvent(body: WebhookNotification): boolean {
-	if (!body.event) return false;
-
-	// 会话相关事件前缀
-	const sessionEventPrefixes = [
-		"session",
-		"connection",
-		"qr",
-		"ready",
-		"authenticated",
-	];
-
-	// 检查事件是否以这些前缀开头
-	return sessionEventPrefixes.some((prefix) => body.event?.startsWith(prefix));
+export function isSessionEvent(eventType: string): boolean {
+	// List of session-related event types
+	const sessionEvents = ["session.status"];
+	return sessionEvents.includes(eventType);
 }
 
 /**
  * 检查是否为QR码相关事件
  */
 export function isQRCodeEvent(body: WebhookNotification): boolean {
-	// 检查是否为QR码事件
-	if (body.event === "qr") return true;
-
-	// 检查是否为需要QR码的会话状态更新事件
+	// Session状态是扫描QR码
 	if (
 		body.event === "session.status" &&
 		body.payload &&
@@ -75,6 +43,26 @@ export function isQRCodeEvent(body: WebhookNotification): boolean {
 }
 
 /**
+ * 检查是否为消息事件
+ */
+export function isMessageEvent(body: WebhookNotification): {
+	isMessage: boolean;
+	reason?: string;
+} {
+	// 不是消息类型事件
+	if (!body.event.startsWith("message")) {
+		return { isMessage: false, reason: "Not message event" };
+	}
+
+	// 没有payload
+	if (!body.payload) {
+		return { isMessage: false, reason: "No message payload" };
+	}
+
+	return { isMessage: true };
+}
+
+/**
  * 验证消息数据是否有效
  */
 export function validateMessageData(messageData: Partial<WAMessage> | null): {
@@ -86,25 +74,27 @@ export function validateMessageData(messageData: Partial<WAMessage> | null): {
 		return { isValid: false, errorMessage: "Empty message data" };
 	}
 
-	// 获取聊天ID
-	const chatId = messageData.from || messageData.chatId || "";
-	if (!chatId) {
-		return { isValid: false, errorMessage: "Missing chatId" };
+	// 确保消息有有效的来源ID
+	if (!messageData.from) {
+		return { isValid: false, errorMessage: "Message missing 'from' field" };
 	}
 
+	const chatId = messageData.from;
 	return { isValid: true, chatId };
 }
 
 /**
- * 检查是否为机器人自己发给自己的消息
+ * 检查是否为自己发给自己的消息
  */
-export function isSelfToSelfMessage(
-	messageData: Partial<WAMessage>,
-	botPhoneNumber: string | null,
-): boolean {
-	return !!(
-		botPhoneNumber &&
-		messageData.from === botPhoneNumber &&
-		messageData.to === botPhoneNumber
-	);
+export function isSelfToSelfMessage(messageData: Partial<WAMessage>): boolean {
+	// 如果fromMe为true且from和to是同一个, 那么是自己发给自己的消息
+	if (
+		messageData.fromMe === true &&
+		messageData.from &&
+		messageData.to &&
+		messageData.from === messageData.to
+	) {
+		return true;
+	}
+	return false;
 }

@@ -64,7 +64,7 @@ export function InstanceCard({
 		if (
 			showQR &&
 			!qrCode &&
-			status === "disconnected" &&
+			(status === "disconnected" || status === "connecting") &&
 			!hasRequestedQR.current
 		) {
 			// Set flag to prevent multiple calls
@@ -80,10 +80,11 @@ export function InstanceCard({
 		}
 	}, [showQR, qrCode, status, onScanQR]);
 
-	// Handlers with debounce protection
-	const handleStart = () => {
-		if (onStart) {
-			onStart();
+	// Handle QR scan request
+	const handleScanQR = () => {
+		if (onScanQR) {
+			onScanQR();
+			setShowQR(true);
 		}
 	};
 
@@ -119,8 +120,8 @@ export function InstanceCard({
 				<div className="-mt-px flex divide-x divide-gray-200">
 					{status === "disconnected" ? (
 						<DisconnectedActions
-							onScanQR={onScanQR}
-							onStart={handleStart}
+							onScanQR={handleScanQR}
+							onStart={onStart}
 							onDelete={onDelete}
 						/>
 					) : status === "connected" ? (
@@ -131,7 +132,11 @@ export function InstanceCard({
 							onDelete={onDelete}
 						/>
 					) : (
-						<ConnectingActions onRefresh={onRefresh} onDelete={onDelete} />
+						<ConnectingActions
+							onScanQR={handleScanQR}
+							onRefresh={onRefresh}
+							onDelete={onDelete}
+						/>
 					)}
 				</div>
 			</div>

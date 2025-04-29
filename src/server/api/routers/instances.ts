@@ -6,12 +6,31 @@ import type {
 	InstanceStatus,
 	InstanceUpdateInput,
 } from "@/types";
+import type { SessionStatus } from "@/types/api-responses";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { wahaApi } from "./waha-api";
+
+// Helper function to map Waha status to Instance status
+function mapWahaStatusToInstanceStatus(
+	wahaStatus?: SessionStatus,
+): InstanceStatus {
+	switch (wahaStatus) {
+		case "STARTING":
+		case "SCAN_QR_CODE":
+			return "connecting";
+		case "RUNNING":
+		case "WORKING": // Consider 'WORKING' as connected
+			return "connected";
+		// STOPPED and ERROR fall through to default
+		default:
+			return "disconnected";
+	}
+}
 
 export const instancesRouter = createTRPCRouter({
 	getAll: protectedProcedure.query(async ({ ctx }) => {
-		const result = await ctx.db.query.instances.findMany({
+		const dbInstances = await ctx.db.query.instances.findMany({
 			where: (instance, { eq }) =>
 				eq(instance.createdById, ctx.session.user.id),
 			orderBy: (instance, { desc }) => [desc(instance.createdAt)],
@@ -19,13 +38,48 @@ export const instancesRouter = createTRPCRouter({
 				agent: true,
 			},
 		});
-		return result;
+
+		// Fetch real-time status from Waha for each instance
+		const enrichedInstances = await Promise.all(
+			dbInstances.map(async (instance) => {
+				try {
+					const sessionInfo = await wahaApi.sessions.getSession(instance.id);
+					return {
+						...instance,
+						status: mapWahaStatusToInstanceStatus(sessionInfo.status),
+						// Use pushname if available, otherwise keep DB name
+						name: sessionInfo.me?.pushName || instance.name,
+						// Store full WhatsApp ID as phoneNumber for now
+						phoneNumber: sessionInfo.me?.id || instance.phoneNumber,
+						// Include QR code if status requires it
+						qrCode:
+							sessionInfo.status === "SCAN_QR_CODE"
+								? sessionInfo.qrCode
+								: instance.qrCode,
+					};
+				} catch (error) {
+					// If session fetch fails, return DB data but mark as disconnected
+					console.error(
+						`Failed to get Waha session for ${instance.id}:`,
+						error,
+					);
+					return {
+						...instance,
+						// Keep DB status if fetch fails, or set to disconnected
+						status:
+							instance.status === "connecting" ? "connecting" : "disconnected",
+					};
+				}
+			}),
+		);
+
+		return enrichedInstances;
 	}),
 
 	getById: protectedProcedure
 		.input(z.object({ id: z.string() }))
 		.query(async ({ ctx, input }) => {
-			const result = await ctx.db.query.instances.findFirst({
+			const dbInstance = await ctx.db.query.instances.findFirst({
 				where: (instance, { eq, and }) =>
 					and(
 						eq(instance.id, input.id),
@@ -35,14 +89,40 @@ export const instancesRouter = createTRPCRouter({
 					agent: true,
 				},
 			});
-			return result;
+
+			if (!dbInstance) return null;
+
+			// Fetch real-time status from Waha
+			try {
+				const sessionInfo = await wahaApi.sessions.getSession(dbInstance.id);
+				return {
+					...dbInstance,
+					status: mapWahaStatusToInstanceStatus(sessionInfo.status),
+					name: sessionInfo.me?.pushName || dbInstance.name,
+					phoneNumber: sessionInfo.me?.id || dbInstance.phoneNumber,
+					qrCode:
+						sessionInfo.status === "SCAN_QR_CODE"
+							? sessionInfo.qrCode
+							: dbInstance.qrCode,
+				};
+			} catch (error) {
+				console.error(
+					`Failed to get Waha session for ${dbInstance.id}:`,
+					error,
+				);
+				return {
+					...dbInstance,
+					status:
+						dbInstance.status === "connecting" ? "connecting" : "disconnected",
+				};
+			}
 		}),
 
 	create: protectedProcedure
 		.input(
 			z.object({
-				name: z.string().min(1).max(255),
-				phoneNumber: z.string().optional(),
+				name: z.string().min(1).max(255), // Keep name for initial creation (from agent)
+				// phoneNumber: z.string().optional(), // phoneNumber will be set after connection
 				agentId: z.string().optional(),
 				isAgentActive: z.boolean().optional().default(true),
 			}),
@@ -50,7 +130,7 @@ export const instancesRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			const createInput: InstanceCreateInput & { createdById: string } = {
 				name: input.name,
-				phoneNumber: input.phoneNumber || "",
+				// phoneNumber: input.phoneNumber || "",
 				agentId: input.agentId,
 				createdById: ctx.session.user.id,
 			};
@@ -59,7 +139,7 @@ export const instancesRouter = createTRPCRouter({
 				.insert(instances)
 				.values({
 					...createInput,
-					status: "disconnected" as InstanceStatus,
+					status: "disconnected" as InstanceStatus, // Initial status
 				})
 				.returning();
 
@@ -99,10 +179,10 @@ export const instancesRouter = createTRPCRouter({
 		.input(
 			z.object({
 				id: z.string(),
-				name: z.string().min(1).max(255).optional(),
-				phoneNumber: z.string().optional(),
+				name: z.string().min(1).max(255).optional(), // Allow updating name if needed
+				phoneNumber: z.string().optional(), // Allow updating phone if needed (e.g., manually)
 				agentId: z.string().optional(),
-				status: z.enum(["connected", "disconnected", "connecting"]).optional(),
+				status: z.enum(["connected", "disconnected", "connecting"]).optional(), // Allow manual status override if necessary
 				qrCode: z.string().optional(),
 				sessionData: z.record(z.any()).optional(),
 				isAgentActive: z.boolean().optional(),
@@ -231,6 +311,15 @@ export const instancesRouter = createTRPCRouter({
 				console.log(`已清理实例 ${input.id} 的Redis数据`);
 			} catch (error) {
 				console.error(`清理实例 ${input.id} 的Redis数据失败:`, error);
+				// 不阻止删除实例，仅记录错误
+			}
+
+			// 删除对应的 Waha session
+			try {
+				await wahaApi.sessions.deleteSession(input.id);
+				console.log(`已删除实例 ${input.id} 的 Waha 会话`);
+			} catch (error) {
+				console.error(`删除实例 ${input.id} 的 Waha 会话失败:`, error);
 				// 不阻止删除实例，仅记录错误
 			}
 

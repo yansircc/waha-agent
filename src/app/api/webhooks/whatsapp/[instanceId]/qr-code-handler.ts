@@ -1,7 +1,24 @@
 import { wahaApi } from "@/server/api/routers/waha-api";
 import { db } from "@/server/db";
 import { instances } from "@/server/db/schema";
+import type { WebhookNotification } from "@/types/api-responses";
 import { eq } from "drizzle-orm";
+
+/**
+ * Extracts QR code data from webhook payload when available
+ */
+export function extractQRCodeFromPayload(
+	body: WebhookNotification,
+): string | null {
+	if (body.event === "qr" && body.payload && typeof body.payload === "object") {
+		// Handle direct QR code data if available in payload
+		if ("qr" in body.payload && typeof body.payload.qr === "string") {
+			return body.payload.qr;
+		}
+	}
+
+	return null;
+}
 
 /**
  * 获取会话QR码并更新实例
@@ -20,20 +37,34 @@ export async function fetchAndUpdateQRCode(
 		}
 
 		// 更新数据库中的实例QR码
+		await updateInstanceQRCode(instanceId, qrData.data as string);
+		return qrData.data as string;
+	} catch (error) {
+		console.error(`[${instanceId}] 获取或更新QR码失败:`, error);
+		return null;
+	}
+}
+
+/**
+ * Updates instance record with QR code
+ */
+export async function updateInstanceQRCode(
+	instanceId: string,
+	qrCode: string,
+): Promise<void> {
+	try {
 		await db
 			.update(instances)
 			.set({
-				qrCode: qrData.data,
+				qrCode,
 				status: "disconnected", // 设置状态为断开连接，因为需要扫描QR码
 				updatedAt: new Date(),
 			})
 			.where(eq(instances.id, instanceId));
 
 		console.log(`[${instanceId}] QR码已更新到数据库`);
-		return qrData.data as string;
 	} catch (error) {
-		console.error(`[${instanceId}] 获取或更新QR码失败:`, error);
-		return null;
+		console.error(`[${instanceId}] 更新QR码失败:`, error);
 	}
 }
 
@@ -55,15 +86,23 @@ export function triggerQRCodeDisplay(instanceId: string): void {
 
 /**
  * 处理会话中的QR码事件
- *
- * 当收到QR码相关事件时，自动获取最新的QR码并更新实例
  */
 export async function handleQRCodeEvent(
 	instanceId: string,
 	sessionName: string,
+	body?: WebhookNotification,
 ): Promise<void> {
 	console.log(`[${instanceId}] 处理QR码事件, 会话: ${sessionName}`);
 
-	// 获取并更新QR码
+	// 首先尝试从webhook载荷中提取QR码
+	if (body) {
+		const qrFromPayload = extractQRCodeFromPayload(body);
+		if (qrFromPayload) {
+			await updateInstanceQRCode(instanceId, qrFromPayload);
+			return;
+		}
+	}
+
+	// 如果载荷中没有QR码，则通过API获取
 	await fetchAndUpdateQRCode(instanceId, sessionName);
 }

@@ -41,7 +41,7 @@ export async function POST(
 		const session = body.session || "default";
 
 		// 检查是否为会话事件
-		if (isSessionEvent(body)) {
+		if (isSessionEvent(body.event)) {
 			// 处理会话事件
 			const sessionResult = await handleSessionEvent(instanceId, body);
 			return NextResponse.json(sessionResult);
@@ -85,7 +85,7 @@ export async function POST(
 		const otherPartyId = determineOtherPartyId(messageData);
 
 		// 跳过处理机器人自己发给自己的消息
-		if (isSelfToSelfMessage(messageData, botPhoneNumber)) {
+		if (isSelfToSelfMessage(messageData)) {
 			console.log("跳过处理机器人自己发给自己的消息");
 			return NextResponse.json({
 				success: true,

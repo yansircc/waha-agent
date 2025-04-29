@@ -23,35 +23,24 @@ export function QRCodeDialog({
 }) {
 	const [localQrCode, setLocalQrCode] = useState<string | undefined>(qrCode);
 	const { instances } = useInstances();
-	const [isLoading, setIsLoading] = useState(false);
 
+	// Update local QR code when prop changes or when instance QR code is updated
 	useEffect(() => {
-		setLocalQrCode(qrCode);
-	}, [qrCode]);
+		// If dialog is not open, don't update
+		if (!open) return;
 
-	useEffect(() => {
-		if (!open || !instanceId) return;
+		// If prop QR code is provided, use it
+		if (qrCode) {
+			setLocalQrCode(qrCode);
+			return;
+		}
 
-		const checkLatestQrCode = () => {
-			const instance = instances.find((inst) => inst.id === instanceId);
-
-			if (instance?.qrCode && instance.qrCode !== localQrCode) {
-				console.log("QR码对话框: 发现新的QR码，更新显示");
-				setLocalQrCode(instance.qrCode);
-				setIsLoading(false);
-			} else if (!instance?.qrCode && !isLoading) {
-				setIsLoading(true);
-			}
-		};
-
-		checkLatestQrCode();
-
-		const intervalId = setInterval(checkLatestQrCode, 1000);
-
-		return () => {
-			clearInterval(intervalId);
-		};
-	}, [open, instanceId, instances, localQrCode, isLoading]);
+		// Otherwise, find QR code from instances
+		const instance = instances.find((inst) => inst.id === instanceId);
+		if (instance?.qrCode && instance.qrCode !== localQrCode) {
+			setLocalQrCode(instance.qrCode);
+		}
+	}, [open, qrCode, instanceId, instances, localQrCode]);
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -74,7 +63,7 @@ export function QRCodeDialog({
 					) : (
 						<div className="flex flex-col items-center justify-center p-8">
 							<Loader2 className="mb-4 h-8 w-8 animate-spin text-gray-400" />
-							<p className="text-gray-500 text-sm">加载二维码...</p>
+							<p className="text-gray-500 text-sm">等待二维码生成...</p>
 						</div>
 					)}
 				</div>

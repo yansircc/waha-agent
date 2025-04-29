@@ -16,6 +16,8 @@ export interface SessionDTO {
 export interface SessionInfo {
 	id: string;
 	name: string;
+	me?: MyProfile;
+	assignedWorker?: string;
 	status: SessionStatus;
 	config: Record<string, unknown>;
 	qrCode?: string;
@@ -42,8 +44,8 @@ export interface Result {
 export interface MyProfile {
 	id: string;
 	name?: string;
-	pushname: string;
-	phoneNumber: string;
+	pushName?: string;
+	phoneNumber?: string;
 	status?: string;
 	pictureUrl?: string;
 }

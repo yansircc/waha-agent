@@ -1,11 +1,13 @@
 import { Button } from "@/components/ui/button";
-import { Loader2, RefreshCwIcon } from "lucide-react";
+import { QrCodeIcon, RefreshCwIcon } from "lucide-react";
 import { DeleteButton } from "./delete-button";
 
 export function ConnectingActions({
+	onScanQR,
 	onRefresh,
 	onDelete,
 }: {
+	onScanQR?: () => void;
 	onRefresh?: () => void;
 	onDelete?: () => void;
 }) {
@@ -15,13 +17,10 @@ export function ConnectingActions({
 				<Button
 					variant="ghost"
 					className="relative inline-flex w-0 flex-1 items-center justify-center gap-x-3 rounded-bl-lg border border-transparent py-4 font-semibold text-gray-900 text-sm"
-					disabled
+					onClick={onScanQR}
 				>
-					<Loader2
-						className="h-5 w-5 animate-spin text-gray-400"
-						aria-hidden="true"
-					/>
-					连接中...
+					<QrCodeIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+					扫描二维码
 				</Button>
 			</div>
 			<div className="-ml-px flex w-0 flex-1">

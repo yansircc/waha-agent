@@ -6,16 +6,13 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 
 interface AddInstanceDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	onSubmit: (name: string, agentId: string) => Promise<void>;
-	instanceName: string;
-	setInstanceName: (name: string) => void;
+	onSubmit: (agentId: string) => Promise<void>;
 	selectedAgentId: string;
 	setSelectedAgentId: (id: string) => void;
 	isLoading: boolean;
@@ -27,8 +24,6 @@ export function AddInstanceDialog({
 	open,
 	onOpenChange,
 	onSubmit,
-	instanceName,
-	setInstanceName,
 	selectedAgentId,
 	setSelectedAgentId,
 	isLoading,
@@ -37,15 +32,7 @@ export function AddInstanceDialog({
 }: AddInstanceDialogProps) {
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		await onSubmit(instanceName, selectedAgentId);
-	};
-
-	const handleInstanceNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		// 只保留小写字母、数字和连字符
-		const lowercaseValue = e.target.value
-			.toLowerCase()
-			.replace(/[^a-z0-9-]/g, "");
-		setInstanceName(lowercaseValue);
+		await onSubmit(selectedAgentId);
 	};
 
 	return (
@@ -57,25 +44,15 @@ export function AddInstanceDialog({
 				<form onSubmit={handleSubmit}>
 					<div className="grid gap-4 py-4">
 						<div className="grid gap-2">
-							<Label htmlFor="name">账号名称</Label>
-							<Input
-								id="name"
-								value={instanceName}
-								onChange={handleInstanceNameChange}
-								placeholder="my-whatsapp"
-								required
-							/>
-							<p className="text-muted-foreground text-xs">
-								只允许小写字母、数字和连字符。
-							</p>
-						</div>
-						<div className="grid gap-2">
-							<Label htmlFor="agent">AI机器人 (可选)</Label>
+							<Label htmlFor="agent">
+								AI机器人 <span className="text-destructive">*</span>
+							</Label>
 							<select
 								id="agent"
 								value={selectedAgentId}
 								onChange={(e) => setSelectedAgentId(e.target.value)}
 								className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+								required
 							>
 								<option value="">选择一个AI机器人</option>
 								{!isLoadingAgents &&
@@ -85,6 +62,9 @@ export function AddInstanceDialog({
 										</option>
 									))}
 							</select>
+							<p className="text-muted-foreground text-xs">
+								选择要与此WhatsApp账号关联的AI机器人。
+							</p>
 						</div>
 					</div>
 					<DialogFooter>
@@ -95,7 +75,7 @@ export function AddInstanceDialog({
 						>
 							取消
 						</Button>
-						<Button type="submit" disabled={!instanceName || isLoading}>
+						<Button type="submit" disabled={!selectedAgentId || isLoading}>
 							{isLoading ? (
 								<>
 									<Loader2 className="mr-2 h-4 w-4 animate-spin" /> 创建中...

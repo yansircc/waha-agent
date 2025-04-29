@@ -47,32 +47,38 @@ export const wahaSessionsRouter = createTRPCRouter({
 	create: protectedProcedure
 		.input(
 			z.object({
-				name: z.string().optional().default("default"),
+				instanceId: z.string(),
 				config: SessionConfigSchema.optional(),
 				start: z.boolean().optional().default(true),
-				instanceId: z.string().optional(),
 			}),
 		)
 		.mutation(async ({ input, ctx }) => {
 			try {
-				// 创建一个会话配置对象
+				// Use instanceId as session name
+				const sessionName = input.instanceId;
+
+				// Create session config object
 				let sessionConfig: SessionConfig | undefined;
 
-				// 如果用户提供了配置，转换并使用它
+				// If user provided config, use it
 				if (input.config) {
 					sessionConfig = {
 						debug: input.config.debug,
 						proxy: input.config.proxy,
-						metadata: input.config.metadata,
+						metadata: input.config.metadata || {},
 						noweb: input.config.noweb,
 						webhooks: input.config.webhooks as WebhookConfig[] | undefined,
 					};
-				} else if (input.instanceId) {
-					// 如果没有配置但有userId，创建带有默认webhook的配置
-					const instanceId = input.instanceId;
-					const webhookUrl = `${env.NEXT_PUBLIC_APP_URL}/api/webhooks/whatsapp/${instanceId}`;
 
-					// 创建符合WebhookConfig接口的对象
+					// Ensure metadata contains instanceId
+					if (sessionConfig.metadata) {
+						sessionConfig.metadata.instanceId = input.instanceId;
+					}
+				} else {
+					// Create webhook URL for the instance
+					const webhookUrl = `${env.NEXT_PUBLIC_APP_URL}/api/webhooks/whatsapp/${input.instanceId}`;
+
+					// Create webhook config
 					const webhook: WebhookConfig = {
 						url: webhookUrl,
 						events: ["message", "session.status"],
@@ -84,16 +90,13 @@ export const wahaSessionsRouter = createTRPCRouter({
 					sessionConfig = {
 						debug: false,
 						webhooks: [webhook],
-						metadata: { "instance.id": instanceId },
+						metadata: { instanceId: input.instanceId },
 					};
-				} else {
-					// 最小配置
-					sessionConfig = { debug: false };
 				}
 
-				// 使用配置创建会话请求
+				// Create session request
 				const sessionRequest: SessionCreateRequest = {
-					name: input.name,
+					name: sessionName,
 					start: input.start,
 					config: sessionConfig,
 				};
@@ -108,10 +111,10 @@ export const wahaSessionsRouter = createTRPCRouter({
 
 	// Get session information
 	get: protectedProcedure
-		.input(z.object({ session: z.string().default("default") }))
+		.input(z.object({ instanceId: z.string() }))
 		.query(async ({ input }) => {
 			try {
-				const session = await wahaApi.sessions.getSession(input.session);
+				const session = await wahaApi.sessions.getSession(input.instanceId);
 				// Handle potential schema mismatches
 				const parsed = SessionInfoSchema.safeParse(session);
 				if (!parsed.success) {
@@ -129,7 +132,7 @@ export const wahaSessionsRouter = createTRPCRouter({
 	update: protectedProcedure
 		.input(
 			z.object({
-				session: z.string().default("default"),
+				instanceId: z.string(),
 				data: z.object({
 					config: z.record(z.unknown()).optional(),
 				}),
@@ -137,7 +140,10 @@ export const wahaSessionsRouter = createTRPCRouter({
 		)
 		.mutation(async ({ input }) => {
 			try {
-				return await wahaApi.sessions.updateSession(input.session, input.data);
+				return await wahaApi.sessions.updateSession(
+					input.instanceId,
+					input.data,
+				);
 			} catch (error) {
 				throw new Error(
 					`Failed to update session: ${(error as Error).message}`,
@@ -147,10 +153,10 @@ export const wahaSessionsRouter = createTRPCRouter({
 
 	// Delete the session
 	delete: protectedProcedure
-		.input(z.object({ session: z.string().default("default") }))
+		.input(z.object({ instanceId: z.string() }))
 		.mutation(async ({ input }) => {
 			try {
-				await wahaApi.sessions.deleteSession(input.session);
+				await wahaApi.sessions.deleteSession(input.instanceId);
 				return { success: true };
 			} catch (error) {
 				throw new Error(
@@ -161,10 +167,10 @@ export const wahaSessionsRouter = createTRPCRouter({
 
 	// Get information about the authenticated account
 	getMe: protectedProcedure
-		.input(z.object({ session: z.string().default("default") }))
+		.input(z.object({ instanceId: z.string() }))
 		.query(async ({ input }) => {
 			try {
-				const meInfo = await wahaApi.sessions.getMeInfo(input.session);
+				const meInfo = await wahaApi.sessions.getMeInfo(input.instanceId);
 				return meInfo;
 			} catch (error) {
 				throw new Error(
@@ -175,17 +181,12 @@ export const wahaSessionsRouter = createTRPCRouter({
 
 	// Start the session (now using the queue system)
 	start: protectedProcedure
-		.input(
-			z.object({
-				session: z.string().default("default"),
-				instanceId: z.string().optional(),
-			}),
-		)
+		.input(z.object({ instanceId: z.string() }))
 		.mutation(async ({ input }) => {
 			try {
-				// Instead of directly calling the API, add to the queue
+				// Add to the queue
 				const queueResult = await queueSessionStart(
-					input.session,
+					input.instanceId,
 					input.instanceId,
 				);
 
@@ -227,10 +228,10 @@ export const wahaSessionsRouter = createTRPCRouter({
 
 	// Stop the session
 	stop: protectedProcedure
-		.input(z.object({ session: z.string().default("default") }))
+		.input(z.object({ instanceId: z.string() }))
 		.mutation(async ({ input }) => {
 			try {
-				return await wahaApi.sessions.stopSession(input.session);
+				return await wahaApi.sessions.stopSession(input.instanceId);
 			} catch (error) {
 				throw new Error(`Failed to stop session: ${(error as Error).message}`);
 			}
@@ -238,10 +239,10 @@ export const wahaSessionsRouter = createTRPCRouter({
 
 	// Logout from the session
 	logout: protectedProcedure
-		.input(z.object({ session: z.string().default("default") }))
+		.input(z.object({ instanceId: z.string() }))
 		.mutation(async ({ input }) => {
 			try {
-				return await wahaApi.sessions.logoutSession(input.session);
+				return await wahaApi.sessions.logoutSession(input.instanceId);
 			} catch (error) {
 				throw new Error(`Failed to logout: ${(error as Error).message}`);
 			}
@@ -249,10 +250,10 @@ export const wahaSessionsRouter = createTRPCRouter({
 
 	// Restart the session
 	restart: protectedProcedure
-		.input(z.object({ session: z.string().default("default") }))
+		.input(z.object({ instanceId: z.string() }))
 		.mutation(async ({ input }) => {
 			try {
-				return await wahaApi.sessions.restartSession(input.session);
+				return await wahaApi.sessions.restartSession(input.instanceId);
 			} catch (error) {
 				throw new Error(
 					`Failed to restart session: ${(error as Error).message}`,

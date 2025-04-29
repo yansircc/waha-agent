@@ -7,14 +7,12 @@ import { AddInstanceDialog } from "./components/add-instance-dialog";
 import { EmptyState } from "./components/empty-state";
 import { InstanceCard } from "./components/instance-card";
 import { LoadingState } from "./components/loading-state";
-import { useInstancesManager } from "./hooks/use-instances-manager";
+import { useInstanceManager } from "./hooks/use-instance-manager";
 
 export default function InstancesPage() {
 	const {
 		isAddOpen,
 		setIsAddOpen,
-		instanceName,
-		setInstanceName,
 		selectedAgentId,
 		setSelectedAgentId,
 		instances,
@@ -30,7 +28,7 @@ export default function InstancesPage() {
 		handleStopSession,
 		handleLogoutSession,
 		handleRefreshSession,
-	} = useInstancesManager();
+	} = useInstanceManager();
 
 	return (
 		<div className="container py-8">
@@ -71,8 +69,6 @@ export default function InstancesPage() {
 				open={isAddOpen}
 				onOpenChange={setIsAddOpen}
 				onSubmit={handleSubmit}
-				instanceName={instanceName}
-				setInstanceName={setInstanceName}
 				selectedAgentId={selectedAgentId}
 				setSelectedAgentId={setSelectedAgentId}
 				isLoading={isApiLoading}

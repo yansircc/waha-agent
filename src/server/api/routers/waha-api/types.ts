@@ -7,7 +7,7 @@ export interface SessionInfo {
 		| "STARTING"
 		| "RUNNING"
 		| "STOPPED"
-		| "ERROR"
+		| "FAILED"
 		| "SCAN_QR_CODE"
 		| "WORKING";
 	config: Record<string, unknown>;
@@ -22,7 +22,7 @@ export interface MeInfo {
 	pushname: string;
 	name?: string;
 	phoneNumber: string;
-	profilePictureUrl?: string;
+	picture?: string;
 }
 
 export interface SessionCreateRequest {
@@ -42,7 +42,7 @@ export interface SessionDTO {
 		| "STARTING"
 		| "RUNNING"
 		| "STOPPED"
-		| "ERROR"
+		| "FAILED"
 		| "SCAN_QR_CODE"
 		| "WORKING";
 	config: Record<string, unknown>;
@@ -83,7 +83,7 @@ export interface MyProfile {
 	pushname: string;
 	phoneNumber: string;
 	status?: string;
-	pictureUrl?: string;
+	picture?: string;
 }
 
 export interface ProfileNameRequest {
