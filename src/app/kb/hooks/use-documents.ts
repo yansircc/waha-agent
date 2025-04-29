@@ -13,9 +13,29 @@ interface UseDocumentsProps {
 	onError?: (error: TRPCClientErrorLike<AppRouter>) => void;
 }
 
+interface DocumentResult {
+	id: string;
+	kbId: string;
+	name: string;
+	fileUrl: string | null;
+	filePath: string | null;
+	fileType: string | null;
+	fileSize: number | null;
+	mimeType: string | null;
+	vectorizationStatus: string;
+	createdAt: Date;
+	updatedAt: Date | null;
+	content?: string | null;
+	metadata?: unknown;
+	isText?: boolean | null;
+}
+
 export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 	const [isLoading, setIsLoading] = useState(false);
 	const [isProcessing, setIsProcessing] = useState(false);
+	const [uploadProgress, setUploadProgress] = useState<Record<string, number>>(
+		{},
+	);
 	const utils = api.useUtils();
 	const pollingRef = useRef<NodeJS.Timeout | null>(null);
 	const processingDocumentsRef = useRef(new Set<string>());
@@ -183,6 +203,111 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 		}
 	};
 
+	// Create multiple documents with S3 upload
+	const createDocuments = async (data: {
+		kbId: string;
+		files: File[];
+	}) => {
+		setIsLoading(true);
+		setIsProcessing(true);
+
+		const results: DocumentResult[] = [];
+		const createdDocuments: DocumentResult[] = [];
+		const failedUploads: { fileName: string; error: string }[] = [];
+
+		try {
+			// Initialize progress tracking
+			const initialProgress: Record<string, number> = {};
+			for (const file of data.files) {
+				initialProgress[file.name] = 0;
+			}
+			setUploadProgress(initialProgress);
+
+			// Process each file
+			for (const file of data.files) {
+				try {
+					console.log("开始上传文档:", {
+						fileName: file.name,
+						kbId: data.kbId,
+					});
+
+					// Upload file using the centralized hook
+					const result = await upload(file);
+
+					// Update progress
+					setUploadProgress((prev) => ({
+						...prev,
+						[file.name]: 100,
+					}));
+
+					// Extract key and URLs from the upload result
+					const key = result.key;
+					const fileUrl = result.longLivedUrl || result.fileUrl;
+
+					// Generate a document name from the file name (remove extension)
+					const name = file.name.replace(/\.[^/.]+$/, "");
+
+					// Create document record
+					const docResult = await utils.client.kbs.createDocument.mutate({
+						name,
+						kbId: data.kbId,
+						fileType: file.type,
+						fileSize: file.size,
+						filePath: key,
+						mimeType: file.type,
+						fileUrl: fileUrl,
+					});
+
+					if (docResult) {
+						results.push(docResult);
+						createdDocuments.push(docResult);
+					}
+				} catch (error) {
+					console.error(`文档 "${file.name}" 上传失败:`, error);
+					failedUploads.push({
+						fileName: file.name,
+						error: error instanceof Error ? error.message : "上传失败",
+					});
+				}
+			}
+
+			// Invalidate queries if any document was created
+			if (createdDocuments.length > 0) {
+				await utils.kbs.getDocuments.invalidate({
+					kbId: data.kbId,
+				});
+				await utils.kbs.getAll.invalidate();
+			}
+
+			// Call success callback if at least one document was created
+			if (createdDocuments.length > 0) {
+				onSuccess?.();
+			}
+
+			return {
+				success: createdDocuments.length > 0,
+				created: createdDocuments,
+				failed: failedUploads,
+				total: data.files.length,
+			};
+		} catch (error: unknown) {
+			const errorMessage =
+				error instanceof Error
+					? error.message
+					: "批量上传文档失败。请再试一次。";
+
+			console.error("批量文档创建失败:", error);
+			onError?.(
+				new Error(errorMessage) as unknown as TRPCClientErrorLike<AppRouter>,
+			);
+			throw new Error(errorMessage);
+		} finally {
+			setIsLoading(false);
+			setIsProcessing(false);
+			setUploadProgress({});
+		}
+	};
+
 	// Update document with S3 upload
 	const updateDocument = async (data: {
 		id: string;
@@ -334,13 +459,99 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 		}
 	};
 
+	// Bulk vectorize documents
+	const vectorizeDocuments = async (data: {
+		kbId: string;
+		documentIds: string[];
+		collectionName: string;
+	}) => {
+		setIsProcessing(true);
+		const results = {
+			success: [] as string[],
+			failed: [] as { id: string; error: string }[],
+		};
+
+		try {
+			// Start polling for updates to these documents
+			startPolling(data.documentIds);
+
+			// Process each document
+			for (const documentId of data.documentIds) {
+				try {
+					// Get document URL
+					const docResponse = await utils.client.kbs.getDocumentById.query({
+						id: documentId,
+					});
+
+					if (!docResponse?.fileUrl) {
+						results.failed.push({
+							id: documentId,
+							error: "文档URL未找到",
+						});
+						continue;
+					}
+
+					// Update document status to processing
+					await utils.client.kbs.updateDocumentStatus.mutate({
+						id: documentId,
+						status: "processing",
+						kbId: data.kbId,
+					});
+
+					// Call vectorization API
+					await fetch("/api/trigger/doc", {
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+						},
+						body: JSON.stringify({
+							kbId: data.kbId,
+							documentId,
+							collectionName: data.collectionName,
+							url: docResponse.fileUrl,
+							webhookUrl: `${env.NEXT_PUBLIC_APP_URL}/api/webhooks/doc`,
+						}),
+					});
+
+					results.success.push(documentId);
+				} catch (error) {
+					console.error(`文档 ID:${documentId} 向量化失败:`, error);
+					results.failed.push({
+						id: documentId,
+						error: error instanceof Error ? error.message : "向量化处理失败",
+					});
+				}
+			}
+
+			// Refresh document list
+			await utils.kbs.getDocuments.invalidate({
+				kbId: data.kbId,
+			});
+
+			if (results.success.length > 0) {
+				onSuccess?.();
+			}
+
+			return results;
+		} catch (error) {
+			console.error("批量向量化文档失败:", error);
+			onError?.(error as TRPCClientErrorLike<AppRouter>);
+			throw error;
+		} finally {
+			setIsProcessing(false);
+		}
+	};
+
 	return {
 		getDocumentsByKbId,
 		getDocumentById,
 		createDocument,
+		createDocuments,
 		updateDocument,
 		deleteDocument,
 		vectorizeDocument,
+		vectorizeDocuments,
+		uploadProgress,
 		isLoading,
 		isProcessing,
 	};

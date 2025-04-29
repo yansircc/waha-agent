@@ -27,14 +27,15 @@ export default function KnowledgePage() {
 	const { kbs, isLoadingKbs, createKb, deleteKb } = useKbs();
 	const {
 		createDocument,
+		createDocuments,
 		deleteDocument,
 		getDocumentsByKbId,
 		vectorizeDocument,
+		vectorizeDocuments,
 	} = useDocuments();
 
 	// Knowledge base handlers
 	const handleOpenAddKbDialog = () => setIsAddKbOpen(true);
-	const handleCloseAddKbDialog = () => setIsAddKbOpen(false);
 
 	const handleSubmitKb = async (data: {
 		name: string;
@@ -61,14 +62,35 @@ export default function KnowledgePage() {
 	const handleOpenAddDocDialog = () => setIsAddDocOpen(true);
 	const handleCloseAddDocDialog = () => setIsAddDocOpen(false);
 
-	const handleSubmitDoc = async (file: File) => {
-		if (!selectedKb) return;
+	const handleSubmitDoc = async (files: File[]) => {
+		if (!selectedKb || files.length === 0) return;
 
-		await createDocument({
-			name: file.name,
+		// Use the new multi-file upload function
+		const result = await createDocuments({
 			kbId: selectedKb.id,
-			file,
+			files,
 		});
+
+		// Optionally show a summary of the upload results
+		if (result.failed.length > 0) {
+			console.warn(`${result.failed.length} 个文件上传失败`, result.failed);
+		}
+
+		// Auto-vectorize documents if needed
+		if (result.created.length > 0) {
+			const shouldVectorize = confirm(
+				`已上传 ${result.created.length} 个文档。是否立即向量化这些文档？`,
+			);
+
+			if (shouldVectorize) {
+				const documentIds = result.created.map((doc) => doc.id);
+				await vectorizeDocuments({
+					kbId: selectedKb.id,
+					documentIds,
+					collectionName: QDRANT_COLLECTION_NAME,
+				});
+			}
+		}
 	};
 
 	const handleDeleteDocument = async (id: string, kbId: string) => {
