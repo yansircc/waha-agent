@@ -2,8 +2,6 @@ import { kbService } from "@/lib/kb-service";
 import { convertToMarkdown } from "@/lib/markitdown";
 import { deleteFile, uploadFileAndGetLink } from "@/lib/s3-service";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
-import { documents as documentsTable } from "@/server/db/schema";
-import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 export const kbsRouter = createTRPCRouter({
