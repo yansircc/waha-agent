@@ -51,3 +51,7 @@ yarn-error.log*
 
 # trigger.dev
 .trigger
+
+# script
+/scripts
+/src/scripts

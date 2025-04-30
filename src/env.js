@@ -20,6 +20,8 @@ export const env = createEnv({
 			.enum(["development", "test", "production"])
 			.default("development"),
 		OPENAI_API_KEY: z.string(),
+		AI_HUB_MIX_API_KEY: z.string(),
+		AI_HUB_MIX_ENDPOINT: z.string(),
 		COHERE_API_KEY: z.string(),
 		WAHA_API_KEY: z.string(),
 		QDRANT_URL: z.string().url(),
@@ -61,6 +63,8 @@ export const env = createEnv({
 		DATABASE_URL: process.env.DATABASE_URL,
 		NODE_ENV: process.env.NODE_ENV,
 		OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+		AI_HUB_MIX_API_KEY: process.env.AI_HUB_MIX_API_KEY,
+		AI_HUB_MIX_ENDPOINT: process.env.AI_HUB_MIX_ENDPOINT,
 		COHERE_API_KEY: process.env.COHERE_API_KEY,
 		WAHA_API_KEY: process.env.WAHA_API_KEY,
 		NEXT_PUBLIC_WAHA_API_URL: process.env.NEXT_PUBLIC_WAHA_API_URL,

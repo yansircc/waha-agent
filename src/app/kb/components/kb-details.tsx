@@ -3,35 +3,39 @@
 import { Button } from "@/components/ui/button";
 import type { Document } from "@/types/document";
 import type { Kb } from "@/types/kb";
-import { FileText, Plus } from "lucide-react";
-import { DocumentCard } from "./document-card";
+import { FileText, Globe, Plus } from "lucide-react";
+import { DocumentTable } from "./document-table";
 import { EmptyState } from "./empty-state";
 
 interface KbDetailProps {
 	kb: Kb;
 	documents: Document[];
 	isLoading: boolean;
+	isVectorizing?: boolean;
+	vectorizingDocId?: string | null;
 	onBack: () => void;
 	onAddDocument: () => void;
-	onDeleteDocument: (id: string) => void;
-	onVectorizeDocument: (id: string) => void;
+	onCrawlWebpage: () => void;
+	onDeleteDocument: (id: string, kbId?: string) => void | Promise<void>;
+	onVectorizeDocument: (id: string) => void | Promise<void>;
 }
 
 export function KbDetail({
 	kb,
 	documents,
 	isLoading,
+	isVectorizing = false,
+	vectorizingDocId = null,
 	onBack,
 	onAddDocument,
+	onCrawlWebpage,
 	onDeleteDocument,
 	onVectorizeDocument,
 }: KbDetailProps) {
-	// Loading placeholders
-	const loadingPlaceholderIds = [
-		"placeholder-1",
-		"placeholder-2",
-		"placeholder-3",
-	];
+	// 处理文档删除，确保传递正确的kbId参数
+	const handleDeleteDocument = (id: string, kbId: string) => {
+		return onDeleteDocument(id, kbId);
+	};
 
 	return (
 		<>
@@ -48,39 +52,34 @@ export function KbDetail({
 						<p className="mt-1 text-muted-foreground">{kb.description}</p>
 					)}
 				</div>
-				<Button onClick={onAddDocument}>
-					<Plus className="mr-2 h-4 w-4" /> 添加文档
-				</Button>
+				<div className="flex space-x-3">
+					<Button variant="outline" onClick={onCrawlWebpage}>
+						<Globe className="mr-2 h-4 w-4" /> 爬取网页
+					</Button>
+					<Button onClick={onAddDocument}>
+						<Plus className="mr-2 h-4 w-4" /> 添加文档
+					</Button>
+				</div>
 			</div>
 
 			{isLoading ? (
-				<div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-					{loadingPlaceholderIds.map((id) => (
-						<div
-							key={id}
-							className="h-48 animate-pulse rounded-lg border bg-muted"
-						/>
-					))}
-				</div>
+				<div className="h-52 animate-pulse rounded-md border bg-muted" />
 			) : documents.length === 0 ? (
 				<EmptyState
 					icon={FileText}
 					title="没有文档"
-					description="添加你的第一个文档到这个知识库。"
+					description="添加你的第一个文档到这个知识库，或爬取网页内容。"
 					actionLabel="添加文档"
 					onAction={onAddDocument}
 				/>
 			) : (
-				<div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-					{documents.map((doc) => (
-						<DocumentCard
-							key={doc.id}
-							document={doc}
-							onDelete={onDeleteDocument}
-							onVectorize={onVectorizeDocument}
-						/>
-					))}
-				</div>
+				<DocumentTable
+					documents={documents}
+					onDelete={handleDeleteDocument}
+					onVectorize={onVectorizeDocument}
+					isVectorizing={isVectorizing}
+					vectorizingDocId={vectorizingDocId}
+				/>
 			)}
 		</>
 	);

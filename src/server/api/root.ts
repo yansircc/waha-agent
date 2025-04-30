@@ -1,6 +1,7 @@
 import { agentsRouter } from "@/server/api/routers/agents";
 import { chatRouter } from "@/server/api/routers/chat";
 import { chatHistoryRouter } from "@/server/api/routers/chat-history";
+import { crawlerRouter } from "@/server/api/routers/crawler";
 import { emailsRouter } from "@/server/api/routers/emails";
 import { instancesRouter } from "@/server/api/routers/instances";
 import { kbsRouter } from "@/server/api/routers/kb";
@@ -9,6 +10,7 @@ import { wahaChattingRouter } from "@/server/api/routers/waha-chatting";
 import { wahaProfileRouter } from "@/server/api/routers/waha-profile";
 import { wahaSessionsRouter } from "@/server/api/routers/waha-sessions";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
+import { documentsRouter } from "./routers/documents";
 import { qdrantRouter } from "./routers/qdrant";
 import { s3Router } from "./routers/s3";
 
@@ -30,6 +32,8 @@ export const appRouter = createTRPCRouter({
 	s3: s3Router,
 	qdrant: qdrantRouter,
 	emails: emailsRouter,
+	crawler: crawlerRouter,
+	documents: documentsRouter,
 });
 
 // export type definition of API
