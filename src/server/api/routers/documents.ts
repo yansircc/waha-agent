@@ -1,4 +1,6 @@
 import { getRecentDocumentUpdates } from "@/lib/document-updates";
+import { convertToMarkdown } from "@/lib/markitdown";
+import { deleteFile, uploadFileAndGetLink } from "@/lib/s3-service";
 import { documents } from "@/server/db/schema";
 import { TRPCError } from "@trpc/server";
 import { eq, inArray } from "drizzle-orm";
@@ -90,6 +92,200 @@ export const documentsRouter = createTRPCRouter({
 				throw new TRPCError({
 					code: "INTERNAL_SERVER_ERROR",
 					message: "Failed to fetch document updates",
+					cause: error,
+				});
+			}
+		}),
+
+	/**
+	 * Convert an uploaded document to Markdown format
+	 */
+	convertToMarkdown: protectedProcedure
+		.input(
+			z.object({
+				documentId: z.string(),
+				originalUrl: z.string().url(),
+				deleteOriginal: z.boolean().default(true),
+			}),
+		)
+		.mutation(async ({ input, ctx }) => {
+			try {
+				// 1. Fetch the document from database
+				const document = await ctx.db.query.documents.findFirst({
+					where: (docs, { eq }) => eq(docs.id, input.documentId),
+				});
+
+				if (!document) {
+					throw new TRPCError({
+						code: "NOT_FOUND",
+						message: "Document not found",
+					});
+				}
+
+				// 2. Convert the document to Markdown
+				const markdownContent = await convertToMarkdown(input.originalUrl);
+
+				// 3. Generate a unique S3 key for the markdown document
+				const s3Key = `documents/${document.kbId}/${document.id}.md`;
+
+				// 4. Upload markdown content to S3 and get URL
+				const uploadResult = await uploadFileAndGetLink(
+					s3Key,
+					markdownContent,
+					"text/markdown; charset=utf-8",
+				);
+
+				// 5. Update document in database with the markdown URL
+				await ctx.db
+					.update(documents)
+					.set({
+						fileUrl: uploadResult.fileUrl,
+						fileType: "text/markdown",
+						content: markdownContent, // Store the markdown content for fallback
+						updatedAt: new Date(),
+					})
+					.where(eq(documents.id, input.documentId))
+					.execute();
+
+				// 6. Optionally delete the original file if requested
+				if (input.deleteOriginal && document.filePath) {
+					try {
+						// 添加一个延迟，确保Markdown文件完全上传好并可访问
+						await new Promise((resolve) => setTimeout(resolve, 1000));
+						console.log(`[DOC-ROUTER] 开始删除原始文件: ${document.filePath}`);
+						await deleteFile(document.filePath);
+						console.log(`[DOC-ROUTER] 原始文件删除成功: ${document.filePath}`);
+					} catch (deleteError) {
+						console.error("[DOC-ROUTER] 删除原始文件失败:", deleteError);
+						// Don't throw error here, just log it - the conversion was successful
+					}
+				}
+
+				return {
+					success: true,
+					fileUrl: uploadResult.fileUrl,
+					documentId: document.id,
+				};
+			} catch (error) {
+				throw new TRPCError({
+					code: "INTERNAL_SERVER_ERROR",
+					message:
+						error instanceof Error
+							? error.message
+							: "Failed to convert document to Markdown",
+					cause: error,
+				});
+			}
+		}),
+
+	/**
+	 * 批量更新现有文档，将其转换为Markdown并更新fileUrl
+	 */
+	batchConvertDocumentsToMarkdown: protectedProcedure
+		.input(
+			z.object({
+				kbId: z.string().optional(), // Optional: convert only documents in a specific KB
+				limit: z.number().min(1).max(100).default(10), // Process in batches for safety
+			}),
+		)
+		.mutation(async ({ input, ctx }) => {
+			try {
+				// 1. Find documents that need conversion (those with non-markdown fileType)
+				const query = ctx.db.query.documents.findMany({
+					where: (docs, { ne, eq, and }) =>
+						and(
+							ne(docs.fileType, "text/markdown"),
+							input.kbId ? eq(docs.kbId, input.kbId) : undefined,
+						),
+					limit: input.limit,
+				});
+
+				const docsToConvert = await query;
+
+				if (docsToConvert.length === 0) {
+					return {
+						success: true,
+						message: "No documents requiring conversion found",
+						convertedCount: 0,
+					};
+				}
+
+				// 2. Process each document
+				const results = [];
+				for (const doc of docsToConvert) {
+					if (!doc.fileUrl) {
+						results.push({
+							id: doc.id,
+							success: false,
+							error: "Missing fileUrl",
+						});
+						continue;
+					}
+
+					try {
+						// Convert document to Markdown
+						const markdownContent = await convertToMarkdown(doc.fileUrl);
+
+						// Generate S3 key and upload
+						const s3Key = `documents/${doc.kbId}/${doc.id}.md`;
+						const uploadResult = await uploadFileAndGetLink(
+							s3Key,
+							markdownContent,
+							"text/markdown; charset=utf-8",
+						);
+
+						// Update the document
+						await ctx.db
+							.update(documents)
+							.set({
+								fileUrl: uploadResult.fileUrl,
+								fileType: "text/markdown",
+								content: markdownContent,
+								updatedAt: new Date(),
+							})
+							.where(eq(documents.id, doc.id))
+							.execute();
+
+						results.push({
+							id: doc.id,
+							success: true,
+							newFileUrl: uploadResult.fileUrl,
+						});
+
+						// Optionally delete original file if we have filePath
+						if (doc.filePath) {
+							try {
+								await deleteFile(doc.filePath);
+							} catch (deleteError) {
+								console.error(
+									`Failed to delete original file for ${doc.id}:`,
+									deleteError,
+								);
+							}
+						}
+					} catch (error) {
+						results.push({
+							id: doc.id,
+							success: false,
+							error: error instanceof Error ? error.message : String(error),
+						});
+					}
+				}
+
+				return {
+					success: true,
+					message: `Processed ${docsToConvert.length} documents`,
+					convertedCount: results.filter((r) => r.success).length,
+					failedCount: results.filter((r) => !r.success).length,
+					results,
+				};
+			} catch (error) {
+				throw new TRPCError({
+					code: "INTERNAL_SERVER_ERROR",
+					message:
+						error instanceof Error
+							? error.message
+							: "Failed to batch convert documents",
 					cause: error,
 				});
 			}

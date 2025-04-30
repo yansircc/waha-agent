@@ -1,12 +1,12 @@
 "use client";
 
 import { env } from "@/env";
-import { useS3Upload } from "@/hooks/use-s3-upload";
 import { QDRANT_COLLECTION_NAME } from "@/lib/constants";
 import type { AppRouter } from "@/server/api/root";
 import { api } from "@/utils/api";
 import type { TRPCClientErrorLike } from "@trpc/client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useS3Upload } from "./use-s3-upload";
 
 interface UseDocumentsProps {
 	onSuccess?: () => void;

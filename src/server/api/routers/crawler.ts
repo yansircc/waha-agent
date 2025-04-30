@@ -430,6 +430,8 @@ export const crawlerRouter = createTRPCRouter({
 						updatedAt: new Date(),
 						// 使用 S3 文件 URL 而不是 sitemap URL
 						fileUrl: uploadResult.fileUrl,
+						// Store the original sitemap URL as metadata or in a separate field if needed
+						metadata: { originalSource: input.sitemapUrl },
 					})
 					.returning()
 					.execute();

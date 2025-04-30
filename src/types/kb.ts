@@ -56,6 +56,7 @@ export interface CreateDocumentInput {
 	metadata?: Record<string, unknown>;
 	kbId: string;
 	userId: string;
+	preserveOriginal?: boolean;
 }
 
 export interface UpdateDocumentInput {

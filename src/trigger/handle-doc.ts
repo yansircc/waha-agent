@@ -1,4 +1,3 @@
-import { convertToMarkdown } from "@/lib/markitdown";
 import { qdrantService } from "@/lib/qdrant-service";
 import { cohere } from "@ai-sdk/cohere";
 import { logger, task } from "@trigger.dev/sdk";
@@ -8,7 +7,6 @@ import {
 	type TextChunk,
 	chunkText,
 	createCollectionIfNotExists,
-	isMarkdownOrTextFile,
 	sendWebhookResponse,
 } from "./utils";
 
@@ -34,17 +32,13 @@ interface DocWebhookResponse extends WebhookResponse {
  */
 async function getDocumentContent(url: string): Promise<string> {
 	try {
-		if (isMarkdownOrTextFile(url)) {
-			// For markdown or text files, fetch directly
-			const response = await fetch(url);
-			if (!response.ok) {
-				throw new Error(`Failed to fetch document: ${response.statusText}`);
-			}
-			const text = await response.text();
-			return text;
+		// Since we now convert all documents to Markdown format during upload,
+		// we can simply fetch the content directly without further conversion
+		const response = await fetch(url);
+		if (!response.ok) {
+			throw new Error(`Failed to fetch document: ${response.statusText}`);
 		}
-		// For other file types, convert to markdown
-		return await convertToMarkdown(url);
+		return await response.text();
 	} catch (error) {
 		logger.error("Failed to get document content", { url, error });
 		throw error;
@@ -133,11 +127,10 @@ export const handleDoc = task({
 			payload;
 
 		try {
-			// 1. Get document content based on file type
+			// 1. Get document content based on file type (now simplified since all docs are Markdown)
 			let content = await getDocumentContent(url);
 			logger.info("Document content retrieved", {
 				url,
-				isMarkdownOrText: isMarkdownOrTextFile(url),
 				contentSize: content.length,
 			});
 

@@ -59,6 +59,7 @@ export function DocumentTable({
 		confirmDelete,
 		executeDelete,
 		cancelDelete,
+		openFile,
 	} = useDocumentTable({
 		documents,
 		onDelete,
@@ -94,6 +95,12 @@ export function DocumentTable({
 										href={document.fileUrl || ""}
 										target="_blank"
 										rel="noopener noreferrer"
+										onClick={(e) => {
+											// Prevent default link behavior
+											e.preventDefault();
+											// Use the openFile function from useDocumentTable hook
+											openFile(document.fileUrl);
+										}}
 									>
 										{document.name.slice(0, 60) +
 											(document.name.length > 60 ? "..." : "")}

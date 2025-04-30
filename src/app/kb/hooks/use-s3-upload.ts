@@ -17,11 +17,14 @@ export interface UploadResult {
 
 export function useS3Upload(options: UseS3UploadOptions = {}) {
 	const [isUploading, setIsUploading] = useState(false);
+	const [isConverting, setIsConverting] = useState(false);
 	const [progress, setProgress] = useState(0);
 	const [error, setError] = useState<Error | null>(null);
 
 	const uploadMutation = api.s3.getUploadUrl.useMutation();
 	const longLivedUrlMutation = api.s3.getLongLivedUrl.useMutation();
+	const convertToMarkdownMutation =
+		api.documents.convertToMarkdown.useMutation();
 
 	const upload = async (file: File): Promise<UploadResult> => {
 		setIsUploading(true);
@@ -107,6 +110,53 @@ export function useS3Upload(options: UseS3UploadOptions = {}) {
 	};
 
 	/**
+	 * 上传文档并立即转换为Markdown格式
+	 * 操作流程：1. 上传原始文件，2. 转换为Markdown，3. 更新数据库中文档的fileUrl
+	 */
+	const uploadWithMarkdownConversion = async (
+		file: File,
+		documentId: string,
+		deleteOriginal = true,
+	): Promise<{ fileUrl: string; documentId: string }> => {
+		setIsUploading(true);
+		setProgress(0);
+		setError(null);
+
+		try {
+			// 1. 先正常上传文件
+			const uploadResult = await upload(file);
+			setIsConverting(true);
+
+			// 2. 转换为Markdown
+			const conversionResult = await convertToMarkdownMutation.mutateAsync({
+				documentId,
+				originalUrl: uploadResult.fileUrl,
+				deleteOriginal,
+			});
+
+			// 3. 返回新的Markdown URL
+			options.onSuccess?.({
+				fileUrl: conversionResult.fileUrl,
+			});
+
+			return {
+				fileUrl: conversionResult.fileUrl,
+				documentId: conversionResult.documentId,
+			};
+		} catch (err) {
+			console.error("上传或转换错误:", err);
+			const processError =
+				err instanceof Error ? err : new Error("文档上传或转换过程失败");
+			setError(processError);
+			options.onError?.(processError);
+			throw processError;
+		} finally {
+			setIsUploading(false);
+			setIsConverting(false);
+		}
+	};
+
+	/**
 	 * 获取文件的长期访问链接（7天有效）
 	 * 适用于已经上传的文件
 	 */
@@ -123,8 +173,10 @@ export function useS3Upload(options: UseS3UploadOptions = {}) {
 
 	return {
 		upload,
+		uploadWithMarkdownConversion,
 		getLongLivedUrl,
 		isUploading,
+		isConverting,
 		progress,
 		error,
 	};

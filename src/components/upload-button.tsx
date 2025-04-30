@@ -1,6 +1,6 @@
 "use client";
 
-import { useS3Upload } from "@/hooks/use-s3-upload";
+import { useS3Upload } from "@/app/kb/hooks/use-s3-upload";
 import { cn } from "@/lib/utils";
 import { UploadCloud } from "lucide-react";
 import { Button } from "./ui/button";

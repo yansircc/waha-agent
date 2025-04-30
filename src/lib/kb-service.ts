@@ -163,6 +163,7 @@ export const kbService = {
 				kbId,
 				userId,
 				isText: providedIsText,
+				preserveOriginal, // 控制是否保留原始文件
 			} = params;
 
 			logger.info("Creating document with params:", {
@@ -170,6 +171,7 @@ export const kbService = {
 				kbId,
 				providedFilePath,
 				hasFile: !!file,
+				preserveOriginal, // 记录是否保留原始文件
 			});
 
 			// Check if knowledge base exists and belongs to user
