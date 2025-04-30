@@ -8,6 +8,7 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { env } from "@/env";
 import { MailIcon, PenIcon, TrashIcon } from "lucide-react";
 import { useState } from "react";
 import { EmailTestDialog } from "./email-test-dialog";
@@ -47,10 +48,14 @@ export function EmailCard({
 	return (
 		<div className="group relative flex flex-col overflow-hidden rounded-lg border bg-background shadow transition-all hover:shadow-md">
 			<div className="p-6">
-				<div className="mb-4 flex items-center justify-between">
+				<div className="mb-4 flex flex-col items-start justify-between gap-2">
 					<h3 className="font-semibold text-xl tracking-tight">
 						表单ID: {formDataFormId}
 					</h3>
+					<p className="max-w-full break-all font-mono text-gray-500 text-sm">
+						<span className="font-semibold">webhook:</span>{" "}
+						{`${env.NEXT_PUBLIC_WEBHOOK_URL}/api/webhooks/email/${formDataFormId}`}
+					</p>
 				</div>
 
 				{agent && <Badge variant="secondary">AI Agent: {agent.name}</Badge>}

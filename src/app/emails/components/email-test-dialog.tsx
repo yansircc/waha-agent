@@ -116,7 +116,7 @@ export function EmailTestDialog({
 								将以下代码添加到您的网站，以便用户可以直接发送邮件到您的邮箱:
 							</p>
 							<div className="rounded-md bg-muted p-4">
-								<pre className="overflow-auto text-sm">
+								<pre className="max-w-full overflow-x-auto whitespace-pre-wrap break-words text-sm">
 									<code>{embedCode}</code>
 								</pre>
 							</div>
