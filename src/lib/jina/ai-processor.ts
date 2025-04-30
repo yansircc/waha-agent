@@ -15,7 +15,7 @@ export async function processResult(
 	}
 
 	const cleanedContent = await kbPreprocessor(
-		env.OPENAI_API_KEY,
+		env.AI_HUB_MIX_API_KEY,
 		result.content,
 	);
 
