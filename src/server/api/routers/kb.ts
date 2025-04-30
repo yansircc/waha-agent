@@ -1,3 +1,5 @@
+import { env } from "@/env";
+import { kbPreprocessor } from "@/lib/ai-agents/kb-preprocessor";
 import { kbService } from "@/lib/kb-service";
 import { convertToMarkdown } from "@/lib/markitdown";
 import { deleteFile, uploadFileAndGetLink } from "@/lib/s3-service";
@@ -109,6 +111,12 @@ export const kbsRouter = createTRPCRouter({
 						`[KB-ROUTER] Markdown转换成功，内容长度: ${markdownContent.length}`,
 					);
 
+					// use ai-agents/kb-preprocessor to preprocess the markdown content
+					const preprocessedContent = await kbPreprocessor(
+						env.AI_HUB_MIX_API_KEY,
+						markdownContent,
+					);
+
 					// 为Markdown文件生成唯一名称
 					const timestamp = Date.now();
 					const safeName = input.name.replace(/[^a-z0-9]/gi, "_").toLowerCase();
@@ -118,15 +126,15 @@ export const kbsRouter = createTRPCRouter({
 					console.log("[KB-ROUTER] 上传Markdown到S3:", s3Key);
 					const uploadResult = await uploadFileAndGetLink(
 						s3Key,
-						markdownContent,
+						preprocessedContent,
 						"text/markdown; charset=utf-8",
 					);
 
 					// 重写输入参数，直接使用Markdown版本
-					input.content = markdownContent;
+					input.content = preprocessedContent;
 					input.fileUrl = uploadResult.fileUrl;
 					input.fileType = "text/markdown";
-					input.fileSize = Buffer.byteLength(markdownContent, "utf8");
+					input.fileSize = Buffer.byteLength(preprocessedContent, "utf8");
 
 					// 保存原始文件路径用于删除
 					const originalFilePath = input.filePath;

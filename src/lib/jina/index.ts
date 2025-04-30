@@ -1,10 +1,9 @@
-import { aiProcessor } from "./ai-processor";
+import { processResult } from "./ai-processor";
 import { JinaCrawlerService } from "./crawler";
 import type { CrawlOptions, JinaCrawlResult } from "./types";
 
 // Export types
 export * from "./types";
-export { aiProcessor } from "./ai-processor";
 
 // Export the crawler class
 export { JinaCrawlerService } from "./crawler";
@@ -34,10 +33,8 @@ export async function queueSitemap(
 	return jinaCrawler.queueFromSitemap(sitemapUrl, options);
 }
 
-// Helper function to clean content with AI
-export async function cleanContentWithAI(
-	content: string,
-	title?: string,
-): Promise<string> {
-	return aiProcessor.cleanContent(content, title);
+export async function processResultWithAI(
+	result: JinaCrawlResult,
+): Promise<JinaCrawlResult> {
+	return processResult(result);
 }

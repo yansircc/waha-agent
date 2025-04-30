@@ -1,3 +1,5 @@
+import { env } from "@/env";
+import { kbPreprocessor } from "@/lib/ai-agents/kb-preprocessor";
 import { getRecentDocumentUpdates } from "@/lib/document-updates";
 import { convertToMarkdown } from "@/lib/markitdown";
 import { deleteFile, uploadFileAndGetLink } from "@/lib/s3-service";
@@ -125,13 +127,19 @@ export const documentsRouter = createTRPCRouter({
 				// 2. Convert the document to Markdown
 				const markdownContent = await convertToMarkdown(input.originalUrl);
 
+				// use ai-agents/kb-preprocessor to preprocess the markdown content
+				const preprocessedContent = await kbPreprocessor(
+					env.AI_HUB_MIX_API_KEY,
+					markdownContent,
+				);
+
 				// 3. Generate a unique S3 key for the markdown document
 				const s3Key = `documents/${document.kbId}/${document.id}.md`;
 
 				// 4. Upload markdown content to S3 and get URL
 				const uploadResult = await uploadFileAndGetLink(
 					s3Key,
-					markdownContent,
+					preprocessedContent,
 					"text/markdown; charset=utf-8",
 				);
 
@@ -141,7 +149,7 @@ export const documentsRouter = createTRPCRouter({
 					.set({
 						fileUrl: uploadResult.fileUrl,
 						fileType: "text/markdown",
-						content: markdownContent, // Store the markdown content for fallback
+						content: preprocessedContent, // Store the markdown content for fallback
 						updatedAt: new Date(),
 					})
 					.where(eq(documents.id, input.documentId))

@@ -3,7 +3,7 @@ import type { Redis } from "@upstash/redis";
 import { nanoid } from "nanoid";
 import { getRedisForInstance, safeRedisOperation } from "../redis";
 import { sanitizeUrl } from "../utils";
-import { aiProcessor } from "./ai-processor";
+import { processResult } from "./ai-processor";
 import {
 	JINA_CRAWL_PREFIX,
 	JINA_QUEUE_KEY,
@@ -223,7 +223,7 @@ export class JinaCrawlerService {
 				// 如果启用了AI清洗，进行处理
 				if (job?.options?.useAiCleaning) {
 					console.log(`使用AI清洗内容: ${url}`);
-					result = await aiProcessor.processResult(result);
+					result = await processResult(result);
 				}
 
 				return result;

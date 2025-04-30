@@ -6,7 +6,7 @@ import {
 	jinaCrawler,
 	queueSitemap,
 	queueWebpage,
-} from "@/lib/jina-crawler";
+} from "@/lib/jina";
 import { uploadFileAndGetLink } from "@/lib/s3-service";
 import { documents } from "@/server/db/schema";
 import { nanoid } from "nanoid";

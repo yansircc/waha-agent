@@ -1,4 +1,4 @@
-import { jinaCrawler } from "@/lib/jina-crawler";
+import { jinaCrawler } from "@/lib/jina";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {

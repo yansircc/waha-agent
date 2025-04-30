@@ -1,15 +1,13 @@
-import { createOpenAI } from "@ai-sdk/openai";
+import { type OpenAIProvider, createOpenAI } from "@ai-sdk/openai";
 import { generateText } from "ai";
 
-export const kbPreprocessor = async (apiKey: string, content: string) => {
-	const openai = createOpenAI({
-		apiKey,
-		baseURL: "https://aihubmix.com/v1",
-	});
+const CHUNK_SIZE = 20000;
 
-	const { text } = await generateText({
-		model: openai("gpt-4o-mini"),
-		prompt: `
+/**
+ * Builds the prompt for the LLM with instructions and content
+ */
+function buildPrompt(content: string): string {
+	return `
 # 角色：知识库内容工程师
 
 # 最终目标：
@@ -29,11 +27,11 @@ export const kbPreprocessor = async (apiKey: string, content: string) => {
 1.  **过滤非知识性内容：** 识别并**彻底删除**：
     *   营销推广语、广告宣传。
     *   重复或高度冗余的信息。
-    *   **常规网页填充内容：** 如问候语、通用引言/结语、文档结构说明（“本章将介绍...”）、导航性提示、无具体信息的过渡句、普遍常识性描述等。
+    *   **常规网页填充内容：** 如问候语、通用引言/结语、文档结构说明（"本章将介绍..."）、导航性提示、无具体信息的过渡句、普遍常识性描述等。
     *   与核心主题关联度低的旁支信息或推荐。
 2.  **语言极致精简：**
     *   大幅削减冗余修饰词、副词、连接词，使用最直接、最客观的陈述。
-    *   **保留关键限定词：** 必须保留对技术概念、事实定义至关重要的词语（例如：“**加密**”于“加密协议”，“**实时**”于“实时数据”）。
+    *   **保留关键限定词：** 必须保留对技术概念、事实定义至关重要的词语（例如："**加密**"于"加密协议"，"**实时**"于"实时数据"）。
 3.  **聚焦核心事实：** 严格保留并突出技术参数、性能数据、统计指标、操作步骤、定义、原理、关键结论。
 
 ## 第三阶段：知识结构化重组
@@ -54,14 +52,83 @@ export const kbPreprocessor = async (apiKey: string, content: string) => {
 # 特别注意（高优先级）：
 *   **技术细节与步骤：** 必须完整、准确地保留。
 *   **数据与参数：** 必须完整、准确地保留。
-*   **数据可视化描述：** 如原文对图表有关键性描述（“图表显示XX呈上升趋势”），保留该描述性结论。
+*   **数据可视化描述：** 如原文对图表有关键性描述（"图表显示XX呈上升趋势"），保留该描述性结论。
 *   **关键实体信息：** 时间、地点、人物、组织等若为事实的关键部分，需保留。
 *   **彻底移除来源/链接：** 再次强调，除作为技术标识符外，所有外部链接和引用信息均需删除。
 
 # 请处理以下网页内容：
 ${content}
-`,
+`;
+}
+
+/**
+ * Processes a chunk of content through the LLM
+ */
+async function processChunk(
+	openai: OpenAIProvider,
+	chunk: string,
+): Promise<string> {
+	const { text } = await generateText({
+		model: openai("gemini-2.0-flash"),
+		prompt: buildPrompt(chunk),
+	});
+	return text;
+}
+
+/**
+ * Splits text into chunks while preserving markdown structure as much as possible
+ */
+function splitIntoChunks(text: string, chunkSize: number): string[] {
+	const chunks: string[] = [];
+	let currentChunk = "";
+
+	// Split by paragraphs to avoid cutting in the middle of sentences
+	const paragraphs = text.split(/\n\n+/);
+
+	for (const paragraph of paragraphs) {
+		// If adding this paragraph exceeds the chunk size and we already have content
+		if (
+			currentChunk.length + paragraph.length > chunkSize &&
+			currentChunk.length > 0
+		) {
+			chunks.push(currentChunk);
+			currentChunk = paragraph;
+		} else {
+			currentChunk += (currentChunk ? "\n\n" : "") + paragraph;
+		}
+	}
+
+	// Add the last chunk if it has content
+	if (currentChunk) {
+		chunks.push(currentChunk);
+	}
+
+	return chunks;
+}
+
+/**
+ * Preprocesses knowledge base content by condensing and restructuring it
+ * Handles large documents by splitting into chunks if needed
+ */
+export const kbPreprocessor = async (apiKey: string, content: string) => {
+	const openai = createOpenAI({
+		apiKey,
+		baseURL: "https://aihubmix.com/v1",
 	});
 
-	return text;
+	// If content is under chunk size, process it directly
+	if (content.length <= CHUNK_SIZE) {
+		return processChunk(openai, content);
+	}
+
+	// For large content, split into chunks and process in parallel
+	const chunks = splitIntoChunks(content, CHUNK_SIZE);
+
+	// Process all chunks in parallel
+	const processedChunks = await Promise.all(
+		chunks.map((chunk) => processChunk(openai, chunk)),
+	);
+
+	// Combine all processed chunks
+	return processedChunks.join("\n\n");
 };
