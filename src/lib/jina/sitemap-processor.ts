@@ -3,7 +3,11 @@ import type { CrawlOptions } from "./types";
 
 // Interface for the required crawler methods to avoid circular dependency
 export interface CrawlerInterface {
-	queueUrls(urls: string[], options?: CrawlOptions): Promise<string[]>;
+	queueUrls(
+		urls: string[],
+		options?: CrawlOptions,
+		userId?: string,
+	): Promise<string[]>;
 }
 
 export class SitemapProcessor {
@@ -17,11 +21,13 @@ export class SitemapProcessor {
 	 * 从Sitemap XML解析URL并加入队列
 	 * @param sitemapUrl Sitemap URL
 	 * @param options 爬取选项
+	 * @param userId 用户ID，用于跟踪并发限制
 	 * @returns 任务ID数组
 	 */
 	public async queueFromSitemap(
 		sitemapUrl: string,
 		options?: CrawlOptions,
+		userId?: string,
 	): Promise<string[]> {
 		try {
 			// 获取sitemap内容
@@ -42,7 +48,9 @@ export class SitemapProcessor {
 
 			if (sitemapUrls.length > 0) {
 				// This is a sitemap index - process each sub-sitemap
-				console.log(`发现sitemap索引，包含 ${sitemapUrls.length} 个子sitemap`);
+				console.log(
+					`发现sitemap索引，包含 ${sitemapUrls.length} 个子sitemap ${userId ? `(用户: ${userId})` : ""}`,
+				);
 
 				// Collect all URLs from sub-sitemaps
 				const allContentUrls: string[] = [];
@@ -52,7 +60,9 @@ export class SitemapProcessor {
 						// Get URLs from each sub-sitemap but don't queue them yet
 						const response = await fetch(subSitemapUrl);
 						if (!response.ok) {
-							console.error(`获取子Sitemap失败: ${response.status}`);
+							console.error(
+								`获取子Sitemap失败: ${response.status} ${userId ? `(用户: ${userId})` : ""}`,
+							);
 							continue;
 						}
 
@@ -65,25 +75,32 @@ export class SitemapProcessor {
 						);
 
 						console.log(
-							`从子sitemap抓取到 ${subContentUrls.length} 个URL: ${subSitemapUrl}`,
+							`从子sitemap抓取到 ${subContentUrls.length} 个URL: ${subSitemapUrl} ${userId ? `(用户: ${userId})` : ""}`,
 						);
 						allContentUrls.push(...subContentUrls);
 					} catch (subError) {
-						console.error(`处理子sitemap失败 (${subSitemapUrl}):`, subError);
+						console.error(
+							`处理子sitemap失败 (${subSitemapUrl}) ${userId ? `(用户: ${userId})` : ""}:`,
+							subError,
+						);
 						// Continue with other sitemaps even if one fails
 					}
 				}
 
 				// Check if we found any content URLs from sub-sitemaps
 				if (allContentUrls.length === 0) {
-					console.warn("从所有子Sitemap中未找到任何URL");
+					console.warn(
+						`从所有子Sitemap中未找到任何URL ${userId ? `(用户: ${userId})` : ""}`,
+					);
 					return [];
 				}
 
-				console.log(`从所有子sitemap总共抓取到 ${allContentUrls.length} 个URL`);
+				console.log(
+					`从所有子sitemap总共抓取到 ${allContentUrls.length} 个URL ${userId ? `(用户: ${userId})` : ""}`,
+				);
 
-				// Queue all content URLs at once, passing options
-				return this.crawler.queueUrls(allContentUrls, options);
+				// Queue all content URLs at once, passing options and userId
+				return this.crawler.queueUrls(allContentUrls, options, userId);
 			}
 
 			// Regular sitemap - extract content URLs
@@ -95,16 +112,23 @@ export class SitemapProcessor {
 			);
 
 			if (contentUrls.length === 0) {
-				console.warn(`Sitemap中未找到任何URL: ${sitemapUrl}`);
+				console.warn(
+					`Sitemap中未找到任何URL: ${sitemapUrl} ${userId ? `(用户: ${userId})` : ""}`,
+				);
 				return [];
 			}
 
-			console.log(`从sitemap抓取到 ${contentUrls.length} 个URL: ${sitemapUrl}`);
+			console.log(
+				`从sitemap抓取到 ${contentUrls.length} 个URL: ${sitemapUrl} ${userId ? `(用户: ${userId})` : ""}`,
+			);
 
-			// 将所有URL加入队列，并传递options
-			return this.crawler.queueUrls(contentUrls, options);
+			// 将所有URL加入队列，并传递options和userId
+			return this.crawler.queueUrls(contentUrls, options, userId);
 		} catch (error) {
-			console.error("处理Sitemap失败:", error);
+			console.error(
+				`处理Sitemap失败 ${userId ? `(用户: ${userId})` : ""}:`,
+				error,
+			);
 			throw error;
 		}
 	}

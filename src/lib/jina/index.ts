@@ -15,22 +15,25 @@ export const jinaCrawler = new JinaCrawlerService();
 export async function crawlWebpage(
 	url: string,
 	options?: CrawlOptions,
+	userId?: string,
 ): Promise<JinaCrawlResult> {
-	return jinaCrawler.crawlUrlImmediately(url, options);
+	return jinaCrawler.crawlUrlImmediately(url, options, userId);
 }
 
 export async function queueWebpage(
 	url: string,
 	options?: CrawlOptions,
+	userId?: string,
 ): Promise<string> {
-	return jinaCrawler.queueUrl(url, options);
+	return jinaCrawler.queueUrl(url, options, userId);
 }
 
 export async function queueSitemap(
 	sitemapUrl: string,
 	options?: CrawlOptions,
+	userId?: string,
 ): Promise<string[]> {
-	return jinaCrawler.queueFromSitemap(sitemapUrl, options);
+	return jinaCrawler.queueFromSitemap(sitemapUrl, options, userId);
 }
 
 export async function processResultWithAI(

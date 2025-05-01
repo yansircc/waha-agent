@@ -26,4 +26,5 @@ export interface CrawlJob {
 	result?: JinaCrawlResult;
 	error?: string;
 	options?: CrawlOptions; // 爬取选项
+	userId?: string; // 关联用户ID，用于跟踪每个用户的并发任务
 }

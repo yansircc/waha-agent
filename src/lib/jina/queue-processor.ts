@@ -15,6 +15,8 @@ export class QueueProcessor {
 	private processing = false;
 	private concurrentLimit = MAX_CONCURRENT_TASKS;
 	private crawlUrlFn: (url: string, job?: CrawlJob) => Promise<JinaCrawlResult>;
+	// Track active tasks per user with a Map
+	private userActiveTasks = new Map<string, number>();
 
 	constructor(
 		redis: Redis,
@@ -39,11 +41,8 @@ export class QueueProcessor {
 				// 检查当前分钟内的请求数
 				const currentRequests = await this.getCurrentRequestCount();
 
-				// 如果已达到速率限制或达到并发上限，则暂停一段时间
-				if (
-					currentRequests >= MAX_RPM ||
-					this.activeTasks >= this.concurrentLimit
-				) {
+				// 如果已达到全局速率限制，则暂停一段时间
+				if (currentRequests >= MAX_RPM) {
 					console.log(
 						`暂停队列处理: 速率${currentRequests}/${MAX_RPM}, 并发${this.activeTasks}/${this.concurrentLimit}`,
 					);
@@ -57,58 +56,67 @@ export class QueueProcessor {
 					break;
 				}
 
-				// 获取多个任务（最多获取当前可处理的数量）
-				const availableSlots = Math.min(
-					MAX_RPM - currentRequests,
-					this.concurrentLimit - this.activeTasks,
+				// 计算全局可用容量
+				const globalAvailableSlots = MAX_RPM - currentRequests;
+
+				if (globalAvailableSlots <= 0) break;
+
+				// 尝试获取任务
+				const nextJobData = await safeRedisOperation(() =>
+					this.redis.rpop(JINA_QUEUE_KEY),
 				);
 
-				if (availableSlots <= 0) break;
+				if (!nextJobData) break;
 
-				// 尝试获取多个任务
-				const tasks: CrawlJob[] = [];
-				for (let i = 0; i < availableSlots; i++) {
-					const nextJobData = await safeRedisOperation(() =>
-						this.redis.rpop(JINA_QUEUE_KEY),
+				// 解析任务数据
+				const parsedJob = parseJsonValueIfNeeded(nextJobData);
+				if (typeof parsedJob !== "object" || parsedJob === null) {
+					console.error(`无效的任务数据类型: ${typeof parsedJob}`);
+					continue;
+				}
+
+				const job = parsedJob as CrawlJob;
+
+				// 验证必要字段
+				if (!job.id || !job.url) {
+					console.error("任务数据缺少必要字段", { job });
+					continue;
+				}
+
+				// 提取用户ID（从job中获取或使用默认值）
+				const userId = job.userId || "default";
+
+				// 检查该用户的当前活跃任务数
+				const userTasks = this.userActiveTasks.get(userId) || 0;
+
+				// 如果该用户已达到并发限制，将任务放回队列前端并继续下一个循环
+				if (userTasks >= this.concurrentLimit) {
+					await safeRedisOperation(() =>
+						this.redis.lpush(JINA_QUEUE_KEY, JSON.stringify(job)),
+					);
+					console.log(
+						`用户 ${userId} 已达并发限制 ${userTasks}/${this.concurrentLimit}，任务重新入队`,
 					);
 
-					if (!nextJobData) break;
-
-					// 解析任务数据
-					const parsedJob = parseJsonValueIfNeeded(nextJobData);
-					if (typeof parsedJob !== "object" || parsedJob === null) {
-						console.error(`无效的任务数据类型: ${typeof parsedJob}`);
-						continue;
-					}
-
-					const job = parsedJob as CrawlJob;
-
-					// 验证必要字段
-					if (!job.id || !job.url) {
-						console.error("任务数据缺少必要字段", { job });
-						continue;
-					}
-
-					tasks.push(job);
+					// 短暂等待后尝试下一个任务
+					await new Promise((resolve) => setTimeout(resolve, 100));
+					continue;
 				}
 
-				// 如果没有获取到任何任务，退出循环
-				if (tasks.length === 0) break;
+				// 更新任务状态为处理中
+				job.status = "processing";
+				await this.updateJobStatus(job);
 
-				// 更新获取到的任务状态为处理中
-				for (const job of tasks) {
-					job.status = "processing";
-					await this.updateJobStatus(job);
-				}
+				// 更新计数器
+				this.activeTasks++;
+				this.userActiveTasks.set(userId, userTasks + 1);
+				await this.incrementRequestCount(1);
 
-				// 并发处理任务
-				this.activeTasks += tasks.length;
-				await this.incrementRequestCount(tasks.length);
-
-				// 启动并发任务
-				for (const job of tasks) {
-					this.processTask(job).catch(console.error);
-				}
+				// 启动任务处理
+				console.log(
+					`开始处理任务: ${job.url.substring(0, 50)}${job.url.length > 50 ? "..." : ""} (用户: ${userId})`,
+				);
+				this.processTask(job, userId).catch(console.error);
 			}
 		} finally {
 			// 如果没有活跃任务，则完全退出处理
@@ -127,7 +135,7 @@ export class QueueProcessor {
 	/**
 	 * 处理单个爬取任务
 	 */
-	private async processTask(job: CrawlJob): Promise<void> {
+	private async processTask(job: CrawlJob, userId: string): Promise<void> {
 		try {
 			// 执行爬取
 			const result = await this.crawlUrlFn(job.url, job);
@@ -135,17 +143,27 @@ export class QueueProcessor {
 			// 更新任务状态为完成
 			job.status = "completed";
 			job.result = result;
+			console.log(
+				`任务完成: ${job.url.substring(0, 50)}${job.url.length > 50 ? "..." : ""} (用户: ${userId})`,
+			);
 		} catch (error) {
 			// 更新任务状态为失败
 			job.status = "failed";
 			job.error = error instanceof Error ? error.message : String(error);
+			console.error(`任务失败: ${job.url} (用户: ${userId})`, error);
 		} finally {
 			// 更新状态并减少活跃任务计数
 			await this.updateJobStatus(job);
 			this.activeTasks--;
 
-			// 如果队列处理被暂停，且活跃任务数低于阈值，尝试重新启动处理
-			if (!this.processing && this.activeTasks < this.concurrentLimit / 2) {
+			// 更新用户活跃任务计数
+			const userTasks = this.userActiveTasks.get(userId) || 0;
+			if (userTasks > 0) {
+				this.userActiveTasks.set(userId, userTasks - 1);
+			}
+
+			// 如果队列处理被暂停，且全局活跃任务数降低，尝试重新启动处理
+			if (!this.processing) {
 				this.processQueue().catch(console.error);
 			}
 		}

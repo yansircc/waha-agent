@@ -44,7 +44,11 @@ export class JinaCrawlerService {
 	 * @param options 爬取选项
 	 * @returns 任务ID
 	 */
-	public async queueUrl(url: string, options?: CrawlOptions): Promise<string> {
+	public async queueUrl(
+		url: string,
+		options?: CrawlOptions,
+		userId?: string,
+	): Promise<string> {
 		// Sanitize the URL before processing
 		const sanitizedUrl = sanitizeUrl(url);
 
@@ -62,6 +66,7 @@ export class JinaCrawlerService {
 			timestamp: Date.now(),
 			status: "pending",
 			options, // 存储爬取选项
+			userId, // 存储用户ID
 		};
 
 		// 保存任务到Redis并加入队列
@@ -83,16 +88,18 @@ export class JinaCrawlerService {
 	 * 批量添加URL到爬取队列
 	 * @param urls 需要爬取的URL数组
 	 * @param options 爬取选项
+	 * @param userId 用户ID
 	 * @returns 任务ID数组
 	 */
 	public async queueUrls(
 		urls: string[],
 		options?: CrawlOptions,
+		userId?: string,
 	): Promise<string[]> {
 		const jobIds: string[] = [];
 
 		for (const url of urls) {
-			const jobId = await this.queueUrl(url, options);
+			const jobId = await this.queueUrl(url, options, userId);
 			jobIds.push(jobId);
 		}
 
@@ -103,20 +110,20 @@ export class JinaCrawlerService {
 	 * 从Sitemap XML解析URL并加入队列
 	 * @param sitemapUrl Sitemap URL
 	 * @param options 爬取选项
+	 * @param userId 用户ID，用于跟踪并发限制
 	 * @returns 任务ID数组
 	 */
 	public async queueFromSitemap(
 		sitemapUrl: string,
 		options?: CrawlOptions,
+		userId?: string,
 	): Promise<string[]> {
-		// Extract URLs from sitemap and pass options
+		// Extract URLs from sitemap and pass options and userId
 		const urls = await this.sitemapProcessor.queueFromSitemap(
 			sitemapUrl,
 			options,
+			userId,
 		);
-
-		// We no longer need to update job options here since they are passed directly
-		// when queueing the URLs through the SitemapProcessor
 
 		return urls;
 	}
@@ -170,7 +177,9 @@ export class JinaCrawlerService {
 			const controller = new AbortController();
 			const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
 
-			console.log(`开始爬取URL: ${crawlUrl}`);
+			console.log(
+				`开始爬取URL: ${crawlUrl} ${job?.userId ? `(用户: ${job.userId})` : ""}`,
+			);
 
 			const response = await fetch(crawlUrl, {
 				headers: {
@@ -258,6 +267,7 @@ export class JinaCrawlerService {
 	public async crawlUrlImmediately(
 		url: string,
 		options?: CrawlOptions,
+		userId?: string,
 	): Promise<JinaCrawlResult> {
 		// 检查速率限制
 		const currentRequests = await this.queueProcessor.getCurrentRequestCount();
@@ -277,6 +287,7 @@ export class JinaCrawlerService {
 			timestamp: Date.now(),
 			status: "processing",
 			options,
+			userId,
 		};
 
 		return this.crawlUrl(url, tempJob);

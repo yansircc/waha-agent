@@ -2,6 +2,7 @@
 
 import { api } from "@/utils/api";
 import { useState } from "react";
+import { toast } from "sonner";
 import type { CrawlResult } from "../../components/web-crawler/utils/types";
 
 // URL Tab Hook
@@ -44,6 +45,12 @@ export function useUrlTab(
 				});
 
 				setJobId(queueResult.jobId);
+
+				// 显示toast提示
+				toast.success("URL已加入爬取队列", {
+					description: `当前系统繁忙，您的请求已排队等待处理。任务ID: ${queueResult.jobId.substring(0, 8)}`,
+					duration: 5000,
+				});
 			} else {
 				// 立即爬取URL
 				const crawlResult = await crawlUrlMutation.mutateAsync({
@@ -76,6 +83,12 @@ export function useUrlTab(
 			console.error("爬取错误:", error);
 			setResult({
 				error: error instanceof Error ? error.message : "操作失败，请重试",
+			});
+
+			// 显示错误toast
+			toast.error("爬取失败", {
+				description:
+					error instanceof Error ? error.message : "操作失败，请重试",
 			});
 		} finally {
 			setIsLoading(false);

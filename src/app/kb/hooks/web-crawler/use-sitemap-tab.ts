@@ -2,6 +2,7 @@
 
 import { api } from "@/utils/api";
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 import type { CrawlResult } from "../../components/web-crawler/utils/types";
 
 // Sitemap Tab Hooks
@@ -143,6 +144,13 @@ export function useSitemapTab(
 			if (result.jobIds.length > 0) {
 				// Set jobIds first before changing state to avoid partial renders
 				setJobIds(result.jobIds);
+
+				// 显示toast提示
+				toast.success("URLs已加入爬取队列", {
+					description: `已将${result.jobIds.length}个URL加入队列处理。请耐心等待，系统会在后台处理您的请求。`,
+					duration: 5000,
+				});
+
 				// Then after the jobIds are set, change the state in a separate render cycle
 				setTimeout(() => {
 					setState(SitemapState.CRAWLING);
@@ -156,6 +164,13 @@ export function useSitemapTab(
 					(item) => `${item.url}: ${item.error}`,
 				);
 				setErrors(errorMessages);
+
+				// 显示失败URL的提示
+				if (result.failed.length > 0) {
+					toast.warning(`${result.failed.length}个URL添加失败`, {
+						description: "部分URL无法加入队列，请检查错误信息。",
+					});
+				}
 			}
 		} catch (error) {
 			console.error("批量添加 URL 到队列错误:", error);
@@ -164,6 +179,12 @@ export function useSitemapTab(
 			});
 			setState(SitemapState.INPUT);
 			setEffectiveIsLoading(false); // Use the effective setter
+
+			// 显示错误toast
+			toast.error("添加URL到队列失败", {
+				description:
+					error instanceof Error ? error.message : "添加 URL 到队列失败",
+			});
 		}
 	};
 
@@ -323,6 +344,13 @@ export function useSitemapTab(
 						success: true,
 					});
 
+					// 显示成功toast
+					toast.success("爬取完成", {
+						description: `成功创建了包含${completed}个网页的合并文档${
+							failed > 0 ? `，${failed}个网页失败` : ""
+						}`,
+					});
+
 					// 调用onCrawlComplete，传递文件URL以便更新UI
 					if (onCrawlComplete) {
 						await onCrawlComplete(
@@ -336,17 +364,33 @@ export function useSitemapTab(
 					setResult({
 						error: "所有网页都爬取失败。",
 					});
+
+					// 显示失败toast
+					toast.error("爬取失败", {
+						description: "所有网页都爬取失败。",
+					});
 				} else {
 					// This case might happen if completedJobs is empty but completed > 0
 					setResult({
 						error: "没有成功爬取任何内容可以合并。",
 					});
 					console.warn("爬取完成，但未收集到任何内容。");
+
+					// 显示警告toast
+					toast.warning("爬取结果为空", {
+						description: "爬取完成，但未收集到任何内容可以合并。",
+					});
 				}
 			} catch (error) {
 				console.error("合并文档失败:", error);
 				setResult({
 					error: error instanceof Error ? error.message : "合并文档失败。",
+				});
+
+				// 显示错误toast
+				toast.error("合并文档失败", {
+					description:
+						error instanceof Error ? error.message : "合并文档失败。",
 				});
 			} finally {
 				// Reset state regardless of success/failure of combination

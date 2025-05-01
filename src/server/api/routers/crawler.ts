@@ -26,11 +26,16 @@ export const crawlerRouter = createTRPCRouter({
 				useAiCleaning: z.boolean().optional().default(true),
 			}),
 		)
-		.mutation(async ({ input }) => {
+		.mutation(async ({ input, ctx }) => {
 			try {
-				const result = await crawlWebpage(input.url, {
-					useAiCleaning: input.useAiCleaning,
-				});
+				const userId = ctx.session.user.id;
+				const result = await crawlWebpage(
+					input.url,
+					{
+						useAiCleaning: input.useAiCleaning,
+					},
+					userId,
+				);
 
 				return {
 					success: result.success,
@@ -59,11 +64,16 @@ export const crawlerRouter = createTRPCRouter({
 				useAiCleaning: z.boolean().optional().default(true),
 			}),
 		)
-		.mutation(async ({ input }) => {
+		.mutation(async ({ input, ctx }) => {
 			try {
-				const jobId = await queueWebpage(input.url, {
-					useAiCleaning: input.useAiCleaning,
-				});
+				const userId = ctx.session.user.id;
+				const jobId = await queueWebpage(
+					input.url,
+					{
+						useAiCleaning: input.useAiCleaning,
+					},
+					userId,
+				);
 
 				return {
 					success: true,
@@ -89,11 +99,16 @@ export const crawlerRouter = createTRPCRouter({
 				useAiCleaning: z.boolean().optional().default(true),
 			}),
 		)
-		.mutation(async ({ input }) => {
+		.mutation(async ({ input, ctx }) => {
 			try {
-				const jobIds = await queueSitemap(input.sitemapUrl, {
-					useAiCleaning: input.useAiCleaning,
-				});
+				const userId = ctx.session.user.id;
+				const jobIds = await queueSitemap(
+					input.sitemapUrl,
+					{
+						useAiCleaning: input.useAiCleaning,
+					},
+					userId,
+				);
 
 				return {
 					success: true,
@@ -195,16 +210,21 @@ export const crawlerRouter = createTRPCRouter({
 				useAiCleaning: z.boolean().optional().default(true),
 			}),
 		)
-		.mutation(async ({ input }) => {
+		.mutation(async ({ input, ctx }) => {
 			try {
+				const userId = ctx.session.user.id;
 				const jobIds: string[] = [];
 				const failedUrls: { url: string; error: string }[] = [];
 
 				for (const url of input.urls) {
 					try {
-						const jobId = await queueWebpage(url, {
-							useAiCleaning: input.useAiCleaning,
-						});
+						const jobId = await queueWebpage(
+							url,
+							{
+								useAiCleaning: input.useAiCleaning,
+							},
+							userId,
+						);
 						jobIds.push(jobId);
 					} catch (error) {
 						failedUrls.push({
