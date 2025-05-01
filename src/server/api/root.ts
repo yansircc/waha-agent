@@ -9,6 +9,7 @@ import { wahaChattingRouter } from "@/server/api/routers/waha-chatting";
 import { wahaProfileRouter } from "@/server/api/routers/waha-profile";
 import { wahaSessionsRouter } from "@/server/api/routers/waha-sessions";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
+import { crawlRouter } from "./routers/crawl";
 import { documentsRouter } from "./routers/documents";
 import { qdrantRouter } from "./routers/qdrant";
 import { s3Router } from "./routers/s3";
@@ -32,6 +33,7 @@ export const appRouter = createTRPCRouter({
 	qdrant: qdrantRouter,
 	emails: emailsRouter,
 	documents: documentsRouter,
+	crawl: crawlRouter,
 });
 
 // export type definition of API

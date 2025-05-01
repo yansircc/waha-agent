@@ -1,7 +1,7 @@
 "use client";
 
 import type { Document } from "@/types/document";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useDocumentStatusPolling } from "./use-document-status-polling";
 
@@ -40,7 +40,20 @@ export function useDocumentTable({
 	const [documentToDelete, setDocumentToDelete] = useState<Document | null>(
 		null,
 	);
-	const [localDocuments, setLocalDocuments] = useState<Document[]>(documents);
+
+	// 排序文档，按照创建日期降序排列（最新的在最上面）
+	const sortDocumentsByDate = useCallback((docs: Document[]): Document[] => {
+		return [...docs].sort((a, b) => {
+			// 处理可能为空的日期
+			const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
+			const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
+			return dateB.getTime() - dateA.getTime(); // 降序排列，最新的在最上面
+		});
+	}, []);
+
+	const [localDocuments, setLocalDocuments] = useState<Document[]>(() =>
+		sortDocumentsByDate(documents),
+	);
 
 	// 创建一个稳定的状态更新回调函数
 	const handleStatusUpdate = useCallback((updates: Record<string, string>) => {
@@ -75,18 +88,17 @@ export function useDocumentTable({
 		// 比较documents和localDocuments是否有实质性差异
 		const needsUpdate =
 			documents.length !== localDocuments.length ||
-			documents.some((doc, index) => {
-				const localDoc = localDocuments[index];
+			documents.some((doc) => {
+				const localDoc = localDocuments.find((local) => local.id === doc.id);
 				return (
-					localDoc?.id !== doc.id ||
-					localDoc?.vectorizationStatus !== doc.vectorizationStatus
+					!localDoc || localDoc.vectorizationStatus !== doc.vectorizationStatus
 				);
 			});
 
 		if (needsUpdate) {
-			setLocalDocuments(documents);
+			setLocalDocuments(sortDocumentsByDate(documents));
 		}
-	}, [documents, localDocuments]);
+	}, [documents, localDocuments, sortDocumentsByDate]);
 
 	// 处理向量化请求
 	const handleVectorize = async (document: Document) => {
@@ -230,8 +242,13 @@ export function useDocumentTable({
 		}
 	}, [localDocuments, processingDocIds]);
 
+	// 确保返回的localDocuments总是按日期排序
+	const sortedLocalDocuments = useMemo(() => {
+		return sortDocumentsByDate(localDocuments);
+	}, [localDocuments, sortDocumentsByDate]);
+
 	return {
-		localDocuments,
+		localDocuments: sortedLocalDocuments,
 		processingDocIds,
 		deletingDocIds,
 		documentToDelete,

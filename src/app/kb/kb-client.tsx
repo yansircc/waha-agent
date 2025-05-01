@@ -9,10 +9,8 @@ import { KbList } from "./components/kb-list";
 import { useKbPage } from "./hooks/use-kb-page";
 
 export function KbClient({
-	publicAccessToken,
 	userId,
 }: {
-	publicAccessToken: string;
 	userId: string;
 }) {
 	// 使用封装好的hook获取所有状态和处理函数
@@ -73,7 +71,6 @@ export function KbClient({
 						isLoading={isLoadingDocuments}
 						isVectorizing={isVectorizing}
 						vectorizingDocId={vectorizingDocId}
-						publicAccessToken={publicAccessToken}
 						userId={userId}
 						onBack={handleBackToList}
 						onAddDocument={handleOpenAddDocDialog}

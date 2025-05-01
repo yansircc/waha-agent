@@ -35,7 +35,6 @@ interface KbDetailProps {
 	isLoading: boolean;
 	isVectorizing?: boolean;
 	vectorizingDocId?: string | null;
-	publicAccessToken: string;
 	userId: string;
 	onBack: () => void;
 	onAddDocument: () => void;
@@ -50,7 +49,6 @@ export function KbDetail({
 	isLoading,
 	isVectorizing = false,
 	vectorizingDocId = null,
-	publicAccessToken,
 	userId,
 	onBack,
 	onAddDocument,
@@ -60,13 +58,17 @@ export function KbDetail({
 }: KbDetailProps) {
 	const [crawlDialogOpen, setCrawlDialogOpen] = useState(false);
 	const [crawlRunId, setCrawlRunId] = useState<string | null>(null);
+	const [publicAccessToken, setPublicAccessToken] = useState<string | null>(
+		null,
+	);
 	const [crawlingPlaceholders, setCrawlingPlaceholders] = useState<
 		CrawlDocument[]
 	>([]);
 
 	// 处理爬取任务提交
-	const handleCrawlSubmitted = (runId: string) => {
+	const handleCrawlSubmitted = (runId: string, token: string) => {
 		setCrawlRunId(runId);
+		setPublicAccessToken(token);
 
 		// 创建一个占位文档
 		const placeholderDoc: CrawlDocument = {
@@ -84,16 +86,12 @@ export function KbDetail({
 		};
 
 		setCrawlingPlaceholders((prev) => [...prev, placeholderDoc]);
-
-		toast.success("爬取任务已提交", {
-			description: "系统正在后台爬取网页，请稍候...",
-		});
 	};
 
 	// 使用useRealtimeRun跟踪爬取任务状态
 	const { run } = useRealtimeRun<typeof bulkCrawl>(crawlRunId || "", {
-		accessToken: publicAccessToken,
-		enabled: !!crawlRunId,
+		accessToken: publicAccessToken || "",
+		enabled: !!crawlRunId && !!publicAccessToken,
 	});
 
 	// 监控run状态的变化
@@ -121,6 +119,7 @@ export function KbDetail({
 
 				// 重置爬取状态
 				setCrawlRunId(null);
+				setPublicAccessToken(null);
 
 				toast.success(`成功爬取 ${output?.completedCount || 0} 个页面`, {
 					description: "爬取任务已完成",
@@ -131,12 +130,14 @@ export function KbDetail({
 					// 创建完文档后，强制清空所有占位符和状态
 					setCrawlingPlaceholders([]);
 					setCrawlRunId(null);
+					setPublicAccessToken(null);
 				}, 500);
 			} else if (run.status === "FAILED") {
 				setCrawlingPlaceholders((placeholders) =>
 					placeholders.filter((doc) => doc.crawlRunId !== run.id),
 				);
 				setCrawlRunId(null);
+				setPublicAccessToken(null);
 
 				toast.error("爬取失败", {
 					description: run.error?.message || "未知错误",
@@ -203,7 +204,6 @@ export function KbDetail({
 			<CrawlWebpageDialog
 				open={crawlDialogOpen}
 				onOpenChange={setCrawlDialogOpen}
-				publicAccessToken={publicAccessToken}
 				userId={userId}
 				kbId={kb.id}
 				onCrawlSubmitted={handleCrawlSubmitted}

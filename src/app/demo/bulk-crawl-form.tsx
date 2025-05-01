@@ -128,7 +128,7 @@ export function BulkCrawlForm({
 						onChange={(e) => setUrls(e.target.value)}
 						rows={5}
 						className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500"
-						placeholder="https://example.com/page1&#10;https://example.com/page2"
+						placeholder="https://example.com/page1"
 					/>
 				</div>
 
