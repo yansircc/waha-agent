@@ -243,4 +243,45 @@ export const kbsRouter = createTRPCRouter({
 				kbId: input.kbId,
 			});
 		}),
+
+	createDocumentsFromCrawl: protectedProcedure
+		.input(
+			z.object({
+				kbId: z.string(),
+				fileUrl: z.string(),
+				filePath: z.string(),
+				fileName: z.string().optional(),
+				fileSize: z.number().optional(),
+				fileType: z.string().optional().default("text/markdown"),
+				metadata: z.record(z.any()).optional(),
+			}),
+		)
+		.mutation(async ({ ctx, input }) => {
+			// Generate a document name if not provided
+			const documentName =
+				input.fileName || `Crawled webpage (${new Date().toLocaleString()})`;
+
+			// Create the document record
+			const document = await kbService.documents.create({
+				name: documentName,
+				fileUrl: input.fileUrl,
+				filePath: input.filePath,
+				fileType: input.fileType || "text/markdown",
+				fileSize: input.fileSize || 0,
+				kbId: input.kbId,
+				metadata: {
+					...input.metadata,
+					source: "web-crawler",
+				},
+				userId: ctx.session.user.id,
+			});
+
+			console.log("[KB-ROUTER] Created document from crawl:", {
+				id: document.id,
+				name: document.name,
+				fileUrl: document.fileUrl,
+			});
+
+			return document;
+		}),
 });

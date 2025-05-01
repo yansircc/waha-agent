@@ -58,7 +58,8 @@ export async function uploadFile(
 	let body: Buffer | Blob | string;
 
 	if (typeof data === "string") {
-		body = data;
+		// Convert string to Buffer with UTF-8 encoding to ensure proper character handling
+		body = Buffer.from(data, "utf-8");
 	} else if (data instanceof Blob) {
 		body = data;
 	} else if (data instanceof Response) {

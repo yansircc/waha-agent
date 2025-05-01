@@ -118,6 +118,7 @@ export function DocumentTable({
 										isProcessing={
 											isProcessing(document) || isGloballyVectorizing(document)
 										}
+										isCrawling={document.isCrawling}
 									/>
 								</TableCell>
 								<TableCell className="text-right">

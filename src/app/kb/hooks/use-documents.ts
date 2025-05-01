@@ -542,6 +542,48 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 		}
 	};
 
+	// Create document from crawl results
+	const createDocumentFromCrawl = async (data: {
+		kbId: string;
+		fileUrl: string;
+		filePath: string;
+		fileName?: string;
+		fileSize?: number;
+		fileType?: string;
+	}) => {
+		setIsLoading(true);
+		try {
+			const docResult = await utils.client.kbs.createDocumentsFromCrawl.mutate({
+				kbId: data.kbId,
+				fileUrl: data.fileUrl,
+				filePath: data.filePath,
+				fileName: data.fileName,
+				fileSize: data.fileSize,
+				fileType: data.fileType || "text/markdown",
+				metadata: {
+					source: "web-crawler",
+				},
+			});
+
+			// Invalidate queries
+			if (docResult?.kbId) {
+				await utils.kbs.getDocuments.invalidate({
+					kbId: docResult.kbId,
+				});
+			}
+			await utils.kbs.getAll.invalidate();
+			onSuccess?.();
+
+			return docResult;
+		} catch (error: unknown) {
+			console.error("从爬取结果创建文档失败:", error);
+			onError?.(error as TRPCClientErrorLike<AppRouter>);
+			throw error;
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
 	return {
 		getDocumentsByKbId,
 		getDocumentById,
@@ -551,6 +593,7 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 		deleteDocument,
 		vectorizeDocument,
 		vectorizeDocuments,
+		createDocumentFromCrawl,
 		uploadProgress,
 		isLoading,
 		isProcessing,

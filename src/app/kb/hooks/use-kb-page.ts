@@ -1,8 +1,9 @@
 "use client";
 
 import { QDRANT_COLLECTION_NAME } from "@/lib/constants";
+import type { BulkCrawlResult } from "@/trigger/bulk-crawl";
 import type { Kb } from "@/types/kb";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useDocuments } from "./use-documents";
 import { useKbs } from "./use-kbs";
 
@@ -17,15 +18,10 @@ export function useKbPage() {
 
 	// Document state
 	const [isAddDocOpen, setIsAddDocOpen] = useState(false);
-	const [isWebCrawlerOpen, setIsWebCrawlerOpen] = useState(false);
 
 	// 向量化状态
 	const [isVectorizing, setIsVectorizing] = useState(false);
 	const [vectorizingDocId, setVectorizingDocId] = useState<string | null>(null);
-
-	// 新增状态：爬取完成的触发器
-	const [sitemapCrawlComplete, setSitemapCrawlComplete] = useState(false);
-	const [sitemapCrawlMessage, setSitemapCrawlMessage] = useState("");
 
 	// View state
 	const [tab, setTab] = useState<"list" | "detail">("list");
@@ -39,82 +35,13 @@ export function useKbPage() {
 		getDocumentsByKbId,
 		vectorizeDocument,
 		vectorizeDocuments,
+		createDocumentFromCrawl,
 	} = useDocuments();
 
 	// 获取选中知识库的文档 - 在组件顶层调用Hook
 	const docsQuery = getDocumentsByKbId(selectedKb?.id);
 	const documents = docsQuery.data || [];
 	const isLoadingDocuments = docsQuery.isLoading || false;
-
-	// 处理Sitemap爬取完成后的逻辑 - 通过useEffect处理
-	useEffect(() => {
-		if (sitemapCrawlComplete && selectedKb && sitemapCrawlMessage) {
-			// 保存一个消息副本，因为我们将立即重置原状态
-			const message = sitemapCrawlMessage;
-
-			// 立即重置状态，防止useEffect再次触发
-			setSitemapCrawlComplete(false);
-			setSitemapCrawlMessage("");
-
-			const handleSitemapComplete = async () => {
-				// 刷新文档列表获取最新状态
-				await docsQuery.refetch();
-
-				// 显示向量化提示，使用保存的消息副本
-				const shouldVectorize = confirm(
-					`${message}\n\n是否要立即向量化该Sitemap文档？`,
-				);
-
-				if (shouldVectorize) {
-					// 关闭爬取窗口
-					setIsWebCrawlerOpen(false);
-
-					// 寻找最新的Sitemap文档
-					const latestDoc = documents.find(
-						(doc) =>
-							(doc.name.includes("Sitemap") ||
-								doc.fileUrl?.includes("sitemap")) &&
-							doc.vectorizationStatus === "pending",
-					);
-
-					if (latestDoc) {
-						// 设置向量化状态
-						setIsVectorizing(true);
-						setVectorizingDocId(latestDoc.id);
-
-						await vectorizeDocument({
-							kbId: selectedKb.id,
-							documentId: latestDoc.id,
-							collectionName: QDRANT_COLLECTION_NAME,
-							url: "",
-						});
-
-						// 重置向量化状态
-						setIsVectorizing(false);
-						setVectorizingDocId(null);
-
-						// 再次刷新文档列表
-						docsQuery.refetch();
-					} else {
-						// 如果找不到文档，提示用户
-						alert("找不到刚刚创建的文档。请在文档列表中手动刷新并向量化。");
-					}
-				} else {
-					// 用户不想向量化，也关闭窗口
-					setIsWebCrawlerOpen(false);
-				}
-			};
-
-			handleSitemapComplete();
-		}
-	}, [
-		sitemapCrawlComplete,
-		sitemapCrawlMessage,
-		selectedKb,
-		documents,
-		docsQuery,
-		vectorizeDocument,
-	]);
 
 	// Knowledge base handlers
 	const handleOpenAddKbDialog = () => setIsAddKbOpen(true);
@@ -143,96 +70,6 @@ export function useKbPage() {
 	// Document handlers
 	const handleOpenAddDocDialog = () => setIsAddDocOpen(true);
 	const handleCloseAddDocDialog = () => setIsAddDocOpen(false);
-
-	// Web crawler handlers
-	const handleOpenWebCrawlerDialog = () => setIsWebCrawlerOpen(true);
-	const handleCloseWebCrawlerDialog = () => setIsWebCrawlerOpen(false);
-
-	// 修改后的handleCrawlComplete - 不在函数内部调用Hooks
-	const handleCrawlComplete = async (
-		content: string,
-		title: string,
-		description?: string,
-		fileUrl?: string,
-	) => {
-		if (!selectedKb) return;
-
-		// 如果内容为空且有描述，说明文档已在服务器端创建（Sitemap模式）
-		if (content === "" && description) {
-			console.log("文档已在服务器端创建:", description);
-
-			// 设置状态触发useEffect中的处理逻辑
-			setSitemapCrawlMessage(description);
-			setSitemapCrawlComplete(true);
-
-			return;
-		}
-
-		try {
-			// 处理单个URL爬取
-			// 确保文本为UTF-8编码
-			const textEncoder = new TextEncoder();
-
-			// 处理标题和描述
-			const encodedTitle = textEncoder.encode(title);
-			const decodedTitle = new TextDecoder("utf-8").decode(encodedTitle);
-
-			let processedDescription = description;
-			if (description) {
-				const encodedDesc = textEncoder.encode(description);
-				processedDescription = new TextDecoder("utf-8").decode(encodedDesc);
-			}
-
-			// 处理内容
-			const encodedContent = textEncoder.encode(content);
-			const decodedContent = new TextDecoder("utf-8").decode(encodedContent);
-
-			// 组合成最终文档内容
-			const documentContent = processedDescription
-				? `# ${decodedTitle}\n\n_${processedDescription}_\n\n${decodedContent}`
-				: `# ${decodedTitle}\n\n${decodedContent}`;
-
-			// 创建文件对象，使用UTF-8编码
-			const file = new File([documentContent], `${decodedTitle}.md`, {
-				type: "text/markdown; charset=utf-8",
-			});
-
-			// 上传文档
-			const result = await createDocument({
-				name: decodedTitle,
-				kbId: selectedKb.id,
-				file,
-			});
-
-			// 询问是否向量化
-			if (result?.id) {
-				const shouldVectorize = confirm("网页内容已保存。是否要立即向量化？");
-
-				// 关闭爬取窗口
-				setIsWebCrawlerOpen(false);
-
-				if (shouldVectorize) {
-					// 设置向量化状态
-					setIsVectorizing(true);
-					setVectorizingDocId(result.id);
-
-					await vectorizeDocument({
-						kbId: selectedKb.id,
-						documentId: result.id,
-						collectionName: QDRANT_COLLECTION_NAME,
-						url: fileUrl || "",
-					});
-
-					// 重置向量化状态
-					setIsVectorizing(false);
-					setVectorizingDocId(null);
-				}
-			}
-		} catch (error) {
-			console.error("保存爬取内容失败:", error);
-			alert("保存爬取内容失败，请重试。");
-		}
-	};
 
 	const handleSubmitDoc = async (files: File[]) => {
 		if (!selectedKb || files.length === 0) return;
@@ -312,13 +149,41 @@ export function useKbPage() {
 		setTab("list");
 	};
 
+	const handleDocumentsCrawled = async (
+		documentIds: string[],
+		crawlOutput?: BulkCrawlResult,
+	) => {
+		// 如果提供了爬取任务的输出，需要先创建文档
+		if (selectedKb && crawlOutput) {
+			try {
+				if (crawlOutput.fileUrl && crawlOutput.filePath) {
+					// 从爬取结果创建文档
+					await createDocumentFromCrawl({
+						kbId: selectedKb.id,
+						fileUrl: crawlOutput.fileUrl,
+						filePath: crawlOutput.filePath,
+						fileName: `共计${crawlOutput.totalCount}个网页 - ${formatTimestamp(new Date().getTime())}`,
+						fileSize: crawlOutput.fileSize || 0, // 使用爬取任务返回的文件大小
+						fileType: "text/markdown",
+					});
+				}
+			} catch (err) {
+				console.error("创建爬取文档失败:", err);
+			}
+		}
+
+		// 重新获取当前选中知识库的文档
+		if (selectedKb) {
+			await docsQuery.refetch();
+		}
+	};
+
 	return {
 		// 状态
 		tab,
 		selectedKb,
 		isAddKbOpen,
 		isAddDocOpen,
-		isWebCrawlerOpen,
 		kbs,
 		isLoadingKbs,
 		documents,
@@ -329,7 +194,6 @@ export function useKbPage() {
 		// Dialog 控制函数
 		setIsAddKbOpen,
 		setIsAddDocOpen,
-		setIsWebCrawlerOpen,
 
 		// 处理函数
 		handleOpenAddKbDialog,
@@ -337,13 +201,25 @@ export function useKbPage() {
 		handleDeleteKb,
 		handleOpenAddDocDialog,
 		handleCloseAddDocDialog,
-		handleOpenWebCrawlerDialog,
-		handleCloseWebCrawlerDialog,
-		handleCrawlComplete,
 		handleSubmitDoc,
 		handleDeleteDocument,
 		handleVectorizeDocument,
 		handleSelectKb,
 		handleBackToList,
+		handleDocumentsCrawled,
 	};
+}
+
+function formatTimestamp(timestamp: number) {
+	const date = new Date(timestamp);
+	return date
+		.toLocaleString("zh-CN", {
+			year: "numeric",
+			month: "2-digit",
+			day: "2-digit",
+			hour: "2-digit",
+			minute: "2-digit",
+			hour12: false,
+		})
+		.replace(/\//g, "-");
 }

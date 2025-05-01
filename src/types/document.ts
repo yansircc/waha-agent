@@ -11,4 +11,5 @@ export interface Document {
 	fileUrl?: string | null;
 	mimeType?: string | null;
 	filePath?: string | null;
+	isCrawling?: boolean;
 }

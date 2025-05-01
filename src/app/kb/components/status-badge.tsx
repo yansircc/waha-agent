@@ -11,54 +11,66 @@ import type { Document } from "@/types/document";
 type DocumentVectorizationStatus = Document["vectorizationStatus"];
 
 interface DocumentStatusBadgeProps {
-	status: DocumentVectorizationStatus | undefined;
+	status?: DocumentVectorizationStatus;
 	isProcessing?: boolean;
+	isCrawling?: boolean;
 }
 
 export function DocumentStatusBadge({
 	status,
 	isProcessing = false,
+	isCrawling = false,
 }: DocumentStatusBadgeProps) {
 	const getStatusConfig = () => {
+		if (isCrawling) {
+			return {
+				color: "bg-blue-500 animate-pulse",
+				tooltip: "Crawling in progress...",
+				icon: "...",
+			};
+		}
+
 		if (isProcessing || status === "processing") {
 			return {
-				color: "bg-yellow-500",
-				tooltip: "处理中",
+				color: "bg-yellow-500 animate-pulse",
+				tooltip: "Processing for vectorization...",
+				icon: "⏳",
 			};
 		}
 
 		if (status === "completed") {
 			return {
 				color: "bg-green-500",
-				tooltip: "已投喂",
+				tooltip: "Vectorized",
+				icon: "✅",
 			};
 		}
 
 		if (status === "failed") {
 			return {
 				color: "bg-red-500",
-				tooltip: "投喂失败",
+				tooltip: "Vectorization Failed",
+				icon: "❌",
 			};
 		}
 
 		return {
-			color: "bg-yellow-500",
-			tooltip: "待投喂",
+			color: "bg-gray-400",
+			tooltip: "Pending vectorization",
+			icon: "📄",
 		};
 	};
 
 	const config = getStatusConfig();
 
 	return (
-		<TooltipProvider>
+		<TooltipProvider delayDuration={100}>
 			<Tooltip>
-				<TooltipTrigger>
-					<div className="flex items-center">
+				<TooltipTrigger asChild>
+					<div className="flex cursor-default items-center justify-center">
 						<span
-							className={cn(
-								"inline-block h-3 w-3 animate-pulse rounded-full",
-								config.color,
-							)}
+							className={cn("inline-block h-3 w-3 rounded-full", config.color)}
+							aria-label={config.tooltip}
 						/>
 					</div>
 				</TooltipTrigger>
