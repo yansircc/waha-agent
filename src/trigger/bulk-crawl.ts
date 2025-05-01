@@ -19,11 +19,18 @@ export interface BulkCrawlResult {
 	fileUrl: string; // S3文件URL
 	filePath: string; // S3文件路径
 	fileSize: number; // 文件大小（字节）
+	documentIds?: string[]; // 生成的文档ID列表
 }
 
 export const bulkCrawl = schemaTask({
 	id: "bulk-crawl",
 	schema: BulkCrawlSchema,
+	retry: {
+		maxAttempts: 3, // 整个任务最多重试3次
+		factor: 2, // 退避因子
+		minTimeoutInMs: 1000,
+		maxTimeoutInMs: 30000,
+	},
 	run: async (payload) => {
 		const { urls, userId, kbId } = payload;
 		const startTime = Date.now();
@@ -32,9 +39,17 @@ export const bulkCrawl = schemaTask({
 			`开始处理 ${urls.length} 个 URL (用户ID: ${userId}, 知识库ID: ${kbId})`,
 		);
 
-		// 并行爬取所有URL
+		// 设置爬取选项，包括重试配置
+		const crawlOptions = {
+			useAiCleaning: true,
+			maxRetries: 3, // 单个URL爬取最多重试4次
+			initialDelay: 1500, // 初始延迟1.5秒
+			maxDelay: 15000, // 最大延迟15秒
+		};
+
+		// 并行爬取所有URL，使用增强的重试配置
 		const crawlPromises = urls.map((url) =>
-			jinaCrawler.crawlUrlImmediately(url, { useAiCleaning: true }, userId),
+			jinaCrawler.crawlUrlImmediately(url, crawlOptions, userId),
 		);
 
 		// 等待所有爬取完成

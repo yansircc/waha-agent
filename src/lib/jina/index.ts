@@ -28,14 +28,6 @@ export async function queueWebpage(
 	return jinaCrawler.queueUrl(url, options, userId);
 }
 
-export async function queueSitemap(
-	sitemapUrl: string,
-	options?: CrawlOptions,
-	userId?: string,
-): Promise<string[]> {
-	return jinaCrawler.queueFromSitemap(sitemapUrl, options, userId);
-}
-
 export async function processResultWithAI(
 	result: JinaCrawlResult,
 ): Promise<JinaCrawlResult> {
