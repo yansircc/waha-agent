@@ -1,9 +1,9 @@
 "use client";
 
 import type { agentChat } from "@/trigger/agent-chat";
-import { api } from "@/trpc/react";
 import type { Message } from "@/types/agents";
 import type { Agent } from "@/types/agents";
+import { api } from "@/utils/api";
 import { useRealtimeRun } from "@trigger.dev/react-hooks";
 import { useCallback, useEffect, useState } from "react";
 

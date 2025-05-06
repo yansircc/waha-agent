@@ -4,6 +4,7 @@ import { chatHistoryRouter } from "@/server/api/routers/chat-history";
 import { emailsRouter } from "@/server/api/routers/emails";
 import { instancesRouter } from "@/server/api/routers/instances";
 import { kbsRouter } from "@/server/api/routers/kb";
+import { sessionQueueRouter } from "@/server/api/routers/session-queue";
 import { wahaAuthRouter } from "@/server/api/routers/waha-auth";
 import { wahaChattingRouter } from "@/server/api/routers/waha-chatting";
 import { wahaProfileRouter } from "@/server/api/routers/waha-profile";
@@ -36,6 +37,7 @@ export const appRouter = createTRPCRouter({
 	documents: documentsRouter,
 	crawl: crawlRouter,
 	demo: demoRouter,
+	sessionQueue: sessionQueueRouter,
 });
 
 // export type definition of API

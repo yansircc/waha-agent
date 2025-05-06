@@ -21,8 +21,10 @@ export function useInstanceManager() {
 		stopSession,
 		logoutSession,
 		restartSession,
+		retrySession,
 		displayQRDialog,
 		isLoading: isSessionLoading,
+		queueState,
 	} = useWhatsAppSession();
 
 	// Handle dialog open/close
@@ -57,15 +59,22 @@ export function useInstanceManager() {
 				}
 
 				// Then create a WhatsApp session with webhook configuration
-				await createSession(newInstance.id);
+				const result = await createSession(newInstance.id);
 
-				// Close dialog
-				handleCloseAddDialog();
-
-				// Show QR code dialog for the new instance
-				displayQRDialog(newInstance.id);
-
-				toast.success("WhatsApp账号已创建");
+				// 创建会话成功后处理UI状态
+				if (result) {
+					// 如果在队列中，保持对话框打开，展示队列状态
+					if (queueState.status === "queued") {
+						toast.success("WhatsApp账号已创建并加入队列");
+					}
+					// 如果直接完成或活跃中，关闭对话框，显示QR码扫描
+					else {
+						handleCloseAddDialog();
+						// 显示QR码扫描对话框
+						displayQRDialog(newInstance.id);
+						toast.success("WhatsApp账号已创建");
+					}
+				}
 			} catch (error) {
 				toast.error(`创建账号时出错: ${(error as Error).message}`);
 			} finally {
@@ -78,6 +87,7 @@ export function useInstanceManager() {
 			handleCloseAddDialog,
 			displayQRDialog,
 			agents,
+			queueState.status,
 		],
 	);
 
@@ -174,6 +184,21 @@ export function useInstanceManager() {
 		[restartSession],
 	);
 
+	// Retry session creation (useful after timeout)
+	const handleRetrySession = useCallback(
+		async (instance: (typeof instances)[0]) => {
+			setIsLoading(true);
+			try {
+				await retrySession(instance.id);
+			} catch (error) {
+				toast.error(`重试创建会话时出错: ${(error as Error).message}`);
+			} finally {
+				setIsLoading(false);
+			}
+		},
+		[retrySession],
+	);
+
 	return {
 		// State
 		isAddOpen,
@@ -196,5 +221,16 @@ export function useInstanceManager() {
 		handleStopSession,
 		handleLogoutSession,
 		handleRefreshSession,
+		handleRetrySession,
+
+		// Queue related state
+		queuePosition: queueState.queuePosition,
+		estimatedWaitTime: queueState.estimatedWaitTime,
+		isQueued: queueState.status === "queued",
+		isTimeout: queueState.status === "timeout",
+		waitingCount: queueState.waitingCount,
+		activeCount: queueState.activeCount,
+		errorMessage: queueState.errorMessage,
+		currentJobId: queueState.currentJob?.id,
 	};
 }

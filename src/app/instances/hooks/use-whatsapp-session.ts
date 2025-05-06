@@ -1,11 +1,52 @@
 "use client";
 
+import { useSessionQueue } from "@/lib/queue/use-session-queue";
 import { api } from "@/utils/api";
 import { useCallback } from "react";
+import { toast } from "sonner";
 import { useInstances } from "./use-instances";
 
 export function useWhatsAppSession() {
 	const { updateInstance } = useInstances();
+
+	// 使用会话队列
+	const {
+		queueState,
+		createSessionAsync,
+		retry: retrySessionCreate,
+		completeJob,
+		isLoading: isQueueLoading,
+	} = useSessionQueue({
+		onQueued: (job) => {
+			console.log("会话创建请求已加入队列", job);
+		},
+		onActive: (job) => {
+			console.log("正在处理会话创建请求", job);
+		},
+		onFailed: (job) => {
+			console.log("会话创建请求失败或超时", job);
+			toast.error("创建会话超时，已自动为您重新排队");
+
+			// 实例状态更新为断开
+			if (job.instanceId) {
+				void updateInstance({
+					id: job.instanceId,
+					status: "disconnected",
+				});
+			}
+		},
+		onCompleted: (job) => {
+			console.log("会话创建请求完成", job);
+
+			// 实例状态更新为已连接
+			if (job.instanceId) {
+				void updateInstance({
+					id: job.instanceId,
+					status: "connected",
+				});
+			}
+		},
+	});
 
 	// Get mutations with built-in loading states
 	const createSessionMutation = api.wahaSessions.create.useMutation();
@@ -17,14 +58,11 @@ export function useWhatsAppSession() {
 	// Session creation (uses server-side webhook configuration)
 	const createSession = useCallback(
 		async (instanceId: string) => {
-			// Create session using server-side config
-			const result = await createSessionMutation.mutateAsync({
-				instanceId,
-				start: true,
-				// No need to specify config here - server handles it
-			});
+			// 通过队列创建会话
+			const result = await createSessionAsync({ instanceId });
 
-			// Update instance status to connecting
+			// 更新实例状态为连接中
+			// 注意: 现在我们在 onCompleted 回调中更新状态为已连接
 			await updateInstance({
 				id: instanceId,
 				status: "connecting",
@@ -32,7 +70,36 @@ export function useWhatsAppSession() {
 
 			return result;
 		},
-		[updateInstance, createSessionMutation],
+		[updateInstance, createSessionAsync],
+	);
+
+	// Retry session creation
+	const retrySession = useCallback(
+		async (instanceId: string) => {
+			try {
+				// 先尝试通过队列重试
+				if (
+					queueState.currentJob?.instanceId === instanceId &&
+					queueState.status === "timeout"
+				) {
+					await retrySessionCreate();
+					toast.success("正在重新创建会话");
+				} else {
+					// 否则重新创建
+					await createSession(instanceId);
+					toast.success("正在创建会话");
+				}
+
+				// 更新实例状态
+				await updateInstance({
+					id: instanceId,
+					status: "connecting",
+				});
+			} catch (error) {
+				toast.error(`重试创建会话失败: ${(error as Error).message}`);
+			}
+		},
+		[queueState, retrySessionCreate, createSession, updateInstance],
 	);
 
 	// Start session
@@ -93,16 +160,20 @@ export function useWhatsAppSession() {
 
 	return {
 		isLoading:
+			isQueueLoading ||
 			createSessionMutation.isPending ||
 			startSessionMutation.isPending ||
 			stopSessionMutation.isPending ||
 			logoutSessionMutation.isPending ||
 			restartSessionMutation.isPending,
+		queueState,
 		createSession,
+		retrySession,
 		startSession,
 		stopSession,
 		logoutSession,
 		restartSession,
 		displayQRDialog,
+		completeQueueJob: completeJob,
 	};
 }

@@ -28,12 +28,35 @@ export default function InstancesPage() {
 		handleStopSession,
 		handleLogoutSession,
 		handleRefreshSession,
+		handleRetrySession,
+		// Queue state
+		isQueued,
+		queuePosition,
+		estimatedWaitTime,
+		waitingCount,
+		// Timeout state
+		isTimeout,
+		errorMessage,
+		// 获取当前队列作业ID
+		currentJobId,
 	} = useInstanceManager();
 
+	// Handle retry for current instance
+	const handleRetry = async () => {
+		if (instances.length === 0) return;
+
+		// Find the instance that was being created
+		const instance = instances.find(
+			(i) => i.status === "connecting" || i.status === "disconnected",
+		);
+		if (instance) {
+			await handleRetrySession(instance);
+		}
+	};
+
 	return (
-		<div className="container py-8">
-			<div className="mb-8 flex items-center justify-between">
-				<h1 className="font-bold text-3xl">WhatsApp账号</h1>
+		<div>
+			<div className="mb-8 flex items-center justify-end">
 				<Button onClick={handleOpenAddDialog} disabled={isApiLoading}>
 					<PlusIcon className="mr-2 h-4 w-4" /> 添加账号
 				</Button>
@@ -54,11 +77,15 @@ export default function InstancesPage() {
 							agentName={instance.agent?.name}
 							status={instance.status as InstanceStatus}
 							qrCode={instance.qrCode || undefined}
+							queueJobId={
+								instance.status === "connecting" ? currentJobId : undefined
+							}
 							onDelete={() => handleDeleteInstance(instance.id)}
 							onScanQR={() => handleScanQR(instance)}
 							onStart={() => handleStartSession(instance)}
 							onStop={() => handleStopSession(instance)}
 							onLogout={() => handleLogoutSession(instance)}
+							onRefresh={() => handleRefreshSession(instance)}
 						/>
 					))}
 				</div>
@@ -73,6 +100,13 @@ export default function InstancesPage() {
 				isLoading={isApiLoading}
 				agents={agents}
 				isLoadingAgents={isLoadingAgents}
+				isQueued={isQueued}
+				queuePosition={queuePosition}
+				estimatedWaitTime={estimatedWaitTime}
+				waitingCount={waitingCount}
+				isTimeout={isTimeout}
+				errorMessage={errorMessage}
+				onRetry={handleRetry}
 			/>
 		</div>
 	);

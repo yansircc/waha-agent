@@ -7,7 +7,7 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
+import { AlertTriangle, Loader2, RotateCw, Users } from "lucide-react";
 
 interface AddInstanceDialogProps {
 	open: boolean;
@@ -18,6 +18,15 @@ interface AddInstanceDialogProps {
 	isLoading: boolean;
 	agents: Array<{ id: string; name: string }>;
 	isLoadingAgents: boolean;
+	// Queue status props
+	queuePosition?: number;
+	estimatedWaitTime?: number;
+	isQueued?: boolean;
+	waitingCount?: number;
+	// Timeout props
+	isTimeout?: boolean;
+	errorMessage?: string;
+	onRetry?: () => Promise<void>;
 }
 
 export function AddInstanceDialog({
@@ -29,6 +38,13 @@ export function AddInstanceDialog({
 	isLoading,
 	agents,
 	isLoadingAgents,
+	queuePosition,
+	estimatedWaitTime,
+	isQueued,
+	waitingCount,
+	isTimeout,
+	errorMessage,
+	onRetry,
 }: AddInstanceDialogProps) {
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -66,6 +82,91 @@ export function AddInstanceDialog({
 								选择要与此WhatsApp账号关联的AI机器人。
 							</p>
 						</div>
+
+						{/* 超时状态显示区域 */}
+						{isTimeout && (
+							<div className="mt-4 space-y-2 rounded-md bg-destructive/10 p-4">
+								<div className="flex items-center gap-2">
+									<AlertTriangle className="h-4 w-4 text-destructive" />
+									<p className="font-medium text-destructive text-sm">
+										{errorMessage || "创建会话超时"}
+									</p>
+								</div>
+
+								<p className="text-muted-foreground text-xs">
+									创建会话操作超过了15秒未能完成，请点击重试按钮再次尝试。
+								</p>
+
+								<div className="mt-2 flex justify-end">
+									<Button
+										size="sm"
+										onClick={onRetry}
+										disabled={isLoading}
+										type="button"
+										variant="outline"
+										className="gap-1"
+									>
+										{isLoading ? (
+											<Loader2 className="h-3.5 w-3.5 animate-spin" />
+										) : (
+											<RotateCw className="h-3.5 w-3.5" />
+										)}
+										重试
+									</Button>
+								</div>
+							</div>
+						)}
+
+						{/* 队列状态显示区域 */}
+						{isQueued && !isTimeout && (
+							<div className="mt-4 space-y-2 rounded-md bg-muted p-4">
+								<div className="flex items-center gap-2">
+									<Users className="h-4 w-4 text-primary" />
+									<p className="font-medium text-sm">您的请求已加入队列</p>
+								</div>
+
+								<div className="space-y-1">
+									{queuePosition !== undefined && (
+										<div className="flex items-center gap-2">
+											<div className="h-2 w-2 rounded-full bg-amber-500" />
+											<p className="text-muted-foreground text-xs">
+												队列位置: {queuePosition + 1}
+											</p>
+										</div>
+									)}
+
+									{waitingCount !== undefined && (
+										<div className="flex items-center gap-2">
+											<div className="h-2 w-2 rounded-full bg-blue-500" />
+											<p className="text-muted-foreground text-xs">
+												等待人数: {waitingCount} 人
+											</p>
+										</div>
+									)}
+
+									{estimatedWaitTime !== undefined && (
+										<div className="flex items-center gap-2">
+											<div className="h-2 w-2 rounded-full bg-green-500" />
+											<p className="text-muted-foreground text-xs">
+												预计等待时间: {Math.ceil(estimatedWaitTime / 60)} 分钟
+											</p>
+										</div>
+									)}
+								</div>
+
+								<div className="my-2 h-1.5 w-full rounded-full bg-background">
+									<div
+										className="h-1.5 animate-pulse rounded-full bg-primary"
+										style={{
+											width:
+												queuePosition !== undefined
+													? `${Math.max(5, 100 - queuePosition * 10)}%`
+													: "5%",
+										}}
+									/>
+								</div>
+							</div>
+						)}
 					</div>
 					<DialogFooter>
 						<Button
@@ -75,7 +176,10 @@ export function AddInstanceDialog({
 						>
 							取消
 						</Button>
-						<Button type="submit" disabled={!selectedAgentId || isLoading}>
+						<Button
+							type="submit"
+							disabled={!selectedAgentId || isLoading || isTimeout}
+						>
 							{isLoading ? (
 								<>
 									<Loader2 className="mr-2 h-4 w-4 animate-spin" /> 创建中...

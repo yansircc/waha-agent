@@ -1,6 +1,6 @@
 "use client";
 
-import { api } from "@/trpc/react";
+import { api } from "@/utils/api";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useInstances } from "../hooks/use-instances";

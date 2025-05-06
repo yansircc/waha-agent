@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ConnectedActions } from "./connected-actions";
 import { DisconnectedActions } from "./disconnected-actions";
 import { QRCodeDialog } from "./qrcode-dialog";
+import { QueueStatusIndicator } from "./queue-status-indicator";
 import { ScanQRCodeHandler } from "./scan-qr-code-handler";
 import { StatusBadge } from "./status-badge";
 
@@ -14,11 +15,13 @@ interface InstanceCardProps {
 	agentName?: string;
 	status: InstanceStatus;
 	qrCode?: string;
+	queueJobId?: string; // 队列任务ID
 	onDelete?: () => void;
 	onScanQR?: () => void;
 	onStart?: () => void;
 	onStop?: () => void;
 	onLogout?: () => void;
+	onRefresh?: () => void;
 }
 
 export function InstanceCard({
@@ -28,11 +31,13 @@ export function InstanceCard({
 	agentName,
 	status,
 	qrCode,
+	queueJobId,
 	onDelete,
 	onScanQR,
 	onStart,
 	onStop,
 	onLogout,
+	onRefresh,
 }: InstanceCardProps) {
 	const [showQR, setShowQR] = useState(false);
 	const hasRequestedQR = useRef(false);
@@ -94,7 +99,13 @@ export function InstanceCard({
 			<div className="flex flex-col p-6">
 				<div className="flex items-center justify-between">
 					<h3 className="truncate font-medium text-gray-900 text-lg">{name}</h3>
-					<StatusBadge status={status} />
+					<div className="flex items-center gap-2">
+						{/* 队列状态指示器 */}
+						{status === "connecting" && (
+							<QueueStatusIndicator instanceId={id} jobId={queueJobId} />
+						)}
+						<StatusBadge status={status} />
+					</div>
 				</div>
 				<div className="mt-2 flex items-center text-gray-500 text-sm">
 					<PhoneIcon
@@ -127,6 +138,7 @@ export function InstanceCard({
 							onStop={onStop}
 							onLogout={onLogout}
 							onDelete={onDelete}
+							onRefresh={onRefresh}
 						/>
 					) : (
 						<ScanQRCodeHandler instanceId={id} onDelete={onDelete} />

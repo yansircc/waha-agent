@@ -5,11 +5,10 @@ import type {
 	SessionConfig,
 	SessionCreateRequest,
 	SessionLogoutRequest,
-	SessionStartRequest,
 	SessionStopRequest,
 	WebhookConfig,
 } from "@/types/api-requests";
-import { SessionConfigSchema, SessionInfoSchema } from "@/types/schemas";
+import { SessionInfoSchema } from "@/types/schemas";
 import { z } from "zod";
 import { wahaApi } from "./waha-api";
 
@@ -48,7 +47,6 @@ export const wahaSessionsRouter = createTRPCRouter({
 		.input(
 			z.object({
 				instanceId: z.string(),
-				config: SessionConfigSchema.optional(),
 				start: z.boolean().optional().default(true),
 			}),
 		)
@@ -57,42 +55,23 @@ export const wahaSessionsRouter = createTRPCRouter({
 				// Use instanceId as session name
 				const sessionName = input.instanceId;
 
-				// Create session config object
-				let sessionConfig: SessionConfig | undefined;
+				// Create webhook URL for the instance
+				const webhookUrl = `${env.NEXT_PUBLIC_APP_URL}/api/webhooks/whatsapp/${input.instanceId}`;
 
-				// If user provided config, use it
-				if (input.config) {
-					sessionConfig = {
-						debug: input.config.debug,
-						proxy: input.config.proxy,
-						metadata: input.config.metadata || {},
-						noweb: input.config.noweb,
-						webhooks: input.config.webhooks as WebhookConfig[] | undefined,
-					};
+				// Create webhook config
+				const webhook: WebhookConfig = {
+					url: webhookUrl,
+					events: ["message", "session.status"],
+					hmac: null,
+					retries: null,
+					customHeaders: null,
+				};
 
-					// Ensure metadata contains instanceId
-					if (sessionConfig.metadata) {
-						sessionConfig.metadata.instanceId = input.instanceId;
-					}
-				} else {
-					// Create webhook URL for the instance
-					const webhookUrl = `${env.NEXT_PUBLIC_APP_URL}/api/webhooks/whatsapp/${input.instanceId}`;
-
-					// Create webhook config
-					const webhook: WebhookConfig = {
-						url: webhookUrl,
-						events: ["message", "session.status"],
-						hmac: null,
-						retries: null,
-						customHeaders: null,
-					};
-
-					sessionConfig = {
-						debug: false,
-						webhooks: [webhook],
-						metadata: { instanceId: input.instanceId },
-					};
-				}
+				const sessionConfig: SessionConfig = {
+					debug: false,
+					webhooks: [webhook],
+					metadata: { instanceId: input.instanceId },
+				};
 
 				// Create session request
 				const sessionRequest: SessionCreateRequest = {
