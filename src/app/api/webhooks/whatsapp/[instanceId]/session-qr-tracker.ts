@@ -50,6 +50,10 @@ export async function trackQRScan(
 			// 重置计数器
 			await redis.del(key);
 
+			console.log(
+				`实例 ${instanceId} 连续收到 ${newCount} 次QR码扫描请求，已将删除请求添加到队列，计数器已重置`,
+			);
+
 			return {
 				scanCount: newCount,
 				deleteTriggered: true,

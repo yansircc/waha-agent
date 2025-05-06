@@ -1,4 +1,5 @@
 import { getRedisForInstance, safeRedisOperation } from "@/lib/redis";
+import { wahaApi } from "@/server/api/routers/waha-api";
 
 // 支持的会话操作类型
 export type SessionOperation =
@@ -65,6 +66,50 @@ export async function addToQueue(
 		await redis.expire(waitingQueue, QUEUE_KEY_TTL);
 		await redis.expire(activeQueue, QUEUE_KEY_TTL);
 		await redis.expire(jobsHash, QUEUE_KEY_TTL);
+
+		// 如果是delete操作，给予更高优先级处理
+		if (operation === "delete") {
+			try {
+				// 直接标记为活跃并执行
+				job.status = "active";
+				job.startedAt = Date.now();
+
+				// 保存任务信息
+				const jobJson = JSON.stringify(job);
+				await redis.set(`${jobsHash}:${job.id}`, jobJson);
+				await redis.expire(`${jobsHash}:${job.id}`, DEFAULT_JOB_TTL);
+				await redis.rpush(activeQueue, job.id);
+
+				// 异步执行删除操作
+				setTimeout(async () => {
+					try {
+						const success = await executeSessionDelete(instanceId);
+
+						// 执行完成后更新任务状态
+						const updatedJob = {
+							...job,
+							status: success ? "completed" : "failed",
+						};
+						const updatedJobJson = JSON.stringify(updatedJob);
+						await redis.set(`${jobsHash}:${job.id}`, updatedJobJson);
+
+						// 设置TTL
+						const ttl = success ? COMPLETED_JOB_TTL : FAILED_JOB_TTL;
+						await redis.expire(`${jobsHash}:${job.id}`, ttl);
+
+						// 从活跃队列中移除
+						await redis.lrem(activeQueue, 0, job.id);
+					} catch (execError) {
+						console.error("执行删除操作时出错:", execError);
+					}
+				}, 0);
+
+				return job;
+			} catch (error) {
+				console.error("处理删除操作失败:", error);
+				return null;
+			}
+		}
 
 		// 使用Lua脚本确保原子操作
 		const script = `
@@ -602,17 +647,10 @@ export async function queueSessionDelete(
  */
 async function executeSessionDelete(instanceId: string): Promise<boolean> {
 	try {
-		// 这里实现实际的删除逻辑
 		console.log(`正在执行实例 ${instanceId} 的删除操作`);
 
-		// 1. 停止会话（依赖于您现有的API）
-		// 示例: await wahaApi.auth.logout(instanceId);
-
-		// 2. 清理相关资源
-		// 示例: await cleanupInstanceResources(instanceId);
-
-		// 3. 更新数据库中的实例状态
-		// 示例: await updateInstanceStatus(instanceId, "deleted");
+		// 直接调用wahaApi删除会话
+		await wahaApi.sessions.deleteSession(instanceId);
 
 		console.log(`实例 ${instanceId} 删除操作完成`);
 		return true;
