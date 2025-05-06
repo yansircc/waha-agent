@@ -199,7 +199,7 @@ export const redis = RedisConnectionManager.getInstance().getDefaultClient();
 /**
  * 检查Redis连接状态
  */
-export async function redisConnect(): Promise<Redis | null> {
+async function redisConnect(): Promise<Redis | null> {
 	try {
 		const client = RedisConnectionManager.getInstance().getDefaultClient();
 		await client.ping();

@@ -5,11 +5,11 @@ import type { Agent } from "@/types/agents";
 // Redis键前缀，用于命名空间隔离
 const INSTANCE_PREFIX = "instance:";
 const AGENT_PREFIX = "agent:";
-export const CHAT_CONTROL_PREFIX = "chat-control:";
+const CHAT_CONTROL_PREFIX = "chat-control:";
 const BOT_PHONE_PREFIX = "bot-phone:";
 
 // 扩展Agent类型，添加活动状态标记
-export interface AgentWithState extends Agent {
+interface AgentWithState extends Agent {
 	isActive: boolean;
 }
 
@@ -172,7 +172,7 @@ export async function getChatAgentActive(
  * 设置机器人的活动状态 (实例级别)
  * 为保持向后兼容性保留，但推荐使用 setChatAgentActive
  */
-export async function setAgentActive(
+async function setAgentActive(
 	instanceId: string,
 	isActive: boolean,
 ): Promise<boolean> {
@@ -240,7 +240,7 @@ export async function deleteInstanceData(instanceId: string): Promise<boolean> {
 /**
  * 删除特定聊天的控制设置
  */
-export async function deleteChatControl(
+async function deleteChatControl(
 	instanceId: string,
 	chatId: string,
 ): Promise<boolean> {

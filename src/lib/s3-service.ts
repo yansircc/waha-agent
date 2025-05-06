@@ -13,7 +13,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 // 一周的秒数
 export const ONE_WEEK_IN_SECONDS = 7 * 24 * 60 * 60; // 7天
 // 最长有效期 - AWS 限制为7天
-export const MAX_PRESIGNED_URL_EXPIRY = ONE_WEEK_IN_SECONDS;
+const MAX_PRESIGNED_URL_EXPIRY = ONE_WEEK_IN_SECONDS;
 
 interface S3Config {
 	accessKeyId: string;
@@ -331,7 +331,7 @@ export async function uploadFileAndGetLink(
  * @param key - The file path/name in S3
  * @returns Promise with file stats
  */
-export async function getFileStats(key: string) {
+async function getFileStats(key: string) {
 	const command = new HeadObjectCommand({
 		Bucket: s3Config.bucket,
 		Key: key,
@@ -353,4 +353,4 @@ export async function getFileStats(key: string) {
 	}
 }
 
-export { s3Client };
+;

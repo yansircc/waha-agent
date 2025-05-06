@@ -1,18 +1,18 @@
 import { z } from "zod";
 
 // 基础类型验证模式
-export const Base64FileSchema = z.object({
+const Base64FileSchema = z.object({
 	mimetype: z.string(),
 	data: z.string(),
 });
 
-export const ButtonSchema = z.object({
+const ButtonSchema = z.object({
 	id: z.string(),
 	text: z.string(),
 });
 
 // Session相关验证模式
-export const SessionStatusEnum = z.enum([
+const SessionStatusEnum = z.enum([
 	"STARTING",
 	"RUNNING",
 	"STOPPED",
@@ -22,7 +22,7 @@ export const SessionStatusEnum = z.enum([
 ]);
 
 // Webhook 相关验证模式
-export const WebhookSchema = z.object({
+const WebhookSchema = z.object({
 	url: z.string().url(),
 	events: z.array(z.string()),
 	hmac: z.union([z.string(), z.record(z.unknown()), z.null()]).optional(),
@@ -30,7 +30,7 @@ export const WebhookSchema = z.object({
 	customHeaders: z.record(z.string()).nullable().optional(),
 });
 
-export const SessionConfigSchema = z.object({
+const SessionConfigSchema = z.object({
 	metadata: z
 		.record(
 			z.union([
@@ -70,14 +70,14 @@ export const SessionInfoSchema = z.object({
 });
 
 // 请求相关验证模式
-export const SessionCreateRequestSchema = z.object({
+const SessionCreateRequestSchema = z.object({
 	name: z.string().optional().default("default"),
 	config: SessionConfigSchema,
 	start: z.boolean().optional().default(true),
 	userId: z.string().optional(),
 });
 
-export const SessionUpdateRequestSchema = z.object({
+const SessionUpdateRequestSchema = z.object({
 	config: SessionConfigSchema,
 });
 
@@ -110,13 +110,13 @@ export const ResultSchema = z.object({
 });
 
 // 实例相关验证模式
-export const InstanceStatusEnum = z.enum([
+const InstanceStatusEnum = z.enum([
 	"connected",
 	"disconnected",
 	"connecting",
 ]);
 
-export const InstanceSchema = z.object({
+const InstanceSchema = z.object({
 	id: z.string(),
 	name: z.string(),
 	phoneNumber: z.string().optional(),
@@ -130,7 +130,7 @@ export const InstanceSchema = z.object({
 });
 
 // 机器人相关验证模式
-export const AgentSchema = z.object({
+const AgentSchema = z.object({
 	id: z.string(),
 	name: z.string(),
 	prompt: z.string(),
@@ -166,7 +166,7 @@ export const WAMessageSchema = z
 	.passthrough(); // 允许额外字段
 
 // 基础请求Schema
-export const BaseRequestSchema = z.object({
+const BaseRequestSchema = z.object({
 	session: z.string().default("default"),
 });
 
@@ -176,23 +176,23 @@ export const ChatRequestSchema = BaseRequestSchema.extend({
 });
 
 // 可引用消息的请求Schema
-export const QuotableRequestSchema = ChatRequestSchema.extend({
+const QuotableRequestSchema = ChatRequestSchema.extend({
 	quotedMessageId: z.string().optional(),
 });
 
 // 可提及用户的请求Schema
-export const MentionableRequestSchema = QuotableRequestSchema.extend({
+const MentionableRequestSchema = QuotableRequestSchema.extend({
 	mentionedIds: z.array(z.string()).optional(),
 });
 
 // 媒体请求基础Schema
-export const MediaRequestSchema = QuotableRequestSchema.extend({
+const MediaRequestSchema = QuotableRequestSchema.extend({
 	file: Base64FileSchema.optional(),
 	url: z.string().optional(),
 });
 
 // 带说明的媒体请求Schema
-export const CaptionedMediaRequestSchema = MediaRequestSchema.extend({
+const CaptionedMediaRequestSchema = MediaRequestSchema.extend({
 	caption: z.string().optional(),
 	text: z.string().optional(), // Caption的别名
 });
@@ -287,12 +287,12 @@ export const MessageReplyRequestSchema = ChatRequestSchema.extend({
 });
 
 // Mastra API schemas
-export const MastraMessageSchema = z.object({
+const MastraMessageSchema = z.object({
 	role: z.enum(["user", "assistant", "system"]),
 	content: z.string(),
 });
 
-export const MastraGenerateRequestSchema = z.object({
+const MastraGenerateRequestSchema = z.object({
 	messages: z.array(MastraMessageSchema),
 	threadId: z.string().optional(),
 	resourceId: z.string().optional(),
@@ -300,7 +300,7 @@ export const MastraGenerateRequestSchema = z.object({
 	output: z.record(z.unknown()).optional(),
 });
 
-export const MastraGenerateResponseSchema = z.object({
+const MastraGenerateResponseSchema = z.object({
 	text: z.string(),
 	threadId: z.string().optional(),
 	resourceId: z.string().optional(),

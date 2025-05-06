@@ -43,7 +43,7 @@ export function sanitizeUrl(url: string): string {
  * @param tagName 要提取的标签名称
  * @returns 提取的内容数组
  */
-export function parseXml(xmlText: string, tagName = "loc"): string[] {
+function parseXml(xmlText: string, tagName = "loc"): string[] {
 	const regex = new RegExp(`<${tagName}>(.*?)<\/${tagName}>`, "g");
 	const matches = xmlText.match(regex);
 

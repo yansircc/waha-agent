@@ -11,7 +11,7 @@ export * from "./api-responses";
 // 额外导出的类型别名和工具类型
 
 // 会话状态的应用内统一类型别名
-export type WahaSessionStatus =
+type WahaSessionStatus =
 	| "STARTING"
 	| "RUNNING"
 	| "STOPPED"
@@ -23,7 +23,7 @@ export type WahaSessionStatus =
 export type InstanceStatus = "connected" | "disconnected" | "connecting";
 
 // Webhook事件类型
-export type WebhookEventType =
+type WebhookEventType =
 	| "message"
 	| "message.ack"
 	| "message.reaction"

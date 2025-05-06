@@ -273,7 +273,7 @@ export async function completeJob(jobId: string): Promise<SessionJob | null> {
 /**
  * 标记任务失败并处理下一个队列项
  */
-export async function failJob(jobId: string): Promise<SessionJob | null> {
+async function failJob(jobId: string): Promise<SessionJob | null> {
 	const redis = getRedisForInstance();
 
 	return await safeRedisOperation(async () => {
@@ -368,7 +368,7 @@ export async function failJob(jobId: string): Promise<SessionJob | null> {
 /**
  * 获取任务状态
  */
-export async function getJobStatus(jobId: string): Promise<SessionJob | null> {
+async function getJobStatus(jobId: string): Promise<SessionJob | null> {
 	const redis = getRedisForInstance();
 
 	return await safeRedisOperation(async () => {

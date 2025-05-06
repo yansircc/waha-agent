@@ -38,4 +38,4 @@ export const demoRouter = createTRPCRouter({
 		}),
 });
 
-export type DemoRouter = typeof demoRouter;
+type DemoRouter = typeof demoRouter;

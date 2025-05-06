@@ -1,6 +1,6 @@
 // Common type definitions for the WAHA API
 
-export interface SessionInfo {
+interface SessionInfo {
 	id: string;
 	name: string;
 	status:
@@ -17,7 +17,7 @@ export interface SessionInfo {
 	createdAt: string;
 }
 
-export interface MeInfo {
+interface MeInfo {
 	id: string;
 	pushname: string;
 	name?: string;
@@ -25,17 +25,17 @@ export interface MeInfo {
 	picture?: string;
 }
 
-export interface SessionCreateRequest {
+interface SessionCreateRequest {
 	name?: string;
 	config?: Record<string, unknown>;
 	start?: boolean;
 }
 
-export interface SessionUpdateRequest {
+interface SessionUpdateRequest {
 	config?: Record<string, unknown>;
 }
 
-export interface SessionDTO {
+interface SessionDTO {
 	id: string;
 	name: string;
 	status:
@@ -48,17 +48,17 @@ export interface SessionDTO {
 	config: Record<string, unknown>;
 }
 
-export interface SessionStartDeprecatedRequest {
+interface SessionStartDeprecatedRequest {
 	name?: string;
 	config?: Record<string, unknown>;
 }
 
-export interface SessionStopDeprecatedRequest {
+interface SessionStopDeprecatedRequest {
 	name?: string;
 	logout?: boolean;
 }
 
-export interface SessionLogoutDeprecatedRequest {
+interface SessionLogoutDeprecatedRequest {
 	name?: string;
 }
 
@@ -161,7 +161,7 @@ export interface SendButtonsRequest {
 	quotedMessageId?: string;
 }
 
-export interface Button {
+interface Button {
 	id: string;
 	text: string;
 }
@@ -172,7 +172,7 @@ export interface MessageForwardRequest {
 	messageId: string;
 }
 
-export interface SessionRequest {
+interface SessionRequest {
 	session?: string;
 }
 

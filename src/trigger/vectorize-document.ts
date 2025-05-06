@@ -18,9 +18,9 @@ const VectorizeDocumentSchema = z.object({
 	collectionName: z.string().min(1, "Collection name is required"),
 });
 
-export type VectorizeDocumentPayload = z.infer<typeof VectorizeDocumentSchema>;
+type VectorizeDocumentPayload = z.infer<typeof VectorizeDocumentSchema>;
 
-export interface VectorizeDocumentResult {
+interface VectorizeDocumentResult {
 	success: boolean;
 	kbId: string;
 	documentId: string;

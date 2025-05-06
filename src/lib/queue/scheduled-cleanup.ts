@@ -38,7 +38,7 @@ export async function performQueueCleanup(): Promise<number> {
  * 启动定期清理任务
  * 只在服务器端执行
  */
-export function startPeriodicCleanup(): void {
+function startPeriodicCleanup(): void {
 	// 避免在客户端执行
 	if (typeof window !== "undefined") return;
 

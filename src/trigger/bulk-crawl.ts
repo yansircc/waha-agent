@@ -10,7 +10,7 @@ const BulkCrawlSchema = z.object({
 	kbId: z.string().default("default"), // 知识库ID，默认值为default
 });
 
-export type BulkCrawlPayload = z.infer<typeof BulkCrawlSchema>;
+type BulkCrawlPayload = z.infer<typeof BulkCrawlSchema>;
 
 // 定义任务返回结果类型
 export interface BulkCrawlResult {

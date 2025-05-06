@@ -5,7 +5,7 @@ import type { WebhookResponse } from "./types";
 /**
  * Send a webhook response
  */
-export async function sendWebhookResponse<T extends WebhookResponse>(
+async function sendWebhookResponse<T extends WebhookResponse>(
 	webhookUrl: string,
 	data: T,
 ): Promise<T> {
@@ -45,7 +45,7 @@ export interface TextChunk {
 /**
  * Options for text chunking
  */
-export interface ChunkOptions {
+interface ChunkOptions {
 	chunkSize?: number;
 	chunkOverlap?: number;
 	source?: string;
@@ -56,7 +56,7 @@ export interface ChunkOptions {
 /**
  * Diagnostics information from text chunking process
  */
-export interface ChunkDiagnostics {
+interface ChunkDiagnostics {
 	originalLength: number;
 	iterations: number;
 	deduplicated: boolean;
@@ -66,7 +66,7 @@ export interface ChunkDiagnostics {
 /**
  * Result of text chunking including diagnostics
  */
-export interface ChunkResult {
+interface ChunkResult {
 	chunks: TextChunk[];
 	diagnostics?: ChunkDiagnostics;
 }
@@ -296,7 +296,7 @@ export async function createCollectionIfNotExists(
  * Check if the URL points to a markdown or text file
  * Handles URLs with query parameters
  */
-export function isMarkdownOrTextFile(url: string): boolean {
+function isMarkdownOrTextFile(url: string): boolean {
 	try {
 		// Remove query parameters and get the base URL
 		const baseUrl = new URL(url).pathname.toLowerCase();

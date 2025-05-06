@@ -15,7 +15,7 @@ interface LoggerOptions {
 /**
  * 创建一个日志记录器
  */
-export function createLogger(options?: LoggerOptions) {
+function createLogger(options?: LoggerOptions) {
 	const module = options?.module || "";
 	const isEnabled = options?.enabled !== undefined ? options.enabled : isDev;
 	const prefix = module ? `[${module}]` : "";
@@ -75,9 +75,9 @@ export function createLogger(options?: LoggerOptions) {
 }
 
 // 创建默认日志记录器
-export const logger = createLogger();
+const logger = createLogger();
 
 // 导出用于特定模块的日志记录器
 export const kbLogger = createLogger({ module: "KB-SERVICE" });
 export const s3Logger = createLogger({ module: "S3-SERVICE" });
-export const uploadLogger = createLogger({ module: "UPLOAD" });
+const uploadLogger = createLogger({ module: "UPLOAD" });

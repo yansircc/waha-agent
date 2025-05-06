@@ -35,7 +35,7 @@ export type SessionStatus =
 	| "WORKING";
 
 // 通用响应结构
-export interface Result {
+interface Result {
 	success: boolean;
 	message?: string;
 }
@@ -116,7 +116,7 @@ export interface WAMessage {
 }
 
 // 聊天记录相关响应
-export interface Chat {
+interface Chat {
 	id: string;
 	name: string;
 	timestamp: number;
@@ -130,7 +130,7 @@ export interface Chat {
 	participants?: ChatParticipant[];
 }
 
-export interface ChatParticipant {
+interface ChatParticipant {
 	id: string;
 	name?: string;
 	isAdmin?: boolean;
@@ -138,7 +138,7 @@ export interface ChatParticipant {
 }
 
 // 联系人相关响应
-export interface Contact {
+interface Contact {
 	id: string;
 	name?: string;
 	pushname?: string;
@@ -151,7 +151,7 @@ export interface Contact {
 }
 
 // 群组相关响应
-export interface Group {
+interface Group {
 	id: string;
 	name: string;
 	description?: string;
@@ -162,7 +162,7 @@ export interface Group {
 	isAdmin?: boolean;
 }
 
-export interface GroupParticipant {
+interface GroupParticipant {
 	id: string;
 	isAdmin?: boolean;
 	isSuperAdmin?: boolean;
@@ -189,7 +189,7 @@ export interface WebhookNotification {
 	};
 }
 
-export type WebhookData =
+type WebhookData =
 	| { status: SessionStatus }
 	| WAMessage
 	| Chat

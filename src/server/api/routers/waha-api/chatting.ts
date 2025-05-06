@@ -20,7 +20,7 @@ import type {
 	WAMessage,
 } from "./types";
 
-export interface GetChatMessagesOptions {
+interface GetChatMessagesOptions {
 	session?: string;
 	chatId: string;
 	limit?: number;
@@ -35,7 +35,7 @@ export interface GetChatMessagesOptions {
 	};
 }
 
-export interface ChatHistoryResponse {
+interface ChatHistoryResponse {
 	messages: WAMessage[];
 }
 

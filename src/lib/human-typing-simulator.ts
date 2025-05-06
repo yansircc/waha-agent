@@ -2,7 +2,7 @@
  * 模拟类似人类的在聊天软件中的打字行为
  */
 
-export interface HumanTypingOptions {
+interface HumanTypingOptions {
 	/**
 	 * 每个消息块的最大字符数
 	 * @default 120
@@ -45,7 +45,7 @@ const DEFAULT_OPTIONS: HumanTypingOptions = {
 /**
  * 将消息分割成类似人类的块
  */
-export function splitIntoHumanChunks(
+function splitIntoHumanChunks(
 	message: string,
 	options: HumanTypingOptions = {},
 ): string[] {
@@ -242,7 +242,7 @@ export function calculateTypingDelay(
 /**
  * 通过可能添加拼写错误、非正式语言等来使文本更人性化
  */
-export function humanizeText(
+function humanizeText(
 	text: string,
 	options: HumanTypingOptions = {},
 ): string {
@@ -338,7 +338,7 @@ export function humanizeText(
 /**
  * 通过将消息分割成块并添加适当的延迟和类似人类的特征来模拟人类的打字行为
  */
-export function simulateHumanTyping(
+function simulateHumanTyping(
 	message: string,
 	options: HumanTypingOptions = {},
 ): {

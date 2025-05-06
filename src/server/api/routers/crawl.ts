@@ -199,4 +199,4 @@ function sanitizeUrl(url: string): string {
 	return url.trim().replace(/&amp;/g, "&");
 }
 
-export type CrawlRouter = typeof crawlRouter;
+type CrawlRouter = typeof crawlRouter;

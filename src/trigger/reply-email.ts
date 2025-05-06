@@ -11,7 +11,7 @@ import { wait } from "@trigger.dev/sdk";
 import { logger, task } from "@trigger.dev/sdk";
 import type { WebhookResponse } from "./types";
 
-export interface EmailFormPayload extends FormDataEmailPayload {
+interface EmailFormPayload extends FormDataEmailPayload {
 	agent: Agent;
 	signature?: string;
 	plunkApiKey: string;

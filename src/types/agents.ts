@@ -15,7 +15,7 @@ export const AgentSchema = z.object({
 	updatedAt: z.date().nullable(),
 });
 
-export const KnowledgeBaseSchema = z.object({
+const KnowledgeBaseSchema = z.object({
 	id: z.string(),
 	name: z.string(),
 });
@@ -25,7 +25,7 @@ export const ApiMessageSchema = z.object({
 	content: z.string(),
 });
 
-export const MessageSchema = ApiMessageSchema.extend({
+const MessageSchema = ApiMessageSchema.extend({
 	id: z.string(),
 });
 

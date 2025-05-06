@@ -41,7 +41,7 @@ export async function queueSessionStart(
 /**
  * Process the session start queue
  */
-export async function processQueue(): Promise<void> {
+async function processQueue(): Promise<void> {
 	const redis = getRedisForInstance();
 
 	// Use a lock to prevent multiple concurrent processing attempts

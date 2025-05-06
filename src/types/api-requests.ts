@@ -24,13 +24,13 @@ export interface SessionLogoutRequest {
 }
 
 // 基础文件结构
-export interface Base64File {
+interface Base64File {
 	mimetype: string;
 	data: string;
 }
 
 // Authentication-related类型
-export interface QRCodeRequest {
+interface QRCodeRequest {
 	session?: string;
 	format?: "image" | "raw";
 }
@@ -41,20 +41,20 @@ export interface RequestCodeRequest {
 }
 
 // Profile-related类型
-export interface ProfileNameRequest {
+interface ProfileNameRequest {
 	name: string;
 }
 
-export interface ProfileStatusRequest {
+interface ProfileStatusRequest {
 	status: string;
 }
 
-export interface ProfilePictureRequest {
+interface ProfilePictureRequest {
 	file: Base64File;
 }
 
 // Messaging-related类型
-export interface MessageTextRequest {
+interface MessageTextRequest {
 	session?: string;
 	chatId: string;
 	text: string;
@@ -65,7 +65,7 @@ export interface MessageTextRequest {
 	linkPreviewHighQuality?: boolean;
 }
 
-export interface MessageImageRequest {
+interface MessageImageRequest {
 	session?: string;
 	chatId: string;
 	caption?: string;
@@ -76,7 +76,7 @@ export interface MessageImageRequest {
 	mentionedIds?: string[];
 }
 
-export interface MessageFileRequest {
+interface MessageFileRequest {
 	session?: string;
 	chatId: string;
 	caption?: string;
@@ -86,7 +86,7 @@ export interface MessageFileRequest {
 	quotedMessageId?: string;
 }
 
-export interface MessageVoiceRequest {
+interface MessageVoiceRequest {
 	session?: string;
 	chatId: string;
 	file?: Base64File;
@@ -94,7 +94,7 @@ export interface MessageVoiceRequest {
 	quotedMessageId?: string;
 }
 
-export interface MessageVideoRequest {
+interface MessageVideoRequest {
 	session?: string;
 	chatId: string;
 	caption?: string;
@@ -105,12 +105,12 @@ export interface MessageVideoRequest {
 	mentionedIds?: string[];
 }
 
-export interface Button {
+interface Button {
 	id: string;
 	text: string;
 }
 
-export interface SendButtonsRequest {
+interface SendButtonsRequest {
 	session?: string;
 	chatId: string;
 	buttons: Button[];
@@ -120,30 +120,30 @@ export interface SendButtonsRequest {
 }
 
 // 其他消息请求类型
-export interface MessageForwardRequest {
+interface MessageForwardRequest {
 	session?: string;
 	chatId: string;
 	messageId: string;
 }
 
-export interface ChatRequest {
+interface ChatRequest {
 	session?: string;
 	chatId: string;
 }
 
-export interface MessageReactionRequest {
+interface MessageReactionRequest {
 	session?: string;
 	messageId: string;
 	reaction: string;
 }
 
-export interface MessageStarRequest {
+interface MessageStarRequest {
 	session?: string;
 	messageIds: string[];
 	star: boolean;
 }
 
-export interface MessagePollRequest {
+interface MessagePollRequest {
 	session?: string;
 	chatId: string;
 	name: string;
@@ -151,7 +151,7 @@ export interface MessagePollRequest {
 	quotedMessageId?: string;
 }
 
-export interface MessageLocationRequest {
+interface MessageLocationRequest {
 	session?: string;
 	chatId: string;
 	latitude: number;
@@ -160,7 +160,7 @@ export interface MessageLocationRequest {
 	quotedMessageId?: string;
 }
 
-export interface MessageLinkPreviewRequest {
+interface MessageLinkPreviewRequest {
 	session?: string;
 	chatId: string;
 	text: string;
@@ -168,21 +168,21 @@ export interface MessageLinkPreviewRequest {
 	quotedMessageId?: string;
 }
 
-export interface MessageContactVcardRequest {
+interface MessageContactVcardRequest {
 	session?: string;
 	chatId: string;
 	contactId: string;
 	quotedMessageId?: string;
 }
 
-export interface MessageButtonReplyRequest {
+interface MessageButtonReplyRequest {
 	session?: string;
 	chatId: string;
 	messageId: string;
 	buttonId: string;
 }
 
-export interface MessageReplyRequest {
+interface MessageReplyRequest {
 	session?: string;
 	chatId: string;
 	messageId: string;

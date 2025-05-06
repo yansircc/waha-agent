@@ -3,12 +3,12 @@
 import { api } from "@/utils/api";
 import { useState } from "react";
 
-export interface UseS3UploadOptions {
+interface UseS3UploadOptions {
 	onSuccess?: (fileInfo: { fileUrl: string; longLivedUrl?: string }) => void;
 	onError?: (error: Error) => void;
 }
 
-export interface UploadResult {
+interface UploadResult {
 	key: string;
 	fileUrl: string;
 	longLivedUrl?: string;

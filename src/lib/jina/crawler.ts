@@ -13,7 +13,7 @@ import { QueueProcessor } from "./queue-processor";
 import type { CrawlJob, JinaCrawlResult } from "./types";
 
 // Options for crawling
-export interface CrawlOptions {
+interface CrawlOptions {
 	useAiCleaning?: boolean; // 是否使用AI清洗内容
 	maxRetries?: number; // 最大重试次数
 	initialDelay?: number; // 初始重试延迟(ms)

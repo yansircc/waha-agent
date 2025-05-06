@@ -183,6 +183,7 @@ export function useSessionQueue({
 	const executeQueuedOperation = useCallback(
 		async (params: {
 			instanceId: string;
+			// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 			executeOperation: () => Promise<any>;
 		}) => {
 			const { instanceId, executeOperation } = params;
@@ -292,6 +293,7 @@ export function useSessionQueue({
 	const retry = useCallback(
 		async (params: {
 			instanceId: string;
+			// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 			executeOperation: () => Promise<any>;
 		}) => {
 			if (!queueState.currentJob?.instanceId) return;

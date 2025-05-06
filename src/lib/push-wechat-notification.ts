@@ -4,7 +4,7 @@ import { z } from "zod";
 /**
  * Format tool response text
  */
-export function formatToolResponse(text: string, isError = false) {
+function formatToolResponse(text: string, isError = false) {
 	return {
 		content: [{ type: "text" as const, text }],
 		isError,
@@ -14,7 +14,7 @@ export function formatToolResponse(text: string, isError = false) {
 /**
  * Schema for WeChat notification parameters
  */
-export const wechatPushSchema = z.object({
+const wechatPushSchema = z.object({
 	title: z.string(),
 	description: z.string(),
 });
@@ -29,7 +29,7 @@ interface WechatPushArgs extends z.infer<typeof wechatPushSchema> {
 /**
  * Schema for ServerChan API response
  */
-export const pushWechatNotificationResponseSchema = z.object({
+const pushWechatNotificationResponseSchema = z.object({
 	code: z.number(),
 	message: z.string(),
 	data: z.any().optional(),

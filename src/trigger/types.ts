@@ -13,7 +13,7 @@ export interface WebhookResponse {
 /**
  * Agent聊天的payload接口
  */
-export interface AgentChatPayload {
+interface AgentChatPayload {
 	messages: Array<{
 		role: "user" | "assistant";
 		content: string;
@@ -27,7 +27,7 @@ export interface AgentChatPayload {
 /**
  * Agent聊天的webhook响应接口
  */
-export interface ChatWebhookResponse extends WebhookResponse {
+interface ChatWebhookResponse extends WebhookResponse {
 	response?: string;
 	messages?: Array<{
 		role: "user" | "assistant";
@@ -52,7 +52,7 @@ export interface WhatsAppMessagePayload {
 /**
  * WhatsApp消息的webhook响应接口
  */
-export interface WhatsAppWebhookResponse extends WebhookResponse {
+interface WhatsAppWebhookResponse extends WebhookResponse {
 	response?: string;
 	chatId?: string;
 	messageId?: string;

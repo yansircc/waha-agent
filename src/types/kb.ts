@@ -12,7 +12,7 @@ export interface Kb {
 	documents?: Document[];
 }
 
-export interface Document {
+interface Document {
 	id: string;
 	name: string;
 	content: string | null;

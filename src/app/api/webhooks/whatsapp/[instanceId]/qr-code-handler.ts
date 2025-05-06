@@ -7,7 +7,7 @@ import { eq } from "drizzle-orm";
 /**
  * Extracts QR code data from webhook payload when available
  */
-export function extractQRCodeFromPayload(
+function extractQRCodeFromPayload(
 	body: WebhookNotification,
 ): string | null {
 	if (body.event === "qr" && body.payload && typeof body.payload === "object") {
@@ -23,7 +23,7 @@ export function extractQRCodeFromPayload(
 /**
  * 获取会话QR码并更新实例
  */
-export async function fetchAndUpdateQRCode(
+async function fetchAndUpdateQRCode(
 	instanceId: string,
 	sessionName: string,
 ): Promise<string | null> {
@@ -48,7 +48,7 @@ export async function fetchAndUpdateQRCode(
 /**
  * Updates instance record with QR code
  */
-export async function updateInstanceQRCode(
+async function updateInstanceQRCode(
 	instanceId: string,
 	qrCode: string,
 ): Promise<void> {
@@ -73,7 +73,7 @@ export async function updateInstanceQRCode(
  *
  * 发送自定义事件通知前端显示QR码对话框
  */
-export function triggerQRCodeDisplay(instanceId: string): void {
+function triggerQRCodeDisplay(instanceId: string): void {
 	if (typeof document !== "undefined") {
 		// 仅在浏览器环境中执行
 		const event = new CustomEvent("open-qr-dialog", {

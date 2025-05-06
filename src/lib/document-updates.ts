@@ -21,17 +21,3 @@ export function getRecentDocumentUpdates() {
 
 	return Array.from(recentDocumentUpdates.values());
 }
-
-// Store a document update
-export function storeDocumentUpdate(
-	documentId: string,
-	kbId: string,
-	status: string,
-) {
-	recentDocumentUpdates.set(documentId, {
-		documentId,
-		kbId,
-		status,
-		timestamp: Date.now(),
-	});
-}

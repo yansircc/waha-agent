@@ -11,7 +11,7 @@ export interface JinaCrawlResult {
 }
 
 // Job status type
-export type JobStatus = "pending" | "processing" | "completed" | "failed";
+type JobStatus = "pending" | "processing" | "completed" | "failed";
 
 // Options for crawling
 export interface CrawlOptions {

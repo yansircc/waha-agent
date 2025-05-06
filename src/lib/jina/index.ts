@@ -6,13 +6,13 @@ import type { CrawlOptions, JinaCrawlResult } from "./types";
 export * from "./types";
 
 // Export the crawler class
-export { JinaCrawlerService } from "./crawler";
+;
 
 // Create singleton instance
 export const jinaCrawler = new JinaCrawlerService();
 
 // Export convenience functions
-export async function crawlWebpage(
+async function crawlWebpage(
 	url: string,
 	options?: CrawlOptions,
 	userId?: string,
@@ -20,7 +20,7 @@ export async function crawlWebpage(
 	return jinaCrawler.crawlUrlImmediately(url, options, userId);
 }
 
-export async function queueWebpage(
+async function queueWebpage(
 	url: string,
 	options?: CrawlOptions,
 	userId?: string,
@@ -28,7 +28,7 @@ export async function queueWebpage(
 	return jinaCrawler.queueUrl(url, options, userId);
 }
 
-export async function processResultWithAI(
+async function processResultWithAI(
 	result: JinaCrawlResult,
 ): Promise<JinaCrawlResult> {
 	return processResult(result);

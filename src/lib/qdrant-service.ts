@@ -54,7 +54,7 @@ interface SearchResultItem {
 	rrf_score?: number;
 }
 
-export class QdrantService {
+class QdrantService {
 	private client: QdrantClient;
 
 	constructor() {

@@ -1,6 +1,6 @@
 import type { InstanceStatus } from "./index";
 
-export interface Instance {
+interface Instance {
 	id: string;
 	name: string;
 	phoneNumber?: string;
