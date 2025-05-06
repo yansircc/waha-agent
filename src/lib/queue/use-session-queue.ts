@@ -1,11 +1,15 @@
 "use client";
 
 import { api } from "@/utils/api";
-import { useMutation } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
-import type { SessionJob } from "./session-queue";
+import type { SessionJob, SessionOperation } from "./session-queue";
 
 interface UseSessionQueueOptions {
+	/**
+	 * 操作类型，默认为 create
+	 */
+	operation?: SessionOperation;
+
 	/**
 	 * 当会话创建请求入队后的回调
 	 */
@@ -62,6 +66,11 @@ interface SessionQueueState {
 	 * 错误信息
 	 */
 	errorMessage?: string;
+
+	/**
+	 * 操作类型
+	 */
+	operation: SessionOperation;
 }
 
 // 定义API返回的数据类型
@@ -73,31 +82,33 @@ interface QueueStatsData {
 }
 
 /**
- * 会话队列Hook，用于管理WhatsApp会话创建的并发限制
+ * 会话队列Hook，用于管理WhatsApp会话操作的并发限制
  */
 export function useSessionQueue({
+	operation = "create",
 	onQueued,
 	onActive,
 	onFailed,
 	onCompleted,
-}: UseSessionQueueOptions) {
+}: UseSessionQueueOptions = {}) {
 	// 队列状态
 	const [queueState, setQueueState] = useState<SessionQueueState>({
 		status: "idle",
 		waitingCount: 0,
 		activeCount: 0,
+		operation,
 	});
 
-	// 使用现有的API方法
-	const createSessionMutation = api.wahaSessions.create.useMutation();
-
-	// 队列操作
+	// 队列操作API
 	const addToQueueMutation = api.sessionQueue.addToQueue.useMutation();
 	const completeJobMutation = api.sessionQueue.completeJob.useMutation();
 
 	// 检查当前实例是否有活跃任务
 	const checkActiveJobQuery = api.sessionQueue.checkActiveJob.useQuery(
-		{ instanceId: queueState.currentJob?.instanceId || "" },
+		{
+			instanceId: queueState.currentJob?.instanceId || "",
+			operation: queueState.operation,
+		},
 		{
 			enabled:
 				queueState.status === "active" && !!queueState.currentJob?.instanceId,
@@ -106,10 +117,13 @@ export function useSessionQueue({
 	);
 
 	// 队列统计信息查询
-	const statsQuery = api.sessionQueue.getStats.useQuery(undefined, {
-		refetchInterval: 5000, // 每5秒自动刷新一次
-		enabled: queueState.status === "queued" || queueState.status === "active", // 只在排队或激活时刷新
-	});
+	const statsQuery = api.sessionQueue.getStats.useQuery(
+		{ operation: queueState.operation },
+		{
+			refetchInterval: 5000, // 每5秒自动刷新一次
+			enabled: queueState.status === "queued" || queueState.status === "active", // 只在排队或激活时刷新
+		},
+	);
 
 	// 使用useEffect处理数据更新
 	useEffect(() => {
@@ -150,7 +164,7 @@ export function useSessionQueue({
 					setQueueState((prev) => ({
 						...prev,
 						status: "timeout",
-						errorMessage: "创建会话超时，请稍后重试",
+						errorMessage: "操作超时，请稍后重试",
 					}));
 
 					// 调用失败回调
@@ -165,15 +179,21 @@ export function useSessionQueue({
 		onFailed,
 	]);
 
-	// 创建会话并加入队列
-	const queuedCreateSessionMutation = useMutation({
-		mutationFn: async (params: { instanceId: string }) => {
-			const { instanceId } = params;
+	// 添加任务到队列并执行操作
+	const executeQueuedOperation = useCallback(
+		async (params: {
+			instanceId: string;
+			executeOperation: () => Promise<any>;
+		}) => {
+			const { instanceId, executeOperation } = params;
 
 			// 先添加到队列
-			const result = await addToQueueMutation.mutateAsync({ instanceId });
-			const job = result.job;
+			const result = await addToQueueMutation.mutateAsync({
+				instanceId,
+				operation: queueState.operation,
+			});
 
+			const job = result.job;
 			if (!job) {
 				throw new Error("无法添加任务到队列");
 			}
@@ -185,66 +205,59 @@ export function useSessionQueue({
 				currentJob: job,
 			}));
 
-			// 任务状态为active时直接发起创建请求
+			// 任务状态为active时直接执行操作
 			if (job.status === "active") {
 				onActive?.(job);
 
-				// 执行创建会话请求
-				const sessionResult = await createSessionMutation.mutateAsync({
-					instanceId,
-				});
+				try {
+					// 执行操作
+					const operationResult = await executeOperation();
 
-				// 会话创建成功后，直接标记任务为完成
-				if (sessionResult) {
-					// 标记任务为完成
-					await completeJobMutation.mutateAsync({ jobId: job.id });
+					// 操作成功后，直接标记任务为完成
+					if (operationResult) {
+						// 标记任务为完成
+						await completeJobMutation.mutateAsync({ jobId: job.id });
 
-					// 更新状态
+						// 更新状态
+						setQueueState((prev) => ({
+							...prev,
+							status: "completed",
+						}));
+
+						// 调用完成回调
+						onCompleted?.(job);
+					}
+
+					return operationResult;
+				} catch (error) {
+					// 如果操作失败，则标记任务为失败
+					console.error(`执行${queueState.operation}操作失败:`, error);
 					setQueueState((prev) => ({
 						...prev,
-						status: "completed",
+						status: "error",
+						errorMessage: (error as Error).message,
 					}));
-
-					// 调用完成回调
-					onCompleted?.(job);
+					throw error;
 				}
-
-				return sessionResult;
 			}
 
-			// 任务在等待队列中，需等待webhook回调
+			// 任务在等待队列中，需等待回调
 			onQueued?.(job);
 			return {
 				success: true,
-				message: "会话创建请求已加入队列",
+				message: `会话${queueState.operation}请求已加入队列`,
 				queueId: job.id,
 			};
 		},
-		onError: (error) => {
-			console.error("创建会话失败:", error);
-			setQueueState((prev) => ({
-				...prev,
-				status: "error",
-				errorMessage: (error as Error).message,
-			}));
-		},
-	});
-
-	// 刷新队列状态
-	const refreshQueueStatus = useCallback(() => {
-		if (queueState.status === "queued" || queueState.status === "active") {
-			statsQuery.refetch();
-
-			if (queueState.status === "active" && queueState.currentJob?.instanceId) {
-				checkActiveJobQuery.refetch();
-			}
-		}
-	}, [
-		queueState.status,
-		queueState.currentJob?.instanceId,
-		statsQuery,
-		checkActiveJobQuery,
-	]);
+		[
+			addToQueueMutation,
+			completeJobMutation,
+			onActive,
+			onQueued,
+			onCompleted,
+			queueState.operation,
+		],
+	);
 
 	// 手动完成任务
 	const completeJob = useCallback(
@@ -275,31 +288,49 @@ export function useSessionQueue({
 		[completeJobMutation, queueState.currentJob, onCompleted],
 	);
 
-	// 重试创建会话
-	const retry = useCallback(async () => {
-		if (!queueState.currentJob?.instanceId) return;
+	// 重试操作
+	const retry = useCallback(
+		async (params: {
+			instanceId: string;
+			executeOperation: () => Promise<any>;
+		}) => {
+			if (!queueState.currentJob?.instanceId) return;
 
-		// 重置状态
-		setQueueState((prev) => ({
-			...prev,
-			status: "idle",
-			errorMessage: undefined,
-		}));
+			// 重置状态
+			setQueueState((prev) => ({
+				...prev,
+				status: "idle",
+				errorMessage: undefined,
+			}));
 
-		// 重新尝试创建
-		return queuedCreateSessionMutation.mutateAsync({
-			instanceId: queueState.currentJob.instanceId,
-		});
-	}, [queueState.currentJob?.instanceId, queuedCreateSessionMutation]);
+			// 重新尝试操作
+			return executeQueuedOperation(params);
+		},
+		[queueState.currentJob?.instanceId, executeQueuedOperation],
+	);
+
+	// 刷新队列状态
+	const refreshQueueStatus = useCallback(() => {
+		if (queueState.status === "queued" || queueState.status === "active") {
+			statsQuery.refetch();
+
+			if (queueState.status === "active" && queueState.currentJob?.instanceId) {
+				checkActiveJobQuery.refetch();
+			}
+		}
+	}, [
+		queueState.status,
+		queueState.currentJob?.instanceId,
+		statsQuery,
+		checkActiveJobQuery,
+	]);
 
 	return {
 		queueState,
-		createSession: queuedCreateSessionMutation.mutate,
-		createSessionAsync: queuedCreateSessionMutation.mutateAsync,
+		executeQueuedOperation,
 		refreshQueueStatus,
 		retry,
 		completeJob,
-		isLoading: queuedCreateSessionMutation.isPending,
-		error: queuedCreateSessionMutation.error,
+		isLoading: addToQueueMutation.isPending || completeJobMutation.isPending,
 	};
 }

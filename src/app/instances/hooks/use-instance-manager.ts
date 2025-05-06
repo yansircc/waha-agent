@@ -64,7 +64,7 @@ export function useInstanceManager() {
 				// 创建会话成功后处理UI状态
 				if (result) {
 					// 如果在队列中，保持对话框打开，展示队列状态
-					if (queueState.status === "queued") {
+					if (queueState.create.status === "queued") {
 						toast.success("WhatsApp账号已创建并加入队列");
 					}
 					// 如果直接完成或活跃中，关闭对话框，显示QR码扫描
@@ -87,7 +87,7 @@ export function useInstanceManager() {
 			handleCloseAddDialog,
 			displayQRDialog,
 			agents,
-			queueState.status,
+			queueState.create.status,
 		],
 	);
 
@@ -224,13 +224,13 @@ export function useInstanceManager() {
 		handleRetrySession,
 
 		// Queue related state
-		queuePosition: queueState.queuePosition,
-		estimatedWaitTime: queueState.estimatedWaitTime,
-		isQueued: queueState.status === "queued",
-		isTimeout: queueState.status === "timeout",
-		waitingCount: queueState.waitingCount,
-		activeCount: queueState.activeCount,
-		errorMessage: queueState.errorMessage,
-		currentJobId: queueState.currentJob?.id,
+		queuePosition: queueState.create.queuePosition,
+		estimatedWaitTime: queueState.create.estimatedWaitTime,
+		isQueued: queueState.create.status === "queued",
+		isTimeout: queueState.create.status === "timeout",
+		waitingCount: queueState.create.waitingCount,
+		activeCount: queueState.create.activeCount,
+		errorMessage: queueState.create.errorMessage,
+		currentJobId: queueState.create.currentJob?.id,
 	};
 }
