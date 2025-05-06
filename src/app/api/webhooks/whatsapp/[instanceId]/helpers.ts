@@ -80,13 +80,6 @@ export async function handleChatHistory(
 }
 
 /**
- * 创建webhook回调URL
- */
-export function createWebhookUrl(instanceId: string): string {
-	return `${env.NEXT_PUBLIC_APP_URL}/api/webhooks/whatsapp/${instanceId}`;
-}
-
-/**
  * 确定与用户对话的另一方ID
  */
 export function determineOtherPartyId(

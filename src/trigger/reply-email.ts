@@ -10,10 +10,8 @@ import type { FormDataEmailPayload } from "@/types/email";
 import { wait } from "@trigger.dev/sdk";
 import { logger, task } from "@trigger.dev/sdk";
 import type { WebhookResponse } from "./types";
-import { sendWebhookResponse } from "./utils";
 
 export interface EmailFormPayload extends FormDataEmailPayload {
-	webhookUrl?: string;
 	agent: Agent;
 	signature?: string;
 	plunkApiKey: string;
@@ -41,7 +39,6 @@ export const replyEmail = task({
 			name,
 			message,
 			_country,
-			webhookUrl,
 			agent,
 			signature,
 			plunkApiKey,
@@ -104,7 +101,7 @@ Format the response as an email and ensure it aligns with the customer's message
 			);
 
 			// Generate approval URL using the passed ID
-			const approvalUrl = `${env.NEXT_PUBLIC_WEBHOOK_URL}/api/webhooks/email/approve/${approvalTokenId}`;
+			const approvalUrl = `${env.NEXT_PUBLIC_APP_URL}/api/webhooks/email/approve/${approvalTokenId}`;
 
 			// Create a message with the approval link and response preview in markdown format
 			const notificationMessage = `
@@ -161,12 +158,6 @@ Token ID: ${approvalTokenId}
 					emailSent: false,
 				};
 
-				if (webhookUrl) {
-					await sendWebhookResponse<EmailReplyWebhookResponse>(
-						webhookUrl,
-						errorResponse,
-					);
-				}
 				return errorResponse;
 			}
 
@@ -197,18 +188,6 @@ Token ID: ${approvalTokenId}
 					emailSent: emailResult?.result.success,
 				});
 
-				// Send webhook response if URL was provided
-				if (webhookUrl) {
-					logger.debug("Sending success webhook response", {
-						url: webhookUrl,
-						success: true,
-					});
-					await sendWebhookResponse<EmailReplyWebhookResponse>(
-						webhookUrl,
-						responseData,
-					);
-				}
-
 				return responseData;
 			}
 
@@ -227,12 +206,6 @@ Token ID: ${approvalTokenId}
 				responseGenerated: text, // Include the generated text even if rejected
 				emailSent: false,
 			};
-			if (webhookUrl) {
-				await sendWebhookResponse<EmailReplyWebhookResponse>(
-					webhookUrl,
-					rejectionResponse,
-				);
-			}
 			return rejectionResponse;
 		} catch (error) {
 			// Prepare error response
@@ -254,18 +227,6 @@ Token ID: ${approvalTokenId}
 				email,
 				name,
 			});
-
-			// Send error webhook response if URL was provided
-			if (webhookUrl) {
-				logger.debug("Sending error webhook response", {
-					url: webhookUrl,
-					success: false,
-				});
-				await sendWebhookResponse<EmailReplyWebhookResponse>(
-					webhookUrl,
-					errorResponse,
-				);
-			}
 
 			return errorResponse;
 		}

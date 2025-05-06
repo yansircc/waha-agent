@@ -54,7 +54,7 @@ export function EmailCard({
 					</h3>
 					<p className="max-w-full break-all font-mono text-gray-500 text-sm">
 						<span className="font-semibold">webhook:</span>{" "}
-						{`${env.NEXT_PUBLIC_WEBHOOK_URL}/api/webhooks/email/${formDataFormId}`}
+						{`${env.NEXT_PUBLIC_APP_URL}/api/webhooks/email/${formDataFormId}`}
 					</p>
 				</div>
 

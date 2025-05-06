@@ -2,7 +2,6 @@ import { getChatAgentActive, getInstanceAgent } from "@/lib/instance-redis";
 import { wahaApi } from "@/server/api/routers/waha-api";
 import { whatsAppChat } from "@/trigger/waha-chat";
 import type { WAMessage, WebhookNotification } from "@/types/api-responses";
-import { createWebhookUrl } from "./helpers";
 
 /**
  * 处理他人发送的消息
@@ -57,15 +56,11 @@ export async function handleOtherMessage(
 			console.log(`账号 ${instanceId} 没有关联的机器人配置，将使用默认回复`);
 		}
 
-		// 创建webhook回调URL
-		const webhookUrl = createWebhookUrl(instanceId);
-
 		// 触发AI处理任务
 		await whatsAppChat.trigger({
 			session,
 			webhookData: body,
 			instanceId,
-			webhookUrl,
 			...(botPhoneNumber ? { botPhoneNumber } : {}),
 			// 只在机器人存在且聊天已启用AI时提供
 			agent: agentFromRedis && isChatActive ? agentFromRedis : undefined,

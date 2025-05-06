@@ -6,8 +6,7 @@ import { getFormattedChatHistory } from "@/lib/chat-history-redis";
 import type { WAMessage } from "@/types/api-responses";
 import { logger, task } from "@trigger.dev/sdk";
 import { chunkMessage } from "./message-chunker";
-import type { WhatsAppMessagePayload, WhatsAppWebhookResponse } from "./types";
-import { sendWebhookResponse } from "./utils";
+import type { WhatsAppMessagePayload } from "./types";
 import {
 	markMessageAsSeen,
 	sendErrorMessage,
@@ -22,14 +21,7 @@ import {
 export const whatsAppChat = task({
 	id: "whatsapp-chat",
 	run: async (payload: WhatsAppMessagePayload) => {
-		const {
-			session,
-			webhookData,
-			webhookUrl,
-			instanceId,
-			agent,
-			botPhoneNumber,
-		} = payload;
+		const { session, webhookData, instanceId, agent, botPhoneNumber } = payload;
 
 		try {
 			// 提取消息数据
@@ -197,21 +189,6 @@ export const whatsAppChat = task({
 					aiResponse.substring(0, 100) + (aiResponse.length > 100 ? "..." : ""),
 			});
 
-			// 7. 准备webhook响应
-			if (webhookUrl) {
-				const webhookData: WhatsAppWebhookResponse = {
-					success: true,
-					response: aiResponse,
-					chatId,
-					messageId: sendResult.messageId,
-				};
-
-				await sendWebhookResponse<WhatsAppWebhookResponse>(
-					webhookUrl,
-					webhookData,
-				);
-			}
-
 			return {
 				success: true,
 				chatId,
@@ -242,19 +219,6 @@ export const whatsAppChat = task({
 					error:
 						sendError instanceof Error ? sendError.message : String(sendError),
 				});
-			}
-
-			// 通过webhook发送错误响应
-			if (webhookUrl) {
-				const errorResponse: WhatsAppWebhookResponse = {
-					success: false,
-					error: errorMessage,
-				};
-
-				await sendWebhookResponse<WhatsAppWebhookResponse>(
-					webhookUrl,
-					errorResponse,
-				);
 			}
 
 			return {

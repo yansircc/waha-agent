@@ -44,7 +44,6 @@ export interface ChatWebhookResponse extends WebhookResponse {
 export interface WhatsAppMessagePayload {
 	session: string;
 	webhookData: WebhookNotification;
-	webhookUrl?: string;
 	instanceId: string;
 	agent?: Agent;
 	botPhoneNumber?: string;
