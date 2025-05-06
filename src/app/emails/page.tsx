@@ -124,6 +124,7 @@ export default function EmailsPage() {
 							agentId={email.agentId}
 							agent={email.agent}
 							onEdit={() => handleOpenEditDialog(email.id)}
+							onDelete={() => handleDeleteEmail(email.id)}
 							createdAt={email.createdAt}
 							updatedAt={email.updatedAt}
 						/>
