@@ -1,0 +1,13 @@
+{
+	"next": {
+		"entry": ["next.config.ts", "src/pages/**/*.tsx"]
+	},
+	"project": ["src/**/*.ts", "src/**/*.tsx"],
+	"ignore": ["src/lib/jina-reranker.ts", "src/trpc/react.tsx"],
+	"ignoreDependencies": [
+		"@t3-oss/env-nextjs",
+		"tw-animate-css",
+		"@trigger.dev/build",
+		"tailwindcss"
+	]
+}
