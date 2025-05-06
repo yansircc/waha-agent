@@ -1,5 +1,3 @@
-import { handleOtherMessage } from "@/lib/queue/other-message-handler";
-import { handleSelfMessage } from "@/lib/queue/self-message-handler";
 import type { WAMessage, WebhookNotification } from "@/types/api-responses";
 import { type NextRequest, NextResponse } from "next/server";
 import {
@@ -7,6 +5,8 @@ import {
 	handleChatHistory,
 	identifyAndSaveBotPhoneNumber,
 } from "./helpers";
+import { handleOtherMessage } from "./other-message-handler";
+import { handleSelfMessage } from "./self-message-handler";
 import { handleSessionEvent } from "./session-event-handler";
 import {
 	isMessageEvent,

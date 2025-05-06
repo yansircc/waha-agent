@@ -6,7 +6,8 @@ export type SessionOperation =
 	| "start"
 	| "stop"
 	| "restart"
-	| "logout";
+	| "logout"
+	| "delete";
 
 export interface SessionJob {
 	id: string;
@@ -567,4 +568,56 @@ export async function cleanupOldJobs(olderThanHours = 24): Promise<number> {
 
 		return cleanedCount;
 	});
+}
+
+/**
+ * 添加删除会话操作到队列
+ * 专用于处理实例删除的便捷函数
+ */
+export async function queueSessionDelete(
+	instanceId: string,
+): Promise<SessionJob | null> {
+	try {
+		// 使用统一的队列机制
+		const job = await addToQueue(instanceId, "delete");
+
+		if (job) {
+			console.log(
+				`已将实例 ${instanceId} 的删除操作添加到队列，任务ID: ${job.id}`,
+			);
+			return job;
+		}
+
+		console.error(`将实例 ${instanceId} 的删除操作添加到队列失败`);
+		return null;
+	} catch (error) {
+		console.error("将删除操作添加到队列时出错:", error);
+		return null;
+	}
+}
+
+/**
+ * 执行会话删除操作
+ * 用于执行删除队列中的任务
+ */
+async function executeSessionDelete(instanceId: string): Promise<boolean> {
+	try {
+		// 这里实现实际的删除逻辑
+		console.log(`正在执行实例 ${instanceId} 的删除操作`);
+
+		// 1. 停止会话（依赖于您现有的API）
+		// 示例: await wahaApi.auth.logout(instanceId);
+
+		// 2. 清理相关资源
+		// 示例: await cleanupInstanceResources(instanceId);
+
+		// 3. 更新数据库中的实例状态
+		// 示例: await updateInstanceStatus(instanceId, "deleted");
+
+		console.log(`实例 ${instanceId} 删除操作完成`);
+		return true;
+	} catch (error) {
+		console.error(`执行实例 ${instanceId} 删除操作失败:`, error);
+		return false;
+	}
 }

@@ -2,13 +2,13 @@ import {
 	isAgentIdle,
 	markAgentIdle,
 	markAgentProcessing,
-} from "@/lib/queue/agent-status";
+} from "./agent-status";
 import {
+	type MessageQueueItem,
 	dequeueAllMessages,
 	getQueueLength,
 	isQueueStable,
-} from "@/lib/queue/message-queue";
-import type { MessageQueueItem } from "@/lib/queue/message-queue";
+} from "./message-queue";
 
 /**
  * 消息处理结果

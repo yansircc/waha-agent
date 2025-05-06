@@ -1,14 +1,14 @@
 import { getChatAgentActive, getInstanceAgent } from "@/lib/instance-redis";
-import { markAgentIdle } from "@/lib/queue/agent-status";
-import {
-	checkQueueAfterCompletion,
-	processQueuedMessages,
-} from "@/lib/queue/message-processor";
-import { enqueueMessage } from "@/lib/queue/message-queue";
 import { wahaApi } from "@/server/api/routers/waha-api";
 import { whatsAppChat } from "@/trigger/waha-chat";
 import type { WAMessage, WebhookNotification } from "@/types/api-responses";
 import { runs } from "@trigger.dev/sdk";
+import { markAgentIdle } from "./agent-status";
+import {
+	checkQueueAfterCompletion,
+	processQueuedMessages,
+} from "./message-processor";
+import { enqueueMessage } from "./message-queue";
 
 /**
  * 处理他人发送的消息

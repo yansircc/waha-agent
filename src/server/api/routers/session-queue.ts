@@ -21,7 +21,7 @@ export const sessionQueueRouter = createTRPCRouter({
 			z
 				.object({
 					operation: z
-						.enum(["create", "start", "stop", "restart", "logout"])
+						.enum(["create", "start", "stop", "restart", "logout", "delete"])
 						.optional(),
 				})
 				.optional(),
@@ -40,7 +40,7 @@ export const sessionQueueRouter = createTRPCRouter({
 			z.object({
 				instanceId: z.string(),
 				operation: z
-					.enum(["create", "start", "stop", "restart", "logout"])
+					.enum(["create", "start", "stop", "restart", "logout", "delete"])
 					.optional(),
 			}),
 		)

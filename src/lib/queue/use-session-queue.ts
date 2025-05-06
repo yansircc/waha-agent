@@ -191,7 +191,12 @@ export function useSessionQueue({
 			// 先添加到队列
 			const result = await addToQueueMutation.mutateAsync({
 				instanceId,
-				operation: queueState.operation,
+				operation: queueState.operation as
+					| "start"
+					| "create"
+					| "stop"
+					| "logout"
+					| "restart",
 			});
 
 			const job = result.job;

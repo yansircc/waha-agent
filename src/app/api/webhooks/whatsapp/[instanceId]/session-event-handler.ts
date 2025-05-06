@@ -4,6 +4,7 @@ import type { InstanceStatus } from "@/types";
 import type { WebhookNotification } from "@/types/api-responses";
 import { eq } from "drizzle-orm";
 import { handleQRCodeEvent } from "./qr-code-handler";
+import { resetQRScanCount } from "./session-qr-tracker";
 import { isQRCodeEvent } from "./utils";
 
 /**
@@ -80,6 +81,9 @@ export async function handleSessionEvent(
 		body.payload &&
 		typeof body.payload === "object"
 	) {
+		// 重置QR码扫描计数，因为收到了非QR码事件
+		await resetQRScanCount(instanceId, sessionName);
+
 		const payload = body.payload as SessionStatusPayload;
 
 		if (payload.status) {
@@ -103,6 +107,9 @@ export async function handleSessionEvent(
 				console.error(`[${instanceId}] 更新实例状态失败:`, error);
 			}
 		}
+	} else {
+		// 其他类型的事件，也重置QR码扫描计数
+		await resetQRScanCount(instanceId, sessionName);
 	}
 
 	return {

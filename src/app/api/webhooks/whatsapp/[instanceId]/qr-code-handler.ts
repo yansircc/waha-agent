@@ -3,6 +3,7 @@ import { db } from "@/server/db";
 import { instances } from "@/server/db/schema";
 import type { WebhookNotification } from "@/types/api-responses";
 import { eq } from "drizzle-orm";
+import { trackQRScan } from "./session-qr-tracker";
 
 /**
  * Extracts QR code data from webhook payload when available
@@ -91,6 +92,20 @@ export async function handleQRCodeEvent(
 	body?: WebhookNotification,
 ): Promise<void> {
 	console.log(`[${instanceId}] 处理QR码事件, 会话: ${sessionName}`);
+
+	// 记录QR码扫描事件并检查是否达到失败阈值
+	const { scanCount, deleteTriggered } = await trackQRScan(
+		instanceId,
+		sessionName,
+	);
+
+	// 如果已触发删除操作，直接返回，不再处理QR码
+	if (deleteTriggered) {
+		console.log(
+			`[${instanceId}] 已达到连续QR码扫描阈值(${scanCount})，已触发删除操作`,
+		);
+		return;
+	}
 
 	// 首先尝试从webhook载荷中提取QR码
 	if (body) {
