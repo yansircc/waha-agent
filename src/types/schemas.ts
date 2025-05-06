@@ -110,11 +110,7 @@ export const ResultSchema = z.object({
 });
 
 // 实例相关验证模式
-const InstanceStatusEnum = z.enum([
-	"connected",
-	"disconnected",
-	"connecting",
-]);
+const InstanceStatusEnum = z.enum(["connected", "disconnected", "connecting"]);
 
 const InstanceSchema = z.object({
 	id: z.string(),

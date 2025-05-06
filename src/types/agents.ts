@@ -32,5 +32,5 @@ const MessageSchema = ApiMessageSchema.extend({
 // Infer TypeScript types from Zod schemas
 export type Agent = z.infer<typeof AgentSchema>;
 export type KnowledgeBase = z.infer<typeof KnowledgeBaseSchema>;
-export type ApiMessage = z.infer<typeof ApiMessageSchema>;
+type ApiMessage = z.infer<typeof ApiMessageSchema>;
 export type Message = z.infer<typeof MessageSchema>;

@@ -4,9 +4,7 @@ import type { CrawlOptions, JinaCrawlResult } from "./types";
 
 // Export types
 export * from "./types";
-
 // Export the crawler class
-;
 
 // Create singleton instance
 export const jinaCrawler = new JinaCrawlerService();

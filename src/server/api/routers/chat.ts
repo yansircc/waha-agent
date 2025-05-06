@@ -1,12 +1,6 @@
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { agentChat } from "@/trigger/agent-chat";
-import {
-	type Agent,
-	AgentSchema,
-	type ApiMessage,
-	ApiMessageSchema,
-	type Message,
-} from "@/types/agents";
+import { AgentSchema, ApiMessageSchema, type Message } from "@/types/agents";
 import { auth as triggerAuth } from "@trigger.dev/sdk";
 import { nanoid } from "nanoid";
 import { z } from "zod";

@@ -7,9 +7,7 @@ import { eq } from "drizzle-orm";
 /**
  * Extracts QR code data from webhook payload when available
  */
-function extractQRCodeFromPayload(
-	body: WebhookNotification,
-): string | null {
+function extractQRCodeFromPayload(body: WebhookNotification): string | null {
 	if (body.event === "qr" && body.payload && typeof body.payload === "object") {
 		// Handle direct QR code data if available in payload
 		if ("qr" in body.payload && typeof body.payload.qr === "string") {

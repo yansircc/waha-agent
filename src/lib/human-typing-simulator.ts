@@ -242,10 +242,7 @@ export function calculateTypingDelay(
 /**
  * 通过可能添加拼写错误、非正式语言等来使文本更人性化
  */
-function humanizeText(
-	text: string,
-	options: HumanTypingOptions = {},
-): string {
+function humanizeText(text: string, options: HumanTypingOptions = {}): string {
 	const opts = { ...DEFAULT_OPTIONS, ...options };
 	const { typoRate = 0.05, abbreviationRate = 0.2 } = opts;
 

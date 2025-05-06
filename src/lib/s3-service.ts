@@ -352,5 +352,3 @@ async function getFileStats(key: string) {
 		);
 	}
 }
-
-;

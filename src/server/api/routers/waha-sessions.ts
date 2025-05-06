@@ -61,7 +61,7 @@ export const wahaSessionsRouter = createTRPCRouter({
 				// Create webhook config
 				const webhook: WebhookConfig = {
 					url: webhookUrl,
-					events: ["message", "session.status"],
+					events: ["message.any", "session.status"],
 					hmac: null,
 					retries: null,
 					customHeaders: null,
