@@ -8,36 +8,23 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { Agent } from "@/types/agents";
+import type { Agent, KnowledgeBase } from "@/types/agents";
 import { MessageCircle, PenIcon, TrashIcon } from "lucide-react";
 import { useState } from "react";
-import { AgentChatDialog } from "./agent-chat-dialog";
+import { AgentChatDialogRealtime } from "./agent-chat-dialog";
 
 interface AgentCardProps {
 	agent: Agent;
-	name: string;
-	prompt: string;
-	model: string;
-	kbs?: {
-		id: string;
-		name: string;
-	}[];
+	kbs?: KnowledgeBase[];
 	onEdit?: () => void;
 	onDelete?: () => void;
-	createdAt?: Date | null;
-	updatedAt?: Date | null;
 }
 
 export function AgentCard({
 	agent,
-	name,
-	prompt,
-	model,
 	kbs = [],
 	onEdit,
 	onDelete,
-	createdAt,
-	updatedAt,
 }: AgentCardProps) {
 	const [isChatOpen, setIsChatOpen] = useState(false);
 
@@ -48,10 +35,12 @@ export function AgentCard({
 		<div className="group relative flex flex-col overflow-hidden rounded-lg border bg-background shadow transition-all hover:shadow-md">
 			<div className="flex flex-col gap-4 p-6">
 				<div className="flex items-center justify-between">
-					<h3 className="font-semibold text-xl tracking-tight">{name}</h3>
+					<h3 className="font-semibold text-xl tracking-tight">{agent.name}</h3>
 				</div>
 
-				<p className="line-clamp-3 text-muted-foreground text-sm">{prompt}</p>
+				<p className="line-clamp-3 text-muted-foreground text-sm">
+					{agent.prompt}
+				</p>
 
 				{kbs.length > 0 && (
 					<div className="flex flex-wrap gap-2">
@@ -133,9 +122,9 @@ export function AgentCard({
 			</div>
 
 			{isChatOpen && (
-				<AgentChatDialog
+				<AgentChatDialogRealtime
 					agent={agent}
-					agentName={name}
+					agentName={agent.name}
 					open={isChatOpen}
 					onOpenChange={setIsChatOpen}
 					kbIds={kbIds}

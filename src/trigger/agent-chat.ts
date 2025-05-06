@@ -1,27 +1,36 @@
-import {
-	type KbSearcherPayload,
-	kbSearcher,
-} from "@/lib/ai-agents/kb-searcher";
-import { logger, task } from "@trigger.dev/sdk";
-import type { AgentChatPayload, ChatWebhookResponse } from "./types";
-import { sendWebhookResponse } from "./utils";
+import { kbSearcher } from "@/lib/ai-agents/kb-searcher";
+import { AgentSchema, ApiMessageSchema } from "@/types/agents";
+import { logger, schemaTask } from "@trigger.dev/sdk";
+import { z } from "zod";
 
-export const agentChat = task({
+// Define the schema for the payload
+const AgentChatSchema = z.object({
+	messages: z.array(ApiMessageSchema),
+	agent: AgentSchema,
+	conversationId: z.string(),
+	kbIds: z.array(z.string()).nullable(),
+	messageId: z.string(),
+});
+
+export type AgentChatSchemaPayload = z.infer<typeof AgentChatSchema>;
+
+export const agentChat = schemaTask({
 	id: "agent-chat",
-	run: async (payload: AgentChatPayload) => {
-		const { messages, agent, conversationId, webhookUrl, messageId } = payload;
+	schema: AgentChatSchema,
+	run: async (payload) => {
+		const { messages, agent, conversationId, messageId, kbIds } = payload;
 
 		try {
 			// Log start of processing
-			logger.info("开始聊天生成", {
+			logger.info("Starting chat generation", {
 				agentId: agent.id,
-				kbIds: agent.kbIds,
+				kbIds: agent.kbIds || kbIds,
 				conversationId,
 				messageId,
 				messageCount: messages.length,
 			});
 
-			const kbSearcherPayload: KbSearcherPayload = {
+			const kbSearcherPayload = {
 				messages: messages.map((message) => ({
 					role: message.role,
 					content: message.content,
@@ -29,66 +38,44 @@ export const agentChat = task({
 				agent,
 			};
 
-			// 调用已更新的vercelAIAgent函数(内部已包含混合搜索逻辑)
+			// Call the KB searcher function
 			const result = await kbSearcher(kbSearcherPayload);
 
-			// Prepare webhook response
-			const webhookData: ChatWebhookResponse = {
+			// Create response with the new assistant message
+			const responseMessage = {
+				role: "assistant" as const,
+				content: result.text,
+			};
+
+			// Return the result
+			return {
 				success: true,
 				response: result.text,
-				messages: [...messages, { role: "assistant", content: result.text }],
+				messages: [...messages, responseMessage],
 				agent,
 				conversationId,
 				messageId,
 			};
-
-			// Log success
-			logger.info("聊天生成完成", {
-				agent,
-				conversationId,
-				messageId,
-				messageCount: messages.length,
-				responseLength: result.text.length,
-			});
-
-			// Send webhook response
-			logger.debug("发送webhook响应", {
-				url: webhookUrl,
-				success: true,
-			});
-
-			await sendWebhookResponse<ChatWebhookResponse>(webhookUrl, webhookData);
-
-			return webhookData;
 		} catch (error) {
-			// Prepare error response
+			// Log error
 			const errorMessage =
 				error instanceof Error ? error.message : String(error);
-			const errorResponse: ChatWebhookResponse = {
+
+			logger.error("Chat generation failed", {
+				error: errorMessage,
+				agent,
+				conversationId,
+				messageId,
+			});
+
+			// Return error response
+			return {
 				success: false,
 				error: errorMessage,
 				agent,
 				conversationId,
 				messageId,
 			};
-
-			// Log error
-			logger.error("聊天生成失败", {
-				error: errorMessage,
-				agent,
-				conversationId,
-				messageId,
-			});
-
-			// Send error webhook response
-			logger.debug("发送错误webhook响应", {
-				url: webhookUrl,
-				success: false,
-			});
-
-			await sendWebhookResponse<ChatWebhookResponse>(webhookUrl, errorResponse);
-
-			return errorResponse;
 		}
 	},
 });

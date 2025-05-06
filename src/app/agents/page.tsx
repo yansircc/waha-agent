@@ -120,13 +120,8 @@ export default function AgentsPage() {
 						<AgentCard
 							key={agent.id}
 							agent={agent}
-							name={agent.name}
-							prompt={agent.prompt}
-							model={agent.model}
 							kbs={kbs.filter((kb) => agent.kbIds?.includes(kb.id))}
 							onEdit={() => handleOpenEditDialog(agent.id)}
-							createdAt={agent.createdAt}
-							updatedAt={agent.updatedAt}
 						/>
 					))}
 				</div>

@@ -9,19 +9,12 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import type { Agent } from "@/types/agents";
-import { Bot, Cloud, Send, User } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import type { Agent, Message } from "@/types/agents";
+import { Bot, Cloud, Loader2, Send, User } from "lucide-react";
+import { useRef } from "react";
+import { useChatTest } from "../hooks/use-chat-test";
 
-// 定义消息类型接口
-interface ChatMessage {
-	id: string;
-	role: "user" | "assistant";
-	content: string;
-	messageId?: string; // 服务器端消息ID
-}
-
-interface AgentChatDialogProps {
+interface AgentChatDialogRealtimeProps {
 	agent: Agent;
 	agentName: string;
 	open: boolean;
@@ -29,280 +22,39 @@ interface AgentChatDialogProps {
 	kbIds: string[];
 }
 
-export function AgentChatDialog({
+export function AgentChatDialogRealtime({
 	agent,
 	agentName,
 	open,
 	onOpenChange,
 	kbIds,
-}: AgentChatDialogProps) {
-	// 内部状态管理
-	const [messages, setMessages] = useState<ChatMessage[]>([]);
-	const [isProcessing, setIsProcessing] = useState(false);
-	const [error, setError] = useState<string | null>(null);
-	const [inputValue, setInputValue] = useState("");
-	const [conversationId, setConversationId] = useState<string | null>(null);
-	const [currentMessageId, setCurrentMessageId] = useState<string | null>(null);
+}: AgentChatDialogRealtimeProps) {
+	// Ref for auto-scrolling
+	const messagesEndRef = useRef<HTMLDivElement>(null);
 
-	// 轮询定时器
-	const pollingInterval = useRef<NodeJS.Timeout | null>(null);
-
-	// 清空聊天记录
-	const clearChat = useCallback(() => {
-		setMessages([]);
-		setError(null);
-		setConversationId(null);
-		setCurrentMessageId(null);
-
-		// 确保停止轮询
-		if (pollingInterval.current) {
-			clearInterval(pollingInterval.current);
-			pollingInterval.current = null;
-		}
-	}, []);
-
-	// 轮询消息更新
-	const startPolling = useCallback(() => {
-		// 如果没有对话ID或者不在处理中，则不需要轮询
-		if (!conversationId || !isProcessing || !currentMessageId) return;
-
-		// 避免创建多个轮询
-		if (pollingInterval.current) {
-			clearInterval(pollingInterval.current);
-			pollingInterval.current = null;
-		}
-
-		console.log(`开始轮询对话 ${conversationId}, 消息ID ${currentMessageId}`);
-
-		const checkStatus = async () => {
-			try {
-				const response = await fetch(
-					`/api/chat/status?conversationId=${conversationId}&messageId=${currentMessageId}`,
-				);
-
-				if (!response.ok) {
-					const errorData = await response
-						.json()
-						.catch(() => ({ error: "服务器错误" }));
-					setError(errorData.error || "获取消息状态失败");
-					setIsProcessing(false);
-					setCurrentMessageId(null);
-
-					// 停止轮询
-					if (pollingInterval.current) {
-						clearInterval(pollingInterval.current);
-						pollingInterval.current = null;
-					}
-					return;
-				}
-
-				const data = await response.json();
-
-				// 如果响应已完成
-				if (data.status === "completed") {
-					// 有错误信息
-					if (data.error) {
-						setError(data.error);
-						setIsProcessing(false);
-						setCurrentMessageId(null);
-
-						// 添加错误消息到聊天
-						// 检查消息是否已存在（避免重复）
-						const errorExists = messages.some(
-							(m) => m.role === "assistant" && m.content.includes(data.error),
-						);
-
-						if (!errorExists) {
-							const errorMessage: ChatMessage = {
-								id: Date.now().toString(),
-								role: "assistant",
-								content: `Error: ${data.error}`,
-								messageId: data.messageId,
-							};
-							setMessages((prev) => [...prev, errorMessage]);
-						}
-
-						// 停止轮询
-						if (pollingInterval.current) {
-							clearInterval(pollingInterval.current);
-							pollingInterval.current = null;
-						}
-						return;
-					}
-
-					// 有响应消息
-					if (data.response) {
-						console.log(
-							`收到消息ID ${currentMessageId} 的响应:`,
-							`${data.response.substring(0, 50)}...`,
-						);
-
-						// 添加助手响应
-						const assistantMessage: ChatMessage = {
-							id: Date.now().toString(),
-							role: "assistant",
-							content: data.response,
-							messageId: data.messageId,
-						};
-
-						setMessages((prev) => [...prev, assistantMessage]);
-						setIsProcessing(false);
-						setCurrentMessageId(null);
-
-						// 停止轮询
-						if (pollingInterval.current) {
-							clearInterval(pollingInterval.current);
-							pollingInterval.current = null;
-						}
-					}
-				}
-			} catch (error) {
-				console.error("轮询更新错误:", error);
-			}
-		};
-
-		// 立即执行一次
-		void checkStatus();
-
-		// 设置轮询 - 每3秒检查一次
-		pollingInterval.current = setInterval(checkStatus, 3000);
-
-		// 清理函数
-		return () => {
-			if (pollingInterval.current) {
-				clearInterval(pollingInterval.current);
-				pollingInterval.current = null;
-			}
-		};
-	}, [conversationId, isProcessing, currentMessageId, messages]);
-
-	// 发送消息
-	const sendMessage = useCallback(
-		async (content: string) => {
-			try {
-				setError(null);
-				setIsProcessing(true);
-
-				// 创建对话ID（如果不存在）
-				const dialogConversationId = conversationId || `conv-${Date.now()}`;
-				if (!conversationId) {
-					setConversationId(dialogConversationId);
-				}
-
-				// 首先，在API中注册这个新的用户消息
-				const registerResponse = await fetch("/api/chat/register", {
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-					},
-					body: JSON.stringify({
-						conversationId: dialogConversationId,
-						message: content,
-					}),
-				});
-
-				if (!registerResponse.ok) {
-					throw new Error("注册消息失败");
-				}
-
-				const { messageId } = await registerResponse.json();
-				console.log(`用户消息注册成功，ID: ${messageId}`);
-
-				// 设置当前消息ID用于轮询
-				setCurrentMessageId(messageId);
-
-				// 添加用户消息到聊天
-				const userMessage: ChatMessage = {
-					id: Date.now().toString(),
-					role: "user",
-					content,
-					messageId,
-				};
-
-				setMessages((prev) => [...prev, userMessage]);
-
-				// 准备发送到API的消息格式 - 包含所有对话历史
-				const apiMessages = messages.concat(userMessage).map((msg) => ({
-					role: msg.role,
-					content: msg.content,
-				}));
-
-				// 发送消息到触发器API
-				const response = await fetch("/api/trigger/chat", {
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-					},
-					body: JSON.stringify({
-						messages: apiMessages,
-						agent,
-						kbIds,
-						conversationId: dialogConversationId,
-						webhookUrl: `${window.location.origin}/api/webhooks/chat`,
-						messageId, // 发送消息ID到触发器
-					}),
-				});
-
-				if (!response.ok) {
-					const errorData = await response.json();
-					throw new Error(errorData.error || "发送消息失败");
-				}
-
-				// 响应成功，开始轮询
-				startPolling();
-			} catch (err) {
-				console.error("发送消息错误:", err);
-				setError(err instanceof Error ? err.message : "发送消息失败");
-				setIsProcessing(false);
-				setCurrentMessageId(null);
-			}
-		},
-		[agent, conversationId, messages, startPolling, kbIds],
-	);
-
-	// 对话关闭时清除聊天
-	useEffect(() => {
-		if (!open) {
-			clearChat();
-		}
-	}, [open, clearChat]);
-
-	// 当isProcessing状态改变时，管理轮询
-	useEffect(() => {
-		if (isProcessing && conversationId && currentMessageId) {
-			startPolling();
-		}
-
-		// 清理函数
-		return () => {
-			if (pollingInterval.current) {
-				clearInterval(pollingInterval.current);
-				pollingInterval.current = null;
-			}
-		};
-	}, [isProcessing, conversationId, currentMessageId, startPolling]);
-
-	// 发送消息处理函数
-	const handleSendMessage = async () => {
-		if (!inputValue.trim() || isProcessing) return;
-		await sendMessage(inputValue);
-		setInputValue("");
-	};
-
-	// 按Enter发送消息
-	const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-		if (e.key === "Enter" && !e.shiftKey) {
-			e.preventDefault();
-			void handleSendMessage();
-		}
-	};
+	const {
+		messages,
+		inputValue,
+		isThinking,
+		runError,
+		setInputValue,
+		handleSendMessage,
+		handleKeyDown,
+		chatMutation,
+		run,
+	} = useChatTest({
+		agent,
+		kbIds,
+		onOpenChange,
+	});
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-[500px]">
 				<DialogHeader>
 					<DialogTitle className="flex items-center gap-2">
-						<Cloud className="h-5 w-5" />和 {agentName} 聊天
+						<Cloud className="h-5 w-5" />
+						Chat with {agentName}
 					</DialogTitle>
 				</DialogHeader>
 
@@ -310,9 +62,9 @@ export function AgentChatDialog({
 					{messages.length === 0 ? (
 						<div className="flex h-full flex-col items-center justify-center text-center">
 							<Cloud className="mb-2 h-12 w-12 text-muted-foreground/50" />
-							<p className="font-medium text-lg">问我任何问题</p>
+							<p className="font-medium text-lg">Ask me anything</p>
 							<p className="text-muted-foreground text-sm">
-								尝试询问关于这个机器人的问题
+								Try asking questions about this agent
 							</p>
 						</div>
 					) : (
@@ -340,7 +92,10 @@ export function AgentChatDialog({
 							</div>
 						))
 					)}
-					{isProcessing && (
+					<div ref={messagesEndRef} />
+
+					{/* Loading indicator when waiting for response */}
+					{isThinking && (
 						<div className="flex w-max max-w-[80%] flex-col gap-2 rounded-lg bg-muted p-4">
 							<div className="flex items-center gap-2">
 								<Bot className="h-4 w-4" />
@@ -355,29 +110,37 @@ export function AgentChatDialog({
 					)}
 				</div>
 
-				{error && (
+				{runError && (
 					<div className="mb-4 rounded-md bg-destructive/15 p-3 text-destructive text-sm">
-						{error}
+						{runError.message}
 					</div>
 				)}
 
 				<div className="flex items-center gap-2">
 					<Input
-						placeholder="问我任何问题..."
+						placeholder="Ask anything..."
 						value={inputValue}
 						onChange={(e) => setInputValue(e.target.value)}
 						onKeyDown={handleKeyDown}
-						disabled={isProcessing}
+						disabled={chatMutation.isPending || run?.status === "EXECUTING"}
 						className="flex-1"
 					/>
-					<Button
-						onClick={() => void handleSendMessage()}
-						disabled={!inputValue.trim() || isProcessing}
-						size="icon"
-					>
-						<Send className="h-4 w-4" />
-						<span className="sr-only">发送消息</span>
-					</Button>
+					{isThinking ? (
+						<Loader2 className="h-4 w-4 animate-spin" />
+					) : (
+						<Button
+							onClick={handleSendMessage}
+							disabled={
+								!inputValue.trim() ||
+								chatMutation.isPending ||
+								run?.status === "EXECUTING"
+							}
+							size="icon"
+						>
+							<Send className="h-4 w-4" />
+							<span className="sr-only">Send message</span>
+						</Button>
+					)}
 				</div>
 			</DialogContent>
 		</Dialog>

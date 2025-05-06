@@ -4,7 +4,11 @@ import type { bulkCrawl } from "@/trigger/bulk-crawl";
 import { api } from "@/trpc/react";
 import { useRealtimeRun } from "@trigger.dev/react-hooks";
 import { useState } from "react";
+import { toast } from "sonner";
 
+/**
+ * src/trigger/bulk-crawl.ts
+ */
 export default function DemoPage() {
 	const [urls, setUrls] = useState("");
 	const [runId, setRunId] = useState<string | null>(null);
@@ -16,6 +20,10 @@ export default function DemoPage() {
 			setRunId(data.handle.id);
 			setToken(data.token);
 			setUrls("");
+		},
+
+		onError: (error) => {
+			toast.error(error.message);
 		},
 	});
 
