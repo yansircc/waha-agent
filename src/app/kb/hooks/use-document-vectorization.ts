@@ -4,7 +4,7 @@ import type { vectorizeDocument } from "@/trigger/vectorize-document";
 import { api } from "@/utils/api";
 import { useRealtimeRun } from "@trigger.dev/react-hooks";
 import { useEffect, useRef } from "react";
-import { documentVectorizationRuns } from "./use-documents";
+import { useKbStore } from "./store";
 
 interface UseDocumentVectorizationProps {
 	documentId: string;
@@ -19,11 +19,20 @@ export function useDocumentVectorization({
 	onCompleted,
 }: UseDocumentVectorizationProps) {
 	const utils = api.useUtils();
+	const removeProcessingDocId = useKbStore(
+		(state) => state.removeProcessingDocId,
+	);
+	const removeVectorizationRun = useKbStore(
+		(state) => state.removeVectorizationRun,
+	);
+	const vectorizationRuns = useKbStore(
+		(state) => state.documentVectorizationRuns,
+	);
 
 	// Get the run information for this document
-	const runInfo = documentVectorizationRuns[documentId];
+	const runInfo = vectorizationRuns[documentId];
 
-	// 使用ref来标记任务是否已经完成，避免重复处理
+	// Track if task has completed
 	const taskCompletedRef = useRef(false);
 
 	// Use the Trigger.dev hook to track the run status
@@ -37,13 +46,13 @@ export function useDocumentVectorization({
 
 	// Update document status when the run completes
 	useEffect(() => {
-		// 如果没有run或runInfo，或者任务已经被标记为完成，则不做任何事
+		// If no run or runInfo, or task already marked as complete, do nothing
 		if (!run || !runInfo?.kbId || taskCompletedRef.current) return;
 
-		// 只在状态是COMPLETED或FAILED时更新
+		// Only update when status is COMPLETED or FAILED
 		if (run.status !== "COMPLETED" && run.status !== "FAILED") return;
 
-		// 标记任务已完成，避免重复处理
+		// Mark task as completed to avoid duplicate processing
 		taskCompletedRef.current = true;
 
 		const updateStatus = async () => {
@@ -55,6 +64,9 @@ export function useDocumentVectorization({
 						status: "vectorized",
 						kbId: runInfo.kbId,
 					});
+
+					// Remove from processing IDs
+					removeProcessingDocId(documentId);
 
 					// Trigger callback
 					onCompleted?.(true);
@@ -69,6 +81,9 @@ export function useDocumentVectorization({
 						kbId: runInfo.kbId,
 					});
 
+					// Remove from processing IDs
+					removeProcessingDocId(documentId);
+
 					// Trigger callback
 					onCompleted?.(false);
 
@@ -76,21 +91,27 @@ export function useDocumentVectorization({
 					await utils.kbs.getDocuments.invalidate({ kbId: runInfo.kbId });
 				}
 
-				// 执行完所有操作后，安全地删除引用
-				// 使用setTimeout将删除操作移至下一个事件循环，避免影响当前渲染
+				// Clean up reference after all operations
+				// Use setTimeout to move deletion to next event loop to avoid affecting current render
 				setTimeout(() => {
-					if (documentVectorizationRuns[documentId]) {
-						delete documentVectorizationRuns[documentId];
-					}
+					removeVectorizationRun(documentId);
 				}, 0);
 			} catch (error) {
 				console.error("Failed to update document status:", error);
 			}
 		};
 
-		// 执行状态更新
+		// Execute status update
 		void updateStatus();
-	}, [documentId, onCompleted, run, runInfo?.kbId, utils]);
+	}, [
+		documentId,
+		onCompleted,
+		run,
+		runInfo?.kbId,
+		utils,
+		removeProcessingDocId,
+		removeVectorizationRun,
+	]);
 
 	return {
 		run,

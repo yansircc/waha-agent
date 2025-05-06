@@ -7,19 +7,16 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { AlertCircle, Check, Loader2 } from "lucide-react";
-import { useEffect, useRef } from "react";
-import { useDocumentVectorization } from "../hooks/use-document-vectorization";
+import { useDocumentVectorization } from "../hooks";
 
 interface DocumentStatusProps {
 	documentId: string;
 	onStatusChange?: (success: boolean) => void;
-	updateProcessingStatus?: (documentId: string, isProcessing: boolean) => void;
 }
 
 export function DocumentStatus({
 	documentId,
 	onStatusChange,
-	updateProcessingStatus,
 }: DocumentStatusProps) {
 	const { isVectorizing, isCompleted, isFailed, chunkCount, errorMessage } =
 		useDocumentVectorization({
@@ -27,19 +24,7 @@ export function DocumentStatus({
 			onCompleted: onStatusChange,
 		});
 
-	// 使用ref跟踪上一次的处理状态，避免不必要的更新
-	const prevProcessingRef = useRef(false);
-
-	// 当处理状态变化时，通知父组件，但避免不必要的更新
-	useEffect(() => {
-		// 只有当状态真正发生变化时才通知父组件
-		if (updateProcessingStatus && prevProcessingRef.current !== isVectorizing) {
-			updateProcessingStatus(documentId, isVectorizing);
-			prevProcessingRef.current = isVectorizing;
-		}
-	}, [documentId, isVectorizing, updateProcessingStatus]);
-
-	// 不要渲染任何UI，除非有明确的状态
+	// Don't render any UI unless there's a clear status
 	if (!isVectorizing && !isCompleted && !isFailed) {
 		return null;
 	}

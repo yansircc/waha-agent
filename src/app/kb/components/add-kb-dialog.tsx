@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { Loader2 } from "lucide-react";
+import { useAddKbDialog } from "../hooks/use-add-kb-dialog";
 
 interface AddKbDialogProps {
 	open: boolean;
@@ -23,19 +24,21 @@ export function AddKbDialog({
 	onOpenChange,
 	onSubmit,
 }: AddKbDialogProps) {
-	const [name, setName] = useState("");
-	const [description, setDescription] = useState("");
+	const {
+		name,
+		setName,
+		description,
+		setDescription,
+		isSubmitting,
+		handleSubmit: hookHandleSubmit,
+		handleClose,
+	} = useAddKbDialog();
 
+	// 当使用外部传入的回调时的处理
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		await onSubmit({ name, description });
 		handleClose();
-	};
-
-	const handleClose = () => {
-		onOpenChange(false);
-		setName("");
-		setDescription("");
 	};
 
 	return (
@@ -69,11 +72,23 @@ export function AddKbDialog({
 					</div>
 
 					<DialogFooter>
-						<Button type="button" variant="outline" onClick={handleClose}>
+						<Button
+							type="button"
+							variant="outline"
+							onClick={handleClose}
+							disabled={isSubmitting}
+						>
 							取消
 						</Button>
-						<Button type="submit" disabled={!name}>
-							创建知识库
+						<Button type="submit" disabled={!name || isSubmitting}>
+							{isSubmitting ? (
+								<>
+									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+									创建中...
+								</>
+							) : (
+								"创建知识库"
+							)}
 						</Button>
 					</DialogFooter>
 				</form>

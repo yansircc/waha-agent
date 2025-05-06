@@ -11,6 +11,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { FileText, Loader2, Trash2, UploadCloud } from "lucide-react";
 import { useState } from "react";
+import { useAddDocumentDialog } from "../hooks/use-add-document-dialog";
 
 interface AddDocumentDialogProps {
 	open: boolean;
@@ -23,49 +24,28 @@ export function AddDocumentDialog({
 	onOpenChange,
 	onSubmit,
 }: AddDocumentDialogProps) {
-	const [dragActive, setDragActive] = useState(false);
-	const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
 	const [isUploading, setIsUploading] = useState(false);
 
-	const handleDrag = (e: React.DragEvent) => {
-		e.preventDefault();
-		e.stopPropagation();
-		if (e.type === "dragenter" || e.type === "dragover") {
-			setDragActive(true);
-		} else if (e.type === "dragleave") {
-			setDragActive(false);
-		}
-	};
+	const {
+		dragActive,
+		uploadedFiles,
+		handleDrag,
+		handleDrop,
+		handleFileInput,
+		handleRemoveFile,
+		getTotalSize,
+		handleClose,
+	} = useAddDocumentDialog();
 
-	const handleDrop = (e: React.DragEvent) => {
-		e.preventDefault();
-		e.stopPropagation();
-		setDragActive(false);
-
-		if (e.dataTransfer.files?.length) {
-			const filesArray = Array.from(e.dataTransfer.files);
-			setUploadedFiles((prev) => [...prev, ...filesArray]);
-		}
-	};
-
-	const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-		if (e.target.files?.length) {
-			const filesArray = Array.from(e.target.files);
-			setUploadedFiles((prev) => [...prev, ...filesArray]);
-		}
-	};
-
-	const handleRemoveFile = (index: number) => {
-		setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
-	};
-
+	// 当使用外部传入的回调时的处理
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (uploadedFiles.length === 0 || isUploading) return;
 
-		setIsUploading(true);
 		try {
-			// Validate all files before uploading
+			setIsUploading(true);
+
+			// 验证所有文件
 			for (const file of uploadedFiles) {
 				const isTextFile = [
 					"text/plain",
@@ -88,19 +68,9 @@ export function AddDocumentDialog({
 		} catch (error) {
 			console.error("Error uploading documents:", error);
 			alert(`Upload failed. ${error instanceof Error ? error.message : ""}`);
+		} finally {
 			setIsUploading(false);
 		}
-	};
-
-	const handleClose = () => {
-		if (isUploading) return; // Prevent closing while uploading
-		onOpenChange(false);
-		setUploadedFiles([]);
-		setIsUploading(false);
-	};
-
-	const getTotalSize = () => {
-		return uploadedFiles.reduce((acc, file) => acc + file.size, 0);
 	};
 
 	return (
@@ -217,14 +187,7 @@ export function AddDocumentDialog({
 							type="submit"
 							disabled={uploadedFiles.length === 0 || isUploading}
 						>
-							{isUploading ? (
-								<>
-									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-									上传中...
-								</>
-							) : (
-								`上传文档 (${uploadedFiles.length})`
-							)}
+							{isUploading ? "上传中..." : `上传文档 (${uploadedFiles.length})`}
 						</Button>
 					</DialogFooter>
 				</form>

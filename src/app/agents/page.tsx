@@ -1,6 +1,6 @@
 "use client";
 
-import { useKbs } from "@/app/kb/hooks/use-kbs";
+import { useKbApi } from "@/app/kb/hooks";
 import { Button } from "@/components/ui/button";
 import type { Agent } from "@/types/agents";
 import { Plus } from "lucide-react";
@@ -15,7 +15,7 @@ export default function AgentsPage() {
 
 	const { agents, isLoadingAgents, createAgent, updateAgent, deleteAgent } =
 		useAgents();
-	const { kbs } = useKbs();
+	const { kbs } = useKbApi();
 
 	const handleOpenCreateDialog = () => {
 		setIsCreatingAgent(true);

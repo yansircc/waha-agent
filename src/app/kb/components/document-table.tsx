@@ -29,7 +29,7 @@ import { formatFileSize } from "@/lib/utils";
 import type { Document } from "@/types/document";
 import { Check, Loader2, Trash2, Wand2, XCircle } from "lucide-react";
 import React from "react";
-import { useDocumentTable } from "../hooks/use-document-table";
+import { useDocumentTable } from "../hooks";
 import { DocumentStatus } from "./document-status";
 import { DocumentStatusBadge } from "./status-badge";
 
@@ -38,32 +38,24 @@ interface DocumentTableProps {
 	onDelete: (id: string, kbId: string) => void | Promise<void>;
 	onVectorize: (id: string) => void | Promise<void>;
 	isVectorizing?: boolean;
-	vectorizingDocId?: string | null;
 }
 
-// 添加React.memo以避免不必要的重渲染
+// Using React.memo to avoid unnecessary re-renders
 const DocumentStatusCell = React.memo(function DocumentStatusCell({
 	document,
 	isProcessing,
-	isGloballyVectorizing,
-	updateDocumentStatus,
 }: {
 	document: Document;
 	isProcessing: (doc: Document) => boolean;
-	isGloballyVectorizing: (doc: Document) => boolean;
-	updateDocumentStatus: (id: string, isProcessing: boolean) => void;
 }) {
 	return (
 		<div className="flex items-center space-x-2">
 			<DocumentStatusBadge
 				status={document.vectorizationStatus}
-				isProcessing={isProcessing(document) || isGloballyVectorizing(document)}
+				isProcessing={isProcessing(document)}
 				isCrawling={document.isCrawling}
 			/>
-			<DocumentStatus
-				documentId={document.id}
-				updateProcessingStatus={updateDocumentStatus}
-			/>
+			<DocumentStatus documentId={document.id} />
 		</div>
 	);
 });
@@ -73,9 +65,8 @@ export function DocumentTable({
 	onDelete,
 	onVectorize,
 	isVectorizing = false,
-	vectorizingDocId = null,
 }: DocumentTableProps) {
-	// 使用自定义钩子管理所有文档表格逻辑
+	// Use the document table hook for all table functionality
 	const {
 		localDocuments,
 		documentToDelete,
@@ -89,17 +80,11 @@ export function DocumentTable({
 		executeDelete,
 		cancelDelete,
 		openFile,
-		updateDocumentStatus,
 	} = useDocumentTable({
 		documents,
 		onDelete,
 		onVectorize,
 	});
-
-	// 检查文档是否正在被全局向量化
-	const isGloballyVectorizing = (document: Document) => {
-		return isVectorizing && vectorizingDocId === document.id;
-	};
 
 	return (
 		<>
@@ -128,7 +113,7 @@ export function DocumentTable({
 										onClick={(e) => {
 											// Prevent default link behavior
 											e.preventDefault();
-											// Use the openFile function from useDocumentTable hook
+											// Use the openFile function from the hook
 											openFile(document.fileUrl);
 										}}
 									>
@@ -146,13 +131,11 @@ export function DocumentTable({
 									<DocumentStatusCell
 										document={document}
 										isProcessing={isProcessing}
-										isGloballyVectorizing={isGloballyVectorizing}
-										updateDocumentStatus={updateDocumentStatus}
 									/>
 								</TableCell>
 								<TableCell className="text-right">
 									<div className="flex items-center justify-end space-x-2">
-										{/* 向量化按钮 - 始终显示，但根据状态有不同图标 */}
+										{/* Vectorize button - always shown but with different icons based on status */}
 										<TooltipProvider>
 											<Tooltip>
 												<TooltipTrigger asChild>
@@ -163,32 +146,35 @@ export function DocumentTable({
 														disabled={
 															isProcessing(document) ||
 															isDeleting(document) ||
-															isCompleted(document) ||
-															isGloballyVectorizing(document)
+															isCompleted(document)
 														}
 														onClick={() =>
 															!isProcessing(document) &&
 															!isCompleted(document) &&
-															!isGloballyVectorizing(document) &&
 															handleVectorize(document)
 														}
 													>
-														{isProcessing(document) ||
-														isGloballyVectorizing(document) ? (
-															<Loader2 className="h-4 w-4 animate-spin" />
-														) : isFailed(document) ? (
-															<XCircle className="h-4 w-4 text-red-500" />
-														) : isCompleted(document) ? (
-															<Check className="h-4 w-4 text-green-500" />
-														) : (
-															<Wand2 className="h-4 w-4" />
-														)}
+														{(() => {
+															switch (true) {
+																case isProcessing(document):
+																	return (
+																		<Loader2 className="h-4 w-4 animate-spin" />
+																	);
+																case isFailed(document):
+																	return (
+																		<XCircle className="h-4 w-4 text-red-500" />
+																	);
+																case !isCompleted(document):
+																	return <Wand2 className="h-4 w-4" />;
+																default:
+																	return null;
+															}
+														})()}
 													</Button>
 												</TooltipTrigger>
 												<TooltipContent>
 													<p>
-														{isProcessing(document) ||
-														isGloballyVectorizing(document)
+														{isProcessing(document)
 															? "处理中..."
 															: isCompleted(document)
 																? "已投喂"
@@ -205,10 +191,7 @@ export function DocumentTable({
 														variant="ghost"
 														size="icon"
 														className="h-8 w-8"
-														disabled={
-															isDeleting(document) ||
-															isGloballyVectorizing(document)
-														}
+														disabled={isDeleting(document)}
 														onClick={() => confirmDelete(document)}
 													>
 														{isDeleting(document) ? (
@@ -231,7 +214,7 @@ export function DocumentTable({
 				</Table>
 			</div>
 
-			{/* 删除确认对话框 */}
+			{/* Delete confirmation dialog */}
 			<AlertDialog
 				open={!!documentToDelete}
 				onOpenChange={(open) => !open && cancelDelete()}

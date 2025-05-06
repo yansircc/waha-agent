@@ -6,17 +6,17 @@ import { AddDocumentDialog } from "./components/add-document-dialog";
 import { AddKbDialog } from "./components/add-kb-dialog";
 import { KbDetail } from "./components/kb-details";
 import { KbList } from "./components/kb-list";
-import { useKbPage } from "./hooks/use-kb-page";
+import { useKbPage } from "./hooks";
 
 export function KbClient({
 	userId,
 }: {
 	userId: string;
 }) {
-	// 使用封装好的hook获取所有状态和处理函数
+	// Use the refactored hook for all KB page functionality
 	const {
-		// 状态
-		tab,
+		// States
+		activeTab,
 		selectedKb,
 		isAddKbOpen,
 		isAddDocOpen,
@@ -24,18 +24,18 @@ export function KbClient({
 		isLoadingKbs,
 		documents,
 		isLoadingDocuments,
-		isVectorizing,
-		vectorizingDocId,
+		isProcessing,
 
-		// Dialog 控制函数
+		// Dialog control functions
 		setIsAddKbOpen,
 		setIsAddDocOpen,
 
-		// 处理函数
+		// Handler functions
 		handleOpenAddKbDialog,
 		handleSubmitKb,
 		handleDeleteKb,
 		handleOpenAddDocDialog,
+		handleCloseAddDocDialog,
 		handleSubmitDoc,
 		handleDeleteDocument,
 		handleVectorizeDocument,
@@ -46,7 +46,7 @@ export function KbClient({
 
 	return (
 		<div className="container py-8">
-			{tab === "list" ? (
+			{activeTab === "list" ? (
 				<>
 					<div className="mb-8 flex items-center justify-between">
 						<h1 className="font-bold text-3xl">知识库</h1>
@@ -69,8 +69,7 @@ export function KbClient({
 						kb={selectedKb}
 						documents={documents}
 						isLoading={isLoadingDocuments}
-						isVectorizing={isVectorizing}
-						vectorizingDocId={vectorizingDocId}
+						isVectorizing={isProcessing}
 						userId={userId}
 						onBack={handleBackToList}
 						onAddDocument={handleOpenAddDocDialog}

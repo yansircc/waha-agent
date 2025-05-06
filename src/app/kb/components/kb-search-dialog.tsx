@@ -96,7 +96,7 @@ export function KbSearchDialog({
 			query: query.trim(),
 			kbId: kb.id,
 			limit: 5,
-			scoreNormalization: "percentage", // 默认使用百分比归一化
+			scoreNormalization: "percentage", // Default: percentage normalization
 		});
 	};
 
@@ -173,7 +173,7 @@ function SearchResultsList({ results }: { results: SearchResult[] }) {
 								{result.payload.text}
 							</div>
 
-							{/* 展示元数据 */}
+							{/* Display metadata */}
 							<div className="space-y-1 text-xs">
 								<div className="text-muted-foreground">
 									<strong>文档元数据:</strong>{" "}

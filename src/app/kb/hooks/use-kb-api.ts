@@ -1,16 +1,24 @@
+"use client";
+
 import type { AppRouter } from "@/server/api/root";
 import { api } from "@/utils/api";
 import type { TRPCClientErrorLike } from "@trpc/client";
 import { useState } from "react";
+import { useKbStore } from "./store";
 
-interface UseKbsProps {
+interface UseKbApiOptions {
 	onSuccess?: () => void;
 	onError?: (error: TRPCClientErrorLike<AppRouter>) => void;
 }
 
-export function useKbs({ onSuccess, onError }: UseKbsProps = {}) {
+/**
+ * Hook for knowledge base CRUD operations
+ */
+export function useKbApi(options: UseKbApiOptions = {}) {
 	const [isLoading, setIsLoading] = useState(false);
 	const utils = api.useUtils();
+	const setSelectedKb = useKbStore((state) => state.setSelectedKb);
+	const setActiveTab = useKbStore((state) => state.setActiveTab);
 
 	// Get all knowledge bases
 	const kbsQuery = api.kbs.getAll.useQuery();
@@ -21,16 +29,6 @@ export function useKbs({ onSuccess, onError }: UseKbsProps = {}) {
 	};
 
 	// Create a new knowledge base
-	const createKbMutation = api.kbs.create.useMutation({
-		onSuccess: () => {
-			utils.kbs.getAll.invalidate();
-			onSuccess?.();
-		},
-		onError: (error) => {
-			onError?.(error);
-		},
-	});
-
 	const createKb = async (data: {
 		name: string;
 		description?: string;
@@ -41,30 +39,24 @@ export function useKbs({ onSuccess, onError }: UseKbsProps = {}) {
 	}) => {
 		setIsLoading(true);
 		try {
-			const result = await createKbMutation.mutateAsync({
+			const result = await utils.client.kbs.create.mutate({
 				name: data.name,
 				description: data.description,
-				// Other fields are now handled through documents
 			});
+
+			await utils.kbs.getAll.invalidate();
+			options.onSuccess?.();
 			setIsLoading(false);
 			return result;
 		} catch (error: unknown) {
 			setIsLoading(false);
+			const typedError = error as TRPCClientErrorLike<AppRouter>;
+			options.onError?.(typedError);
 			throw error;
 		}
 	};
 
 	// Update a knowledge base
-	const updateKbMutation = api.kbs.update.useMutation({
-		onSuccess: () => {
-			utils.kbs.getAll.invalidate();
-			onSuccess?.();
-		},
-		onError: (error) => {
-			onError?.(error);
-		},
-	});
-
 	const updateKb = async (data: {
 		id: string;
 		name?: string;
@@ -76,45 +68,51 @@ export function useKbs({ onSuccess, onError }: UseKbsProps = {}) {
 	}) => {
 		setIsLoading(true);
 		try {
-			const result = await updateKbMutation.mutateAsync(data);
+			const result = await utils.client.kbs.update.mutate(data);
+
+			await utils.kbs.getAll.invalidate();
+			options.onSuccess?.();
 			setIsLoading(false);
 			return result;
 		} catch (error: unknown) {
 			setIsLoading(false);
+			const typedError = error as TRPCClientErrorLike<AppRouter>;
+			options.onError?.(typedError);
 			throw error;
 		}
 	};
 
 	// Delete a knowledge base
-	const deleteKbMutation = api.kbs.delete.useMutation({
-		onSuccess: () => {
-			utils.kbs.getAll.invalidate();
-			onSuccess?.();
-		},
-		onError: (error) => {
-			onError?.(error);
-		},
-	});
-
 	const deleteKb = async (id: string) => {
 		setIsLoading(true);
 		try {
-			const result = await deleteKbMutation.mutateAsync({ id });
+			const result = await utils.client.kbs.delete.mutate({ id });
+
+			// Update local state if the deleted KB was selected
+			const selectedKb = useKbStore.getState().selectedKb;
+			if (selectedKb?.id === id) {
+				setSelectedKb(null);
+				setActiveTab("list");
+			}
+
+			await utils.kbs.getAll.invalidate();
+			options.onSuccess?.();
 			setIsLoading(false);
 			return result;
 		} catch (error: unknown) {
 			setIsLoading(false);
+			const typedError = error as TRPCClientErrorLike<AppRouter>;
+			options.onError?.(typedError);
 			throw error;
 		}
 	};
 
 	return {
 		kbs: kbsQuery.data || [],
-		isLoadingKbs: kbsQuery.isLoading,
+		isLoadingKbs: kbsQuery.isLoading || isLoading,
 		getKbById,
 		createKb,
 		updateKb,
 		deleteKb,
-		isLoading,
 	};
 }

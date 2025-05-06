@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { api } from "@/trpc/react";
+import { api } from "@/utils/api";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -46,11 +46,11 @@ export function CrawlWebpageDialog({
 				description: "正在后台处理...",
 			});
 
-			// 通知父组件并关闭对话框
+			// Notify parent component and close dialog
 			onCrawlSubmitted(data.handle?.id || "", data.token);
 			onOpenChange(false);
 
-			// 重置表单
+			// Reset form
 			setTimeout(() => {
 				setUrls("");
 				setSitemapUrl("");
@@ -78,7 +78,7 @@ export function CrawlWebpageDialog({
 				return;
 			}
 
-			// 添加到URL输入框并切换到URL选项卡
+			// Add to URL input and switch to URL tab
 			setUrls(data.urls.join("\n"));
 			setActiveTab("urls");
 			toast.success("Sitemap解析成功", {
@@ -92,7 +92,7 @@ export function CrawlWebpageDialog({
 		},
 	});
 
-	// 当对话框关闭时重置状态
+	// Reset state when dialog closes
 	useEffect(() => {
 		if (!open) {
 			setTimeout(() => {
@@ -104,7 +104,7 @@ export function CrawlWebpageDialog({
 		}
 	}, [open]);
 
-	// 检查URL是否有效
+	// Check if URL is valid
 	function isValidUrl(urlString: string): boolean {
 		try {
 			const url = new URL(urlString);
@@ -114,53 +114,7 @@ export function CrawlWebpageDialog({
 		}
 	}
 
-	// 解析XML中的URL标签内容
-	function parseXml(xml: string, tagName: string): string[] {
-		const regex = new RegExp(`<${tagName}[^>]*>(.*?)</${tagName}>`, "g");
-		const matches = [...xml.matchAll(regex)];
-		return matches.map((match) => match[1]?.trim() || "").filter(Boolean);
-	}
-
-	// 清理和验证URL
-	function sanitizeUrl(url: string): string {
-		return url.trim().replace(/&amp;/g, "&");
-	}
-
-	// 从Sitemap XML中提取URL
-	async function extractUrlsFromSitemap(xmlText: string): Promise<string[]> {
-		try {
-			// 提取URL
-			const urls = parseXml(xmlText, "loc");
-			console.log(`从XML中提取到 ${urls.length} 个原始URL`);
-
-			// 对所有URL进行额外清理和验证
-			const validUrls = urls.map(sanitizeUrl).filter((url) => {
-				// 基本URL验证
-				try {
-					new URL(url);
-
-					// 排除sitemap XML文件，只保留实际页面URL
-					if (url.endsWith(".xml") || url.includes("sitemap")) {
-						console.log(`跳过sitemap URL: ${url}`);
-						return false;
-					}
-
-					return true;
-				} catch (error) {
-					console.warn(`无效的URL: ${url}`);
-					return false;
-				}
-			});
-
-			console.log(`过滤后剩余有效URL: ${validUrls.length} 个`);
-			return validUrls;
-		} catch (error) {
-			console.error("解析Sitemap XML失败:", error);
-			return [];
-		}
-	}
-
-	// 处理Sitemap提交
+	// Handle sitemap submission
 	async function handleSitemapSubmit() {
 		if (!sitemapUrl.trim()) {
 			toast.error("输入错误", {
@@ -176,11 +130,11 @@ export function CrawlWebpageDialog({
 			return;
 		}
 
-		// 使用tRPC获取和解析sitemap
+		// Use tRPC to fetch and parse the sitemap
 		fetchSitemap.mutate({ sitemapUrl: sitemapUrl.trim() });
 	}
 
-	// 处理表单提交
+	// Handle form submission
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
 
@@ -191,13 +145,13 @@ export function CrawlWebpageDialog({
 			return;
 		}
 
-		// 已提交状态下不重复处理
+		// Don't process if already submitted
 		if (submitted || isLoading || triggerBulkCrawl.isPending) {
 			return;
 		}
 
 		try {
-			// 分割URL并验证
+			// Split and validate URLs
 			const urlList = urls
 				.split("\n")
 				.map((url) => url.trim())
@@ -213,7 +167,7 @@ export function CrawlWebpageDialog({
 			setSubmitted(true);
 			setIsLoading(true);
 
-			// 使用tRPC提交批量爬取任务
+			// Use tRPC to submit bulk crawl task
 			triggerBulkCrawl.mutate({
 				urls: urlList,
 				userId,

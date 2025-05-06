@@ -1,58 +1,41 @@
 "use client";
 
-import { env } from "@/env";
 import { QDRANT_COLLECTION_NAME } from "@/lib/constants";
 import type { AppRouter } from "@/server/api/root";
+import type { BulkCrawlResult } from "@/trigger/bulk-crawl";
+import type { Document } from "@/types/document";
 import { api } from "@/utils/api";
 import type { TRPCClientErrorLike } from "@trpc/client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
+import { toast } from "sonner";
+import { useKbStore } from "./store";
 import { useS3Upload } from "./use-s3-upload";
 
-interface UseDocumentsProps {
+interface UseDocumentApiOptions {
 	onSuccess?: () => void;
 	onError?: (error: TRPCClientErrorLike<AppRouter>) => void;
 }
 
-interface DocumentResult {
-	id: string;
-	kbId: string;
-	name: string;
-	fileUrl: string | null;
-	filePath: string | null;
-	fileType: string | null;
-	fileSize: number | null;
-	mimeType: string | null;
-	vectorizationStatus: string;
-	createdAt: Date;
-	updatedAt: Date | null;
-	content?: string | null;
-	metadata?: unknown;
-	isText?: boolean | null;
-}
-
-// Store active vectorization runs
-interface VectorizationRun {
-	runId: string;
-	token: string;
-	documentId: string;
-	kbId: string;
-}
-
-// Export the document vectorization runs for use in other components
-export const documentVectorizationRuns: Record<string, VectorizationRun> = {};
-
-export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
+/**
+ * Hook for document CRUD and vectorization operations
+ */
+export function useDocumentApi(options: UseDocumentApiOptions = {}) {
 	const [isLoading, setIsLoading] = useState(false);
 	const [isProcessing, setIsProcessing] = useState(false);
-	const [uploadProgress, setUploadProgress] = useState<Record<string, number>>(
-		{},
-	);
-	const utils = api.useUtils();
-	const pollingRef = useRef<NodeJS.Timeout | null>(null);
-	const processingDocumentsRef = useRef(new Set<string>());
 
-	// Use the centralized S3 upload hook
+	// Get store states and actions
+	const addProcessingDocId = useKbStore((state) => state.addProcessingDocId);
+	const removeProcessingDocId = useKbStore(
+		(state) => state.removeProcessingDocId,
+	);
+	const addDeletingDocId = useKbStore((state) => state.addDeletingDocId);
+	const removeDeletingDocId = useKbStore((state) => state.removeDeletingDocId);
+	const setUploadProgress = useKbStore((state) => state.setUploadProgress);
+	const resetUploadProgress = useKbStore((state) => state.resetUploadProgress);
+	const addVectorizationRun = useKbStore((state) => state.addVectorizationRun);
+
 	const { upload } = useS3Upload();
+	const utils = api.useUtils();
 
 	// Get documents by knowledge base ID
 	const getDocumentsByKbId = (kbId: string | undefined) => {
@@ -62,96 +45,12 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 		);
 	};
 
-	// Poll for document status updates
-	const startPolling = useCallback(
-		(documentIds: string[]) => {
-			// Clear any existing polling
-			if (pollingRef.current) {
-				clearInterval(pollingRef.current);
-			}
-
-			if (documentIds.length === 0) return;
-
-			// Track the processing documents
-			for (const id of documentIds) {
-				processingDocumentsRef.current.add(id);
-			}
-
-			// Start polling
-			pollingRef.current = setInterval(async () => {
-				try {
-					// Only poll if we have processing documents
-					if (processingDocumentsRef.current.size === 0) {
-						if (pollingRef.current) {
-							clearInterval(pollingRef.current);
-							pollingRef.current = null;
-						}
-						return;
-					}
-
-					const response = await fetch(
-						`/api/document-updates?documentIds=${Array.from(processingDocumentsRef.current).join(",")}`,
-					);
-
-					if (!response.ok) {
-						console.error("获取文档更新失败:", response.statusText);
-						return;
-					}
-
-					const data = await response.json();
-
-					if (data.success && data.documents) {
-						let shouldRefresh = false;
-
-						// Check if any document has changed from processing status
-						for (const doc of data.documents) {
-							if (doc.status !== "processing") {
-								processingDocumentsRef.current.delete(doc.documentId);
-								shouldRefresh = true;
-							}
-						}
-
-						// If any document status changed, invalidate queries to refresh UI
-						if (shouldRefresh) {
-							// Invalidate all document queries
-							for (const doc of data.documents) {
-								if (doc.kbId) {
-									await utils.kbs.getDocuments.invalidate({ kbId: doc.kbId });
-								}
-							}
-
-							// If there are no more processing documents, stop polling
-							if (processingDocumentsRef.current.size === 0) {
-								if (pollingRef.current) {
-									clearInterval(pollingRef.current);
-									pollingRef.current = null;
-								}
-							}
-						}
-					}
-				} catch (error) {
-					console.error("获取文档更新失败:", error);
-				}
-			}, 3000); // 每3秒轮询一次
-		},
-		[utils.kbs.getDocuments],
-	);
-
-	// Clean up polling on unmount
-	useEffect(() => {
-		return () => {
-			if (pollingRef.current) {
-				clearInterval(pollingRef.current);
-			}
-		};
-	}, []);
-
 	// Get document by ID
 	const getDocumentById = (id: string) => {
 		return api.kbs.getDocumentById.useQuery({ id });
 	};
 
-	// Create document with S3 upload
+	// Create a document with S3 upload
 	const createDocument = async (data: {
 		name: string;
 		kbId: string;
@@ -161,13 +60,13 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 		setIsProcessing(true);
 
 		try {
-			console.log("开始创建文档:", {
+			console.log("Creating document:", {
 				name: data.name,
 				kbId: data.kbId,
 				fileName: data.file.name,
 			});
 
-			// Upload file using the centralized hook
+			// Upload file using the S3 upload hook
 			const result = await upload(data.file);
 
 			// Extract key and URLs from the upload result
@@ -185,8 +84,6 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 				fileUrl: fileUrl, // Save the long-lived URL to database
 			});
 
-			setIsLoading(false);
-
 			// Invalidate queries
 			if (docResult?.kbId) {
 				await utils.kbs.getDocuments.invalidate({
@@ -195,22 +92,22 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 			}
 			await utils.kbs.getAll.invalidate();
 
-			setIsProcessing(false);
-			onSuccess?.();
-
+			options.onSuccess?.();
 			return docResult;
 		} catch (error: unknown) {
-			setIsLoading(false);
-			setIsProcessing(false);
-
 			const errorMessage =
-				error instanceof Error ? error.message : "上传文档失败。请再试一次。";
+				error instanceof Error
+					? error.message
+					: "Failed to upload document. Please try again.";
 
-			console.error("文档创建失败:", error);
-			onError?.(
+			console.error("Document creation failed:", error);
+			options.onError?.(
 				new Error(errorMessage) as unknown as TRPCClientErrorLike<AppRouter>,
 			);
 			throw new Error(errorMessage);
+		} finally {
+			setIsLoading(false);
+			setIsProcessing(false);
 		}
 	};
 
@@ -222,8 +119,8 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 		setIsLoading(true);
 		setIsProcessing(true);
 
-		const results: DocumentResult[] = [];
-		const createdDocuments: DocumentResult[] = [];
+		const results: Document[] = [];
+		const createdDocuments: Document[] = [];
 		const failedUploads: { fileName: string; error: string }[] = [];
 
 		try {
@@ -231,25 +128,22 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 			const initialProgress: Record<string, number> = {};
 			for (const file of data.files) {
 				initialProgress[file.name] = 0;
+				setUploadProgress(file.name, 0);
 			}
-			setUploadProgress(initialProgress);
 
 			// Process each file
 			for (const file of data.files) {
 				try {
-					console.log("开始上传文档:", {
+					console.log("Uploading document:", {
 						fileName: file.name,
 						kbId: data.kbId,
 					});
 
-					// Upload file using the centralized hook
+					// Upload file using the S3 upload hook
 					const result = await upload(file);
 
 					// Update progress
-					setUploadProgress((prev) => ({
-						...prev,
-						[file.name]: 100,
-					}));
+					setUploadProgress(file.name, 100);
 
 					// Extract key and URLs from the upload result
 					const key = result.key;
@@ -274,10 +168,10 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 						createdDocuments.push(docResult);
 					}
 				} catch (error) {
-					console.error(`文档 "${file.name}" 上传失败:`, error);
+					console.error(`Document "${file.name}" upload failed:`, error);
 					failedUploads.push({
 						fileName: file.name,
-						error: error instanceof Error ? error.message : "上传失败",
+						error: error instanceof Error ? error.message : "Upload failed",
 					});
 				}
 			}
@@ -292,7 +186,7 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 
 			// Call success callback if at least one document was created
 			if (createdDocuments.length > 0) {
-				onSuccess?.();
+				options.onSuccess?.();
 			}
 
 			return {
@@ -305,21 +199,21 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 			const errorMessage =
 				error instanceof Error
 					? error.message
-					: "批量上传文档失败。请再试一次。";
+					: "Batch document upload failed. Please try again.";
 
-			console.error("批量文档创建失败:", error);
-			onError?.(
+			console.error("Batch document creation failed:", error);
+			options.onError?.(
 				new Error(errorMessage) as unknown as TRPCClientErrorLike<AppRouter>,
 			);
 			throw new Error(errorMessage);
 		} finally {
 			setIsLoading(false);
 			setIsProcessing(false);
-			setUploadProgress({});
+			resetUploadProgress();
 		}
 	};
 
-	// Update document with S3 upload
+	// Update a document with S3 upload
 	const updateDocument = async (data: {
 		id: string;
 		kbId: string;
@@ -328,7 +222,7 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 		setIsLoading(true);
 
 		try {
-			// Upload file using the centralized hook
+			// Upload file using the S3 upload hook
 			const result = await upload(data.file);
 
 			// Extract key and URLs from the upload result
@@ -346,29 +240,33 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 				fileUrl: fileUrl, // Save the long-lived URL to database
 			});
 
-			setIsLoading(false);
-
 			// Invalidate queries
 			if (docResult?.kbId) {
-				utils.kbs.getDocuments.invalidate({
+				await utils.kbs.getDocuments.invalidate({
 					kbId: docResult.kbId,
 				});
 			}
-			utils.kbs.getAll.invalidate();
-			onSuccess?.();
+			await utils.kbs.getAll.invalidate();
+			options.onSuccess?.();
 
 			return docResult;
 		} catch (error: unknown) {
-			setIsLoading(false);
-			onError?.(error as TRPCClientErrorLike<AppRouter>);
+			options.onError?.(error as TRPCClientErrorLike<AppRouter>);
 			throw error;
+		} finally {
+			setIsLoading(false);
 		}
 	};
 
+	// Delete a document
 	const deleteDocument = async (id: string, kbId?: string) => {
 		setIsLoading(true);
+
 		try {
-			// 先获取文档状态，检查是否已向量化
+			// Add to deleting IDs
+			addDeletingDocId(id);
+
+			// First get document status to check if it's vectorized
 			const document = await utils.client.kbs.getDocumentById.query({ id });
 
 			// Delete document from database first
@@ -386,7 +284,7 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 					});
 				} catch (qdrantError) {
 					// Log but don't fail the entire operation if Qdrant deletion fails
-					console.error("删除Qdrant点失败:", qdrantError);
+					console.error("Failed to delete Qdrant points:", qdrantError);
 				}
 			}
 
@@ -397,18 +295,19 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 				});
 			}
 			await utils.kbs.getAll.invalidate();
-			onSuccess?.();
+			options.onSuccess?.();
 
-			setIsLoading(false);
 			return result;
 		} catch (error: unknown) {
-			setIsLoading(false);
-			onError?.(error as TRPCClientErrorLike<AppRouter>);
+			options.onError?.(error as TRPCClientErrorLike<AppRouter>);
 			throw error;
+		} finally {
+			setIsLoading(false);
+			removeDeletingDocId(id);
 		}
 	};
 
-	// Update vectorizeDocument method to use the new Trigger.dev task
+	// Vectorize a document using Trigger.dev
 	const vectorizeDocument = async (data: {
 		kbId: string;
 		documentId: string;
@@ -416,64 +315,71 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 		url?: string;
 	}) => {
 		setIsProcessing(true);
+
 		try {
-			// 如果没有提供URL，尝试获取文档以获取URL
+			// Add to processing document IDs
+			addProcessingDocId(data.documentId);
+
+			// If URL isn't provided, try to get it from the document
 			let documentUrl = data.url;
 			if (!documentUrl) {
-				// 直接使用API客户端获取文档，而不是使用hook
+				// Get document to retrieve URL
 				const docResponse = await utils.client.kbs.getDocumentById.query({
 					id: data.documentId,
 				});
 
 				if (!docResponse?.fileUrl) {
-					throw new Error("文档URL未找到");
+					throw new Error("Document URL not found");
 				}
 
 				documentUrl = docResponse.fileUrl;
 			}
 
-			// 首先更新文档状态为处理中
+			// First update document status to processing
 			await utils.client.kbs.updateDocumentStatus.mutate({
 				id: data.documentId,
 				status: "processing",
 				kbId: data.kbId,
 			});
 
-			// 调用新的tRPC方法来触发文档向量化任务
+			// Call tRPC method to trigger document vectorization task
 			const result =
 				await utils.client.documents.triggerDocumentVectorization.mutate({
 					documentId: data.documentId,
 					kbId: data.kbId,
 					url: documentUrl,
 					collectionName: data.collectionName,
-					userId: "admin", // 默认用户ID
+					userId: "admin", // Default user ID
 				});
 
-			// 存储运行ID和token以供后续使用
-			documentVectorizationRuns[data.documentId] = {
+			// Store the run ID and token for later use
+			const runInfo = {
 				runId: result.handle.id,
 				token: result.token,
 				documentId: data.documentId,
 				kbId: data.kbId,
 			};
 
-			// 立即刷新文档列表
+			// Add to store
+			addVectorizationRun(data.documentId, runInfo);
+
+			// Immediately refresh document list
 			await utils.kbs.getDocuments.invalidate({
 				kbId: data.kbId,
 			});
 
-			onSuccess?.();
+			options.onSuccess?.();
 			return result;
 		} catch (error) {
-			console.error("向量化文档失败:", error);
-			onError?.(error as TRPCClientErrorLike<AppRouter>);
+			console.error("Failed to vectorize document:", error);
+			options.onError?.(error as TRPCClientErrorLike<AppRouter>);
 			throw error;
 		} finally {
 			setIsProcessing(false);
 		}
 	};
 
-	// Bulk vectorize documents with the new Trigger.dev task
+	// Batch vectorize documents using Trigger.dev
 	const vectorizeDocuments = async (data: {
 		kbId: string;
 		documentIds: string[];
@@ -483,13 +389,21 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 		const results = {
 			success: [] as string[],
 			failed: [] as { id: string; error: string }[],
-			runs: [] as VectorizationRun[],
+			runs: [] as {
+				runId: string;
+				token: string;
+				documentId: string;
+				kbId: string;
+			}[],
 		};
 
 		try {
 			// Process each document
 			for (const documentId of data.documentIds) {
 				try {
+					// Add to processing
+					addProcessingDocId(documentId);
+
 					// Get document URL
 					const docResponse = await utils.client.kbs.getDocumentById.query({
 						id: documentId,
@@ -498,8 +412,9 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 					if (!docResponse?.fileUrl) {
 						results.failed.push({
 							id: documentId,
-							error: "文档URL未找到",
+							error: "Document URL not found",
 						});
+						removeProcessingDocId(documentId);
 						continue;
 					}
 
@@ -517,7 +432,7 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 							kbId: data.kbId,
 							url: docResponse.fileUrl,
 							collectionName: data.collectionName,
-							userId: "admin", // 默认用户ID
+							userId: "admin", // Default user ID
 						});
 
 					// Store the run information
@@ -528,14 +443,23 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 						kbId: data.kbId,
 					};
 
-					documentVectorizationRuns[documentId] = runInfo;
+					// Add to store
+					addVectorizationRun(documentId, runInfo);
+
 					results.runs.push(runInfo);
 					results.success.push(documentId);
 				} catch (error) {
-					console.error(`文档 ID:${documentId} 向量化失败:`, error);
+					console.error(
+						`Document ID:${documentId} vectorization failed:`,
+						error,
+					);
+					removeProcessingDocId(documentId);
 					results.failed.push({
 						id: documentId,
-						error: error instanceof Error ? error.message : "向量化处理失败",
+						error:
+							error instanceof Error
+								? error.message
+								: "Vectorization processing failed",
 					});
 				}
 			}
@@ -546,20 +470,20 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 			});
 
 			if (results.success.length > 0) {
-				onSuccess?.();
+				options.onSuccess?.();
 			}
 
 			return results;
 		} catch (error) {
-			console.error("批量向量化文档失败:", error);
-			onError?.(error as TRPCClientErrorLike<AppRouter>);
+			console.error("Batch document vectorization failed:", error);
+			options.onError?.(error as TRPCClientErrorLike<AppRouter>);
 			throw error;
 		} finally {
 			setIsProcessing(false);
 		}
 	};
 
-	// Create document from crawl results
+	// Create document from crawler results
 	const createDocumentFromCrawl = async (data: {
 		kbId: string;
 		fileUrl: string;
@@ -589,17 +513,57 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 				});
 			}
 			await utils.kbs.getAll.invalidate();
-			onSuccess?.();
+			options.onSuccess?.();
 
 			return docResult;
 		} catch (error: unknown) {
-			console.error("从爬取结果创建文档失败:", error);
-			onError?.(error as TRPCClientErrorLike<AppRouter>);
+			console.error("Failed to create document from crawl results:", error);
+			options.onError?.(error as TRPCClientErrorLike<AppRouter>);
 			throw error;
 		} finally {
 			setIsLoading(false);
 		}
 	};
+
+	// Process crawl results
+	const processDocumentsCrawled = async (
+		kbId: string | undefined,
+		documentIds: string[],
+		crawlOutput?: BulkCrawlResult,
+	) => {
+		// If crawl output provided, first create document
+		if (kbId && crawlOutput) {
+			try {
+				if (crawlOutput.fileUrl && crawlOutput.filePath) {
+					// Create document from crawl results
+					await createDocumentFromCrawl({
+						kbId,
+						fileUrl: crawlOutput.fileUrl,
+						filePath: crawlOutput.filePath,
+						fileName: `Total ${crawlOutput.totalCount} webpages - ${formatTimestamp(new Date().getTime())}`,
+						fileSize: crawlOutput.fileSize || 0,
+						fileType: "text/markdown",
+					});
+				}
+			} catch (err) {
+				console.error("Failed to create crawled document:", err);
+			}
+		}
+
+		// Refresh documents for current KB
+		if (kbId) {
+			await utils.kbs.getDocuments.invalidate({ kbId });
+		}
+	};
+
+	// Open file in new window
+	const openFile = useCallback((fileUrl: string | null | undefined) => {
+		if (fileUrl) {
+			window.open(fileUrl, "_blank");
+		} else {
+			toast.error("File URL not available");
+		}
+	}, []);
 
 	return {
 		getDocumentsByKbId,
@@ -611,8 +575,24 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 		vectorizeDocument,
 		vectorizeDocuments,
 		createDocumentFromCrawl,
-		uploadProgress,
+		processDocumentsCrawled,
+		openFile,
 		isLoading,
 		isProcessing,
 	};
+}
+
+// Helper function to format timestamps
+function formatTimestamp(timestamp: number) {
+	const date = new Date(timestamp);
+	return date
+		.toLocaleString("en-US", {
+			year: "numeric",
+			month: "2-digit",
+			day: "2-digit",
+			hour: "2-digit",
+			minute: "2-digit",
+			hour12: false,
+		})
+		.replace(/\//g, "-");
 }
