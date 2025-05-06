@@ -38,7 +38,7 @@ export function DocumentStatusBadge({
 			};
 		}
 
-		if (status === "completed") {
+		if (status === "completed" || status === "vectorized") {
 			return {
 				color: "bg-green-500",
 				tooltip: "Vectorized",

@@ -28,7 +28,9 @@ import {
 import { formatFileSize } from "@/lib/utils";
 import type { Document } from "@/types/document";
 import { Check, Loader2, Trash2, Wand2, XCircle } from "lucide-react";
+import React from "react";
 import { useDocumentTable } from "../hooks/use-document-table";
+import { DocumentStatus } from "./document-status";
 import { DocumentStatusBadge } from "./status-badge";
 
 interface DocumentTableProps {
@@ -38,6 +40,33 @@ interface DocumentTableProps {
 	isVectorizing?: boolean;
 	vectorizingDocId?: string | null;
 }
+
+// 添加React.memo以避免不必要的重渲染
+const DocumentStatusCell = React.memo(function DocumentStatusCell({
+	document,
+	isProcessing,
+	isGloballyVectorizing,
+	updateDocumentStatus,
+}: {
+	document: Document;
+	isProcessing: (doc: Document) => boolean;
+	isGloballyVectorizing: (doc: Document) => boolean;
+	updateDocumentStatus: (id: string, isProcessing: boolean) => void;
+}) {
+	return (
+		<div className="flex items-center space-x-2">
+			<DocumentStatusBadge
+				status={document.vectorizationStatus}
+				isProcessing={isProcessing(document) || isGloballyVectorizing(document)}
+				isCrawling={document.isCrawling}
+			/>
+			<DocumentStatus
+				documentId={document.id}
+				updateProcessingStatus={updateDocumentStatus}
+			/>
+		</div>
+	);
+});
 
 export function DocumentTable({
 	documents,
@@ -60,6 +89,7 @@ export function DocumentTable({
 		executeDelete,
 		cancelDelete,
 		openFile,
+		updateDocumentStatus,
 	} = useDocumentTable({
 		documents,
 		onDelete,
@@ -113,12 +143,11 @@ export function DocumentTable({
 										: "没有日期"}
 								</TableCell>
 								<TableCell>
-									<DocumentStatusBadge
-										status={document.vectorizationStatus}
-										isProcessing={
-											isProcessing(document) || isGloballyVectorizing(document)
-										}
-										isCrawling={document.isCrawling}
+									<DocumentStatusCell
+										document={document}
+										isProcessing={isProcessing}
+										isGloballyVectorizing={isGloballyVectorizing}
+										updateDocumentStatus={updateDocumentStatus}
 									/>
 								</TableCell>
 								<TableCell className="text-right">

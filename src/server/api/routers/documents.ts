@@ -4,6 +4,8 @@ import { getRecentDocumentUpdates } from "@/lib/document-updates";
 import { convertToMarkdown } from "@/lib/markitdown";
 import { deleteFile, uploadFileAndGetLink } from "@/lib/s3-service";
 import { documents } from "@/server/db/schema";
+import { vectorizeDocument } from "@/trigger/vectorize-document";
+import { auth as triggerAuth } from "@trigger.dev/sdk";
 import { TRPCError } from "@trpc/server";
 import { eq, inArray } from "drizzle-orm";
 import { z } from "zod";
@@ -294,6 +296,54 @@ export const documentsRouter = createTRPCRouter({
 						error instanceof Error
 							? error.message
 							: "Failed to batch convert documents",
+					cause: error,
+				});
+			}
+		}),
+
+	/**
+	 * 触发文档向量化任务
+	 */
+	triggerDocumentVectorization: protectedProcedure
+		.input(
+			z.object({
+				documentId: z.string(),
+				kbId: z.string(),
+				url: z.string().url(),
+				collectionName: z.string(),
+				userId: z.string().default("admin"),
+			}),
+		)
+		.mutation(async ({ input }) => {
+			try {
+				// 触发文档向量化任务
+				const handle = await vectorizeDocument.trigger({
+					documentId: input.documentId,
+					kbId: input.kbId,
+					url: input.url,
+					collectionName: input.collectionName,
+					userId: input.userId,
+				});
+
+				// 创建一个特定于此运行的公共访问令牌
+				const publicAccessToken = await triggerAuth.createPublicToken({
+					scopes: {
+						read: {
+							runs: [handle.id],
+						},
+					},
+				});
+
+				return {
+					success: true,
+					handle,
+					token: publicAccessToken,
+				};
+			} catch (error) {
+				console.error("[tRPC] Error triggering document vectorization:", error);
+				throw new TRPCError({
+					code: "INTERNAL_SERVER_ERROR",
+					message: "Failed to trigger document vectorization",
 					cause: error,
 				});
 			}

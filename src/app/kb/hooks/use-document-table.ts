@@ -3,7 +3,8 @@
 import type { Document } from "@/types/document";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { useDocumentStatusPolling } from "./use-document-status-polling";
+import { useDocumentVectorization } from "./use-document-vectorization";
+import { documentVectorizationRuns } from "./use-documents";
 
 interface UseDocumentTableProps {
 	documents: Document[];
@@ -26,6 +27,7 @@ interface UseDocumentTableReturn {
 	executeDelete: (document: Document) => Promise<void>;
 	cancelDelete: () => void;
 	openFile: (fileUrl: string | null | undefined) => void;
+	updateDocumentStatus: (documentId: string, isProcessing: boolean) => void;
 }
 
 export function useDocumentTable({
@@ -41,6 +43,29 @@ export function useDocumentTable({
 		null,
 	);
 
+	// 创建一个Map存储正在处理的文档的状态
+	const [processingStatuses, setProcessingStatuses] = useState<
+		Map<string, boolean>
+	>(new Map());
+
+	// 监听文档向量化状态变化并更新本地状态
+	const updateDocumentStatus = useCallback(
+		(documentId: string, isProcessing: boolean) => {
+			// 检查状态是否真的变化了
+			const currentStatus = processingStatuses.get(documentId);
+			if (currentStatus === isProcessing) {
+				return; // 避免不必要的状态更新
+			}
+
+			setProcessingStatuses((prev) => {
+				const newMap = new Map(prev);
+				newMap.set(documentId, isProcessing);
+				return newMap;
+			});
+		},
+		[processingStatuses],
+	);
+
 	// 排序文档，按照创建日期降序排列（最新的在最上面）
 	const sortDocumentsByDate = useCallback((docs: Document[]): Document[] => {
 		return [...docs].sort((a, b) => {
@@ -53,34 +78,6 @@ export function useDocumentTable({
 
 	const [localDocuments, setLocalDocuments] = useState<Document[]>(() =>
 		sortDocumentsByDate(documents),
-	);
-
-	// 创建一个稳定的状态更新回调函数
-	const handleStatusUpdate = useCallback((updates: Record<string, string>) => {
-		// 当收到状态更新时，更新本地文档状态
-		setLocalDocuments((prevDocs) =>
-			prevDocs.map((doc) => {
-				if (updates[doc.id]) {
-					// 确保vectorizationStatus永远不会是undefined
-					const status = updates[doc.id] || "pending";
-					// 确保只有状态真正变化时才更新
-					if (doc.vectorizationStatus !== status) {
-						return {
-							...doc,
-							vectorizationStatus: status,
-						};
-					}
-				}
-				return doc;
-			}),
-		);
-	}, []);
-
-	// 使用文档状态轮询钩子
-	const { addProcessingDocument } = useDocumentStatusPolling(
-		documents,
-		handleStatusUpdate,
-		5000, // 每5秒轮询一次
 	);
 
 	// 当props文档更新时，仅当真正有变化时才同步本地文档
@@ -103,7 +100,7 @@ export function useDocumentTable({
 	// 处理向量化请求
 	const handleVectorize = async (document: Document) => {
 		// 如果已经在处理中，不重复添加
-		if (processingDocIds.has(document.id)) {
+		if (isProcessing(document)) {
 			return;
 		}
 
@@ -113,6 +110,9 @@ export function useDocumentTable({
 			newSet.add(document.id);
 			return newSet;
 		});
+
+		// 更新本地状态为处理中
+		updateDocumentStatus(document.id, true);
 
 		try {
 			await onVectorize(document.id);
@@ -125,11 +125,8 @@ export function useDocumentTable({
 						: doc,
 				),
 			);
-
-			// 添加到轮询列表
-			addProcessingDocument(document.id);
 		} catch (error) {
-			toast.error("投喂请求失败，请稍后再试");
+			toast.error("向量化请求失败，请稍后再试");
 
 			// 从处理中状态移除
 			setProcessingDocIds((prev) => {
@@ -137,6 +134,9 @@ export function useDocumentTable({
 				newSet.delete(document.id);
 				return newSet;
 			});
+
+			// 更新本地状态为非处理中
+			updateDocumentStatus(document.id, false);
 		}
 	};
 
@@ -184,12 +184,27 @@ export function useDocumentTable({
 		setDocumentToDelete(null);
 	};
 
-	// 检查文档是否正在处理
+	// 检查文档是否正在处理 - 使用Trigger.dev运行状态
 	const isProcessing = (document: Document) => {
-		return (
-			processingDocIds.has(document.id) ||
-			document.vectorizationStatus === "processing"
-		);
+		// 首先检查我们的本地状态
+		if (processingDocIds.has(document.id)) {
+			return true;
+		}
+
+		// 检查文档状态
+		if (document.vectorizationStatus === "processing") {
+			return true;
+		}
+
+		// 检查我们的processingStatuses Map
+		if (processingStatuses.has(document.id)) {
+			return processingStatuses.get(document.id) === true;
+		}
+
+		// 检查是否有Trigger.dev任务运行
+		const runInfo = documentVectorizationRuns[document.id];
+		// 如果有运行信息但尚未设置状态，则假设正在处理中
+		return !!runInfo;
 	};
 
 	// 检查文档是否处于待处理状态
@@ -207,7 +222,10 @@ export function useDocumentTable({
 
 	// 检查文档向量化是否完成
 	const isCompleted = (document: Document) => {
-		return document.vectorizationStatus === "completed";
+		return (
+			document.vectorizationStatus === "vectorized" ||
+			document.vectorizationStatus === "completed"
+		);
 	};
 
 	// 检查文档是否正在删除
@@ -220,6 +238,7 @@ export function useDocumentTable({
 		const completedOrFailedIds = localDocuments
 			.filter(
 				(doc) =>
+					doc.vectorizationStatus === "vectorized" ||
 					doc.vectorizationStatus === "completed" ||
 					doc.vectorizationStatus === "failed",
 			)
@@ -262,5 +281,6 @@ export function useDocumentTable({
 		executeDelete,
 		cancelDelete,
 		openFile,
+		updateDocumentStatus,
 	};
 }

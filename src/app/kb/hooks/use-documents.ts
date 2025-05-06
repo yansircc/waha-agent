@@ -30,6 +30,17 @@ interface DocumentResult {
 	isText?: boolean | null;
 }
 
+// Store active vectorization runs
+interface VectorizationRun {
+	runId: string;
+	token: string;
+	documentId: string;
+	kbId: string;
+}
+
+// Export the document vectorization runs for use in other components
+export const documentVectorizationRuns: Record<string, VectorizationRun> = {};
+
 export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 	const [isLoading, setIsLoading] = useState(false);
 	const [isProcessing, setIsProcessing] = useState(false);
@@ -397,7 +408,7 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 		}
 	};
 
-	// Vectorize document
+	// Update vectorizeDocument method to use the new Trigger.dev task
 	const vectorizeDocument = async (data: {
 		kbId: string;
 		documentId: string;
@@ -428,21 +439,23 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 				kbId: data.kbId,
 			});
 
-			// Start polling for updates to this document
-			startPolling([data.documentId]);
-
-			// 调用向量化API
-			await fetch("/api/trigger/doc", {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify({
-					...data,
+			// 调用新的tRPC方法来触发文档向量化任务
+			const result =
+				await utils.client.documents.triggerDocumentVectorization.mutate({
+					documentId: data.documentId,
+					kbId: data.kbId,
 					url: documentUrl,
-					webhookUrl: `${env.NEXT_PUBLIC_APP_URL}/api/webhooks/doc`,
-				}),
-			});
+					collectionName: data.collectionName,
+					userId: "admin", // 默认用户ID
+				});
+
+			// 存储运行ID和token以供后续使用
+			documentVectorizationRuns[data.documentId] = {
+				runId: result.handle.id,
+				token: result.token,
+				documentId: data.documentId,
+				kbId: data.kbId,
+			};
 
 			// 立即刷新文档列表
 			await utils.kbs.getDocuments.invalidate({
@@ -450,8 +463,9 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 			});
 
 			onSuccess?.();
+			return result;
 		} catch (error) {
-			console.error("投喂文档失败:", error);
+			console.error("向量化文档失败:", error);
 			onError?.(error as TRPCClientErrorLike<AppRouter>);
 			throw error;
 		} finally {
@@ -459,7 +473,7 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 		}
 	};
 
-	// Bulk vectorize documents
+	// Bulk vectorize documents with the new Trigger.dev task
 	const vectorizeDocuments = async (data: {
 		kbId: string;
 		documentIds: string[];
@@ -469,12 +483,10 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 		const results = {
 			success: [] as string[],
 			failed: [] as { id: string; error: string }[],
+			runs: [] as VectorizationRun[],
 		};
 
 		try {
-			// Start polling for updates to these documents
-			startPolling(data.documentIds);
-
 			// Process each document
 			for (const documentId of data.documentIds) {
 				try {
@@ -498,21 +510,26 @@ export function useDocuments({ onSuccess, onError }: UseDocumentsProps = {}) {
 						kbId: data.kbId,
 					});
 
-					// Call vectorization API
-					await fetch("/api/trigger/doc", {
-						method: "POST",
-						headers: {
-							"Content-Type": "application/json",
-						},
-						body: JSON.stringify({
-							kbId: data.kbId,
+					// Trigger the document vectorization task
+					const result =
+						await utils.client.documents.triggerDocumentVectorization.mutate({
 							documentId,
-							collectionName: data.collectionName,
+							kbId: data.kbId,
 							url: docResponse.fileUrl,
-							webhookUrl: `${env.NEXT_PUBLIC_APP_URL}/api/webhooks/doc`,
-						}),
-					});
+							collectionName: data.collectionName,
+							userId: "admin", // 默认用户ID
+						});
 
+					// Store the run information
+					const runInfo = {
+						runId: result.handle.id,
+						token: result.token,
+						documentId,
+						kbId: data.kbId,
+					};
+
+					documentVectorizationRuns[documentId] = runInfo;
+					results.runs.push(runInfo);
 					results.success.push(documentId);
 				} catch (error) {
 					console.error(`文档 ID:${documentId} 向量化失败:`, error);

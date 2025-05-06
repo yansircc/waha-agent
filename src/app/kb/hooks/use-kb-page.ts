@@ -19,9 +19,10 @@ export function useKbPage() {
 	// Document state
 	const [isAddDocOpen, setIsAddDocOpen] = useState(false);
 
-	// 向量化状态
-	const [isVectorizing, setIsVectorizing] = useState(false);
-	const [vectorizingDocId, setVectorizingDocId] = useState<string | null>(null);
+	// 向量化状态 - 不需要这些状态，因为我们使用useRealtimeRun钩子
+	// 但保留变量名，以避免破坏现有组件的接口
+	const isVectorizing = false;
+	const vectorizingDocId = null;
 
 	// View state
 	const [tab, setTab] = useState<"list" | "detail">("list");
@@ -38,7 +39,7 @@ export function useKbPage() {
 		createDocumentFromCrawl,
 	} = useDocuments();
 
-	// 获取选中知识库的文档 - 在组件顶层调用Hook
+	// 获取选中知识库的文档
 	const docsQuery = getDocumentsByKbId(selectedKb?.id);
 	const documents = docsQuery.data || [];
 	const isLoadingDocuments = docsQuery.isLoading || false;
@@ -112,10 +113,7 @@ export function useKbPage() {
 		if (!selectedKb) return;
 
 		try {
-			// 设置向量化状态
-			setIsVectorizing(true);
-			setVectorizingDocId(documentId);
-
+			// 触发文档向量化
 			await vectorizeDocument({
 				kbId: selectedKb.id,
 				documentId,
@@ -123,19 +121,13 @@ export function useKbPage() {
 				url: "",
 			});
 
-			// 重置向量化状态
-			setIsVectorizing(false);
-			setVectorizingDocId(null);
+			// 不需要设置状态，因为我们现在使用Trigger.dev的状态跟踪
 
 			// 重新加载文档列表，以获取更新的状态
-			docsQuery.refetch();
+			await docsQuery.refetch();
 		} catch (error) {
 			console.error("向量化文档失败:", error);
 			alert("向量化文档失败，请重试");
-
-			// 重置向量化状态
-			setIsVectorizing(false);
-			setVectorizingDocId(null);
 		}
 	};
 
