@@ -219,10 +219,19 @@ export async function getPresignedUrl(
 		// 确保过期时间不超过最大值（7天）
 		const validExpiresIn = Math.min(expiresIn, MAX_PRESIGNED_URL_EXPIRY);
 
+		// Get file stats to determine content type
+		const fileStats = await getFileStats(key).catch(() => null);
+		const contentType =
+			fileStats?.contentType || "text/markdown; charset=utf-8";
+
 		const commandInput: GetObjectCommandInput & { ACL?: string } = {
 			Bucket: s3Config.bucket,
 			Key: key,
 			ACL: acl,
+			// Ensure the browser knows the charset when accessing the file
+			ResponseContentType: contentType.includes("charset=")
+				? contentType
+				: `${contentType}; charset=utf-8`,
 		};
 
 		const command = new GetObjectCommand(commandInput);
@@ -331,7 +340,7 @@ export async function uploadFileAndGetLink(
  * @param key - The file path/name in S3
  * @returns Promise with file stats
  */
-async function getFileStats(key: string) {
+export async function getFileStats(key: string) {
 	const command = new HeadObjectCommand({
 		Bucket: s3Config.bucket,
 		Key: key,
