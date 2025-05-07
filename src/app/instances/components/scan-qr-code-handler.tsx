@@ -1,7 +1,7 @@
 "use client";
 
 import { api } from "@/utils/api";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { useInstances } from "../hooks/use-instances";
 import { ConnectingActions } from "./connecting-actions";
@@ -19,6 +19,8 @@ export function ScanQRCodeHandler({
 	const [isChecking, setIsChecking] = useState(false);
 	const [qrCode, setQrCode] = useState<string | null>(null);
 	const [showQRCode, setShowQRCode] = useState(false);
+	// Ref to track last request time for debouncing
+	const lastRequestTimeRef = useRef(0);
 
 	// Get API procedures and utils for invalidation
 	const utils = api.useUtils();
@@ -26,10 +28,16 @@ export function ScanQRCodeHandler({
 
 	// Handle scan QR code button click
 	const handleScanQR = async () => {
-		if (isChecking) {
+		const now = Date.now();
+		const debounceTime = 1000; // 1 second debounce
+
+		// Prevent submission if already checking or within debounce period
+		if (isChecking || now - lastRequestTimeRef.current < debounceTime) {
 			return;
 		}
 
+		// Update last request time and set checking state
+		lastRequestTimeRef.current = now;
 		setIsChecking(true);
 
 		try {
@@ -50,7 +58,7 @@ export function ScanQRCodeHandler({
 					action: {
 						label: "再次检查",
 						onClick: () => {
-							// Add a slight delay before retrying
+							// No need to check isChecking here as handleScanQR will do that
 							setTimeout(() => {
 								void handleScanQR();
 							}, 500);
@@ -65,7 +73,7 @@ export function ScanQRCodeHandler({
 				action: {
 					label: "重试",
 					onClick: () => {
-						// Add a slight delay before retrying
+						// No need to check isChecking here as handleScanQR will do that
 						setTimeout(() => {
 							void handleScanQR();
 						}, 500);

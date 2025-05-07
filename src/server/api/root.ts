@@ -2,6 +2,7 @@ import { agentsRouter } from "@/server/api/routers/agents";
 import { chatRouter } from "@/server/api/routers/chat";
 import { chatHistoryRouter } from "@/server/api/routers/chat-history";
 import { emailsRouter } from "@/server/api/routers/emails";
+import { freeEmailsRouter } from "@/server/api/routers/free-emails";
 import { instancesRouter } from "@/server/api/routers/instances";
 import { kbsRouter } from "@/server/api/routers/kb";
 import { sessionQueueRouter } from "@/server/api/routers/session-queue";
@@ -34,6 +35,7 @@ export const appRouter = createTRPCRouter({
 	s3: s3Router,
 	qdrant: qdrantRouter,
 	emails: emailsRouter,
+	freeEmails: freeEmailsRouter,
 	documents: documentsRouter,
 	crawl: crawlRouter,
 	demo: demoRouter,

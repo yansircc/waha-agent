@@ -32,6 +32,7 @@ export const usersRelations = relations(users, ({ many }) => ({
 	agents: many(agents),
 	instances: many(instances),
 	emailConfigs: many(emailConfigs),
+	freeEmails: many(freeEmails),
 }));
 
 export const accounts = createTable(
@@ -161,6 +162,45 @@ export const emailConfigsRelations = relations(emailConfigs, ({ one }) => ({
 	agent: one(agents, {
 		fields: [emailConfigs.agentId],
 		references: [agents.id],
+	}),
+}));
+
+// Free Email schema for formsubmit.co integration
+export const freeEmails = createTable(
+	"free_email",
+	(d) => ({
+		id: d
+			.varchar({ length: 255 })
+			.notNull()
+			.primaryKey()
+			.$defaultFn(() => crypto.randomUUID()),
+		emailAddress: d.varchar({ length: 255 }).notNull().unique(),
+		alias: d.varchar({ length: 255 }).unique(), // formsubmit.co alias
+		plunkApiKey: d.text(),
+		wechatPushApiKey: d.text(),
+		formSubmitActivated: d.boolean().default(false).notNull(), // indicates if formsubmit.co has been activated
+		setupCompleted: d.boolean().default(false).notNull(), // indicates if all setup steps are completed
+		createdById: d
+			.varchar({ length: 255 })
+			.notNull()
+			.references(() => users.id),
+		createdAt: d
+			.timestamp({ withTimezone: true })
+			.default(sql`CURRENT_TIMESTAMP`)
+			.notNull(),
+		updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+	}),
+	(t) => [
+		index("free_email_created_by_idx").on(t.createdById),
+		index("free_email_email_address_idx").on(t.emailAddress),
+		index("free_email_alias_idx").on(t.alias),
+	],
+);
+
+export const freeEmailsRelations = relations(freeEmails, ({ one }) => ({
+	user: one(users, {
+		fields: [freeEmails.createdById],
+		references: [users.id],
 	}),
 }));
 

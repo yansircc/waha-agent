@@ -122,6 +122,7 @@ export default function AgentsPage() {
 							agent={agent}
 							kbs={kbs.filter((kb) => agent.kbIds?.includes(kb.id))}
 							onEdit={() => handleOpenEditDialog(agent.id)}
+							onDelete={() => handleDeleteAgent(agent.id)}
 						/>
 					))}
 				</div>
