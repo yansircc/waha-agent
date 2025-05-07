@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { Agent } from "@/types/agents";
 import { CheckIcon } from "lucide-react";
 import { useState } from "react";
+import { catchError } from "react-catch-error";
 
 interface Kb {
 	id: string;
@@ -51,19 +52,25 @@ export function AgentConfigDialog({
 		e.preventDefault();
 		setIsLoading(true);
 
-		try {
-			onSubmit({
-				id: defaultValues?.id || "",
-				apiKey,
-				name,
-				prompt,
-				model,
-				kbIds: selectedKbIds,
-				createdAt: defaultValues?.createdAt || null,
-				updatedAt: defaultValues?.updatedAt || null,
-			});
-		} finally {
-			setIsLoading(false);
+		const { error } = await catchError(
+			async () =>
+				onSubmit({
+					id: defaultValues?.id || "",
+					apiKey,
+					name,
+					prompt,
+					model,
+					kbIds: selectedKbIds,
+					createdAt: defaultValues?.createdAt || null,
+					updatedAt: defaultValues?.updatedAt || null,
+				}),
+			{
+				onFinally: () => setIsLoading(false),
+			},
+		);
+
+		if (error) {
+			console.error("Failed to submit agent config:", error);
 		}
 	};
 

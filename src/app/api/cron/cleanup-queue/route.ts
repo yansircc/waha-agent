@@ -1,6 +1,7 @@
 import { env } from "@/env";
 import { performQueueCleanup } from "@/lib/queue/scheduled-cleanup";
 import { NextResponse } from "next/server";
+import { catchError } from "react-catch-error";
 
 /**
  * 队列清理定时任务
@@ -13,20 +14,12 @@ export async function GET(request: Request) {
 		return new NextResponse("Unauthorized", { status: 401 });
 	}
 
-	try {
-		// 执行清理任务
-		const cleanedCount = await performQueueCleanup();
+	const { error, data } = await catchError(async () => {
+		return await performQueueCleanup();
+	});
 
-		// 返回成功响应
-		return NextResponse.json({
-			success: true,
-			timestamp: new Date().toISOString(),
-			cleanedJobs: cleanedCount,
-		});
-	} catch (error) {
+	if (error) {
 		console.error("[Cron] 队列清理失败:", error);
-
-		// 返回错误响应
 		return NextResponse.json(
 			{
 				success: false,
@@ -36,6 +29,11 @@ export async function GET(request: Request) {
 			{ status: 500 },
 		);
 	}
+	return NextResponse.json({
+		success: true,
+		timestamp: new Date().toISOString(),
+		cleanedJobs: data,
+	});
 }
 
 // Export a route configuration for cron jobs

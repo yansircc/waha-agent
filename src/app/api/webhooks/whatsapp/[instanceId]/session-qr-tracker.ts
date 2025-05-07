@@ -1,5 +1,6 @@
 import { queueSessionDelete } from "@/lib/queue/session-queue";
 import { getRedisForInstance, safeRedisOperation } from "@/lib/redis";
+import { catchError } from "react-catch-error";
 
 // Redis键前缀
 const QR_SCAN_PREFIX = "qr-scan-count:";
@@ -26,13 +27,27 @@ export async function trackQRScan(
 
 	return await safeRedisOperation(async () => {
 		// 获取当前计数
-		const count = await redis.get(key);
+		// const count = await redis.get(key);
+		const { error: countError, data: count } = await catchError(async () => {
+			return await redis.get(key);
+		});
+
+		if (countError) {
+			console.error("获取QR码扫描计数出错:", countError);
+		}
+
 		// 增加计数
 		const newCount = (Number.parseInt(count as string) || 0) + 1;
 
 		// 设置计数并更新TTL
-		await redis.set(key, newCount.toString());
-		await redis.expire(key, QR_SCAN_TTL);
+		const { error: setError } = await catchError(async () => {
+			await redis.set(key, newCount.toString());
+			await redis.expire(key, QR_SCAN_TTL);
+		});
+
+		if (setError) {
+			console.error("设置QR码扫描计数出错:", setError);
+		}
 
 		console.log(
 			`实例 ${instanceId} 的QR码扫描计数: ${newCount}/${MAX_CONSECUTIVE_QR_SCANS}`,
@@ -45,10 +60,22 @@ export async function trackQRScan(
 			);
 
 			// 触发删除操作
-			await triggerSessionDelete(instanceId);
+			const { error: triggerError } = await catchError(async () => {
+				await triggerSessionDelete(instanceId);
+			});
+
+			if (triggerError) {
+				console.error("触发会话删除出错:", triggerError);
+			}
 
 			// 重置计数器
-			await redis.del(key);
+			const { error: delError } = await catchError(async () => {
+				await redis.del(key);
+			});
+
+			if (delError) {
+				console.error("重置QR码扫描计数出错:", delError);
+			}
 
 			console.log(
 				`实例 ${instanceId} 连续收到 ${newCount} 次QR码扫描请求，已将删除请求添加到队列，计数器已重置`,
@@ -78,28 +105,36 @@ export async function resetQRScanCount(
 	const redis = getRedisForInstance();
 	const key = `${QR_SCAN_PREFIX}${instanceId}:${sessionName}`;
 
-	await safeRedisOperation(async () => {
+	const { error } = await catchError(async () => {
 		await redis.del(key);
 		console.log(`已重置实例${instanceId}的QR码扫描计数`);
 	});
+
+	if (error) {
+		console.error("重置QR码扫描计数出错:", error);
+	}
 }
 
 /**
  * 触发会话删除操作
  */
 async function triggerSessionDelete(instanceId: string): Promise<void> {
-	try {
-		// 使用统一的删除队列函数
-		const job = await queueSessionDelete(instanceId);
+	// 使用统一的删除队列函数
+	// const job = await queueSessionDelete(instanceId);
 
-		if (job) {
-			console.log(
-				`已将实例 ${instanceId} 的删除请求添加到队列，任务ID: ${job.id}`,
-			);
-		} else {
-			console.error(`为实例 ${instanceId} 触发删除操作失败`);
-		}
-	} catch (error) {
+	const { error, data: job } = await catchError(async () => {
+		return await queueSessionDelete(instanceId);
+	});
+
+	if (error || !job) {
 		console.error("触发会话删除出错:", error);
+	}
+
+	if (job) {
+		console.log(
+			`已将实例 ${instanceId} 的删除请求添加到队列，任务ID: ${job.id}`,
+		);
+	} else {
+		console.error(`为实例 ${instanceId} 触发删除操作失败`);
 	}
 }

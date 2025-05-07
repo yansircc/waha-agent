@@ -61,6 +61,7 @@
 		"next-auth": "5.0.0-beta.25",
 		"postgres": "^3.4.5",
 		"react": "^19.1.0",
+		"react-catch-error": "^1.0.0",
 		"react-dom": "^19.1.0",
 		"react-hook-form": "^7.55.0",
 		"server-only": "^0.0.1",

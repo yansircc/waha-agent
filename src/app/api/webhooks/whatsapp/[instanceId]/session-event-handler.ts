@@ -3,6 +3,7 @@ import { instances } from "@/server/db/schema";
 import type { InstanceStatus } from "@/types";
 import type { WebhookNotification } from "@/types/api-responses";
 import { eq } from "drizzle-orm";
+import { catchError } from "react-catch-error";
 import { handleQRCodeEvent } from "./qr-code-handler";
 import { resetQRScanCount } from "./session-qr-tracker";
 import { isQRCodeEvent } from "./utils";
@@ -72,7 +73,12 @@ export async function handleSessionEvent(
 	if (isQRCodeEvent(body)) {
 		console.log(`[${instanceId}] 检测到QR码相关事件，正在处理...`);
 		// 调用QR码处理函数，传递webhook body
-		await handleQRCodeEvent(instanceId, sessionName, body);
+		const { error } = await catchError(async () =>
+			handleQRCodeEvent(instanceId, sessionName, body),
+		);
+		if (error) {
+			console.error("处理QR码事件出错:", error);
+		}
 		instanceStatus = "disconnected";
 	}
 	// 根据事件类型处理
@@ -82,7 +88,12 @@ export async function handleSessionEvent(
 		typeof body.payload === "object"
 	) {
 		// 重置QR码扫描计数，因为收到了非QR码事件
-		await resetQRScanCount(instanceId, sessionName);
+		const { error: resetError } = await catchError(async () =>
+			resetQRScanCount(instanceId, sessionName),
+		);
+		if (resetError) {
+			console.error("重置QR码扫描计数出错:", resetError);
+		}
 
 		const payload = body.payload as SessionStatusPayload;
 
@@ -91,25 +102,31 @@ export async function handleSessionEvent(
 			instanceStatus = mapSessionStatusToInstanceStatus(payload.status);
 
 			// 更新数据库中的实例状态
-			try {
-				await db
+			const { error: updateError } = await catchError(async () =>
+				db
 					.update(instances)
 					.set({
 						status: instanceStatus,
 						updatedAt: new Date(),
 					})
-					.where(eq(instances.id, instanceId));
-
-				console.log(
-					`[${instanceId}] 已更新实例状态为: ${instanceStatus} (WAHA 状态: ${payload.status})`,
-				);
-			} catch (error) {
-				console.error(`[${instanceId}] 更新实例状态失败:`, error);
+					.where(eq(instances.id, instanceId)),
+			);
+			if (updateError) {
+				console.error(`[${instanceId}] 更新实例状态失败:`, updateError);
 			}
+
+			console.log(
+				`[${instanceId}] 已更新实例状态为: ${instanceStatus} (WAHA 状态: ${payload.status})`,
+			);
 		}
 	} else {
 		// 其他类型的事件，也重置QR码扫描计数
-		await resetQRScanCount(instanceId, sessionName);
+		const { error: resetError } = await catchError(async () =>
+			resetQRScanCount(instanceId, sessionName),
+		);
+		if (resetError) {
+			console.error("重置QR码扫描计数出错:", resetError);
+		}
 	}
 
 	return {

@@ -3,6 +3,7 @@ import type { Agent } from "@/types/agents";
 import { api } from "@/utils/api";
 import type { TRPCClientErrorLike } from "@trpc/client";
 import { useState } from "react";
+import { catchError } from "react-catch-error";
 
 interface UseAgentsProps {
 	onSuccess?: () => void;
@@ -34,17 +35,23 @@ export function useAgents({ onSuccess, onError }: UseAgentsProps = {}) {
 
 	const createAgent = async (data: Agent) => {
 		setIsLoading(true);
-		try {
-			const result = await createAgentMutation.mutateAsync({
-				...data,
-				kbIds: data.kbIds ?? undefined,
-			});
-			setIsLoading(false);
-			return result;
-		} catch (error: unknown) {
-			setIsLoading(false);
+
+		const { error, data: result } = await catchError(
+			async () =>
+				createAgentMutation.mutateAsync({
+					...data,
+					kbIds: data.kbIds ?? undefined,
+				}),
+			{
+				onFinally: () => setIsLoading(false),
+			},
+		);
+
+		if (error) {
 			throw error;
 		}
+
+		return result;
 	};
 
 	// Update an agent
@@ -60,17 +67,23 @@ export function useAgents({ onSuccess, onError }: UseAgentsProps = {}) {
 
 	const updateAgent = async (data: Agent) => {
 		setIsLoading(true);
-		try {
-			const result = await updateAgentMutation.mutateAsync({
-				...data,
-				kbIds: data.kbIds ?? undefined,
-			});
-			setIsLoading(false);
-			return result;
-		} catch (error: unknown) {
-			setIsLoading(false);
+
+		const { error, data: result } = await catchError(
+			async () =>
+				updateAgentMutation.mutateAsync({
+					...data,
+					kbIds: data.kbIds ?? undefined,
+				}),
+			{
+				onFinally: () => setIsLoading(false),
+			},
+		);
+
+		if (error) {
 			throw error;
 		}
+
+		return result;
 	};
 
 	// Delete an agent
@@ -86,14 +99,19 @@ export function useAgents({ onSuccess, onError }: UseAgentsProps = {}) {
 
 	const deleteAgent = async (id: string) => {
 		setIsLoading(true);
-		try {
-			const result = await deleteAgentMutation.mutateAsync({ id });
-			setIsLoading(false);
-			return result;
-		} catch (error: unknown) {
-			setIsLoading(false);
+
+		const { error, data: result } = await catchError(
+			async () => deleteAgentMutation.mutateAsync({ id }),
+			{
+				onFinally: () => setIsLoading(false),
+			},
+		);
+
+		if (error) {
 			throw error;
 		}
+
+		return result;
 	};
 
 	return {

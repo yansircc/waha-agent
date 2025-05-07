@@ -1,6 +1,7 @@
 import { getLongLivedPresignedUrl } from "@/lib/s3-service";
 import { auth } from "@/server/auth";
 import { type NextRequest, NextResponse } from "next/server";
+import { catchError } from "react-catch-error";
 
 /**
  * Proxy API route for handling file uploads to S3/R2
@@ -14,81 +15,106 @@ import { type NextRequest, NextResponse } from "next/server";
  * This is used by useS3Upload hook to handle all file uploads in the application.
  */
 export async function POST(request: NextRequest) {
-	try {
-		// Check authentication
-		const session = await auth();
-		if (!session?.user) {
-			return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-		}
+	// Check authentication
+	const session = await auth();
+	if (!session?.user) {
+		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+	}
 
-		const formData = await request.formData();
-		const file = formData.get("file") as File;
-		const presignedUrl = formData.get("url") as string;
-		const key = formData.get("key") as string;
+	// Get form data
+	const { error: formError, data: formDataResult } = await catchError(
+		async () => request.formData(),
+	);
 
-		if (!file || !presignedUrl || !key) {
-			return NextResponse.json(
-				{ error: "Missing required fields" },
-				{ status: 400 },
-			);
-		}
+	if (formError || !formDataResult) {
+		console.error("Form data parsing error:", formError);
+		return NextResponse.json(
+			{ error: "Failed to parse form data" },
+			{ status: 400 },
+		);
+	}
 
-		// Upload to S3 from the server instead of the client
-		const response = await fetch(presignedUrl, {
-			method: "PUT",
-			body: file,
-			headers: {
-				"Content-Type": file.type,
-			},
-		});
+	const formData = formDataResult; // Now formData is definitely defined
+	const file = formData.get("file") as File;
+	const presignedUrl = formData.get("url") as string;
+	const key = formData.get("key") as string;
 
-		if (!response.ok) {
-			const errorText = await response.text();
-			console.error("S3 upload failed:", {
-				status: response.status,
-				statusText: response.statusText,
-				errorText,
-			});
+	if (!file || !presignedUrl || !key) {
+		return NextResponse.json(
+			{ error: "Missing required fields" },
+			{ status: 400 },
+		);
+	}
 
-			return NextResponse.json(
-				{
-					error: `Failed to upload file to storage: ${response.status} ${response.statusText}`,
+	// Upload to S3 from the server
+	const { error: uploadError, data: uploadResponseResult } = await catchError(
+		async () =>
+			fetch(presignedUrl, {
+				method: "PUT",
+				body: file,
+				headers: {
+					"Content-Type": file.type,
 				},
-				{ status: 500 },
-			);
-		}
+			}),
+	);
 
-		// 生成临时URL (使用存储配置的URL)
-		const tempFileUrl = `${process.env.NEXT_PUBLIC_STORAGE_URL}/${key}`;
-
-		// 生成7天长期访问链接
-		const longLivedUrl = await getLongLivedPresignedUrl(key);
-
-		// 记录到控制台，方便调试
-		console.log("File uploaded successfully:", {
-			key,
-			tempFileUrl,
-			longLivedUrl,
-			expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-		});
-
-		return NextResponse.json({
-			success: true,
-			key,
-			fileUrl: tempFileUrl, // 保持向后兼容
-			longLivedUrl, // 新增7天链接
-			expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-		});
-	} catch (error) {
-		console.error("Proxy upload error:", error);
+	if (uploadError || !uploadResponseResult) {
+		console.error("S3 upload network error:", uploadError);
 		return NextResponse.json(
 			{
-				error:
-					error instanceof Error
-						? error.message
-						: "Failed to upload file via proxy",
+				error: `Failed to connect to storage service: ${uploadError?.message || "Unknown error"}`,
 			},
 			{ status: 500 },
 		);
 	}
+
+	const uploadResponse = uploadResponseResult; // Now uploadResponse is definitely defined
+
+	if (!uploadResponse.ok) {
+		const { error: textError, data: errorText } = await catchError(async () =>
+			uploadResponse.text(),
+		);
+
+		console.error("S3 upload failed:", {
+			status: uploadResponse.status,
+			statusText: uploadResponse.statusText,
+			errorText: textError ? "Could not read error details" : errorText,
+		});
+
+		return NextResponse.json(
+			{
+				error: `Failed to upload file to storage: ${uploadResponse.status} ${uploadResponse.statusText}`,
+			},
+			{ status: 500 },
+		);
+	}
+
+	// Generate temporary URL
+	const tempFileUrl = `${process.env.NEXT_PUBLIC_STORAGE_URL}/${key}`;
+
+	// Generate 7-day long-lived access link
+	const { error: urlError, data: longLivedUrl } = await catchError(async () =>
+		getLongLivedPresignedUrl(key),
+	);
+
+	if (urlError) {
+		console.error("Failed to generate long-lived URL:", urlError);
+		// Continue with only temporary URL
+	}
+
+	// Log for debugging
+	console.log("File uploaded successfully:", {
+		key,
+		tempFileUrl,
+		longLivedUrl: longLivedUrl || "Failed to generate",
+		expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+	});
+
+	return NextResponse.json({
+		success: true,
+		key,
+		fileUrl: tempFileUrl, // For backward compatibility
+		longLivedUrl: longLivedUrl || tempFileUrl, // Fallback to temp URL if long-lived URL generation failed
+		expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+	});
 }

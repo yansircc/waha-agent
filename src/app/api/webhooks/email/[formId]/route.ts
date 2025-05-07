@@ -7,6 +7,7 @@ import { wait } from "@trigger.dev/sdk";
 import { eq } from "drizzle-orm";
 import jwt from "jsonwebtoken";
 import { type NextRequest, NextResponse } from "next/server";
+import { catchError, catchErrorSync } from "react-catch-error";
 
 /**
  * Verifies the webhook signature from Form-Data
@@ -25,94 +26,167 @@ function verifyWebhookSignature(
 		return false;
 	}
 
-	try {
-		const decoded = jwt.verify(signature, webhookSecret) as { formid?: string };
+	const { error, data: decoded } = catchErrorSync(
+		() => jwt.verify(signature, webhookSecret) as { formid?: string },
+	);
 
-		if (decoded.formid !== formId) {
-			console.error(`Invalid form ID: ${decoded.formid}, expected: ${formId}`);
-			return false;
-		}
-
-		return true;
-	} catch (error) {
+	if (error) {
 		console.error("Invalid signature:", error);
 		return false;
 	}
+
+	if (!decoded || decoded.formid !== formId) {
+		console.error(`Invalid form ID: ${decoded?.formid}, expected: ${formId}`);
+		return false;
+	}
+
+	return true;
 }
 
 export async function POST(
 	request: NextRequest,
 	{ params }: { params: Promise<{ formId: string }> },
 ) {
-	try {
-		const { formId } = await params;
+	// Get formId from params (wrapped in catchError to handle possible rejection)
+	const { error: paramsError, data: paramsData } = await catchError(
+		async () => {
+			const { formId } = await params;
+			return { formId };
+		},
+	);
 
-		// Find the email configuration for this form
-		const config = await db.query.emailConfigs.findFirst({
+	if (paramsError || !paramsData) {
+		console.error("Error getting route parameters:", paramsError);
+		return NextResponse.json(
+			{ error: "Invalid request parameters" },
+			{ status: 400 },
+		);
+	}
+
+	const { formId } = paramsData;
+
+	// Find the email configuration for this form
+	const { error: dbError, data: config } = await catchError(async () =>
+		db.query.emailConfigs.findFirst({
 			where: eq(emailConfigs.formDataFormId, formId),
 			with: {
 				agent: true,
 			},
-		});
+		}),
+	);
 
-		if (!config) {
-			console.error(`No email configuration found for formId: ${formId}`);
-			return NextResponse.json({ error: "Invalid form ID" }, { status: 404 });
-		}
+	if (dbError) {
+		console.error(
+			`Database error while finding config for formId ${formId}:`,
+			dbError,
+		);
+		return NextResponse.json(
+			{ error: "Failed to retrieve email configuration" },
+			{ status: 500 },
+		);
+	}
 
-		// Get the signature from headers
-		const signature = request.headers.get("x-signature");
+	if (!config) {
+		console.error(`No email configuration found for formId: ${formId}`);
+		return NextResponse.json({ error: "Invalid form ID" }, { status: 404 });
+	}
 
-		// Verify webhook signature using the config's secret
-		if (
-			!verifyWebhookSignature(
-				signature,
-				config.formDataWebhookSecret,
-				config.formDataFormId,
-			)
-		) {
-			return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
-		}
+	// Get the signature from headers
+	const signature = request.headers.get("x-signature");
 
-		// Parse JSON body
+	// Verify webhook signature using the config's secret
+	if (
+		!verifyWebhookSignature(
+			signature,
+			config.formDataWebhookSecret,
+			config.formDataFormId,
+		)
+	) {
+		return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+	}
+
+	// Parse JSON body
+	const { error: bodyError, data: body } = await catchError(async () => {
 		const body = await request.json();
-		const emailPayload = formDataSchema.parse(body);
+		return body;
+	});
 
-		// Create the wait token
-		const token = await wait.createToken({
+	if (bodyError || !body) {
+		console.error("Error parsing request body:", bodyError);
+		return NextResponse.json(
+			{ error: "Invalid request body" },
+			{ status: 400 },
+		);
+	}
+
+	// Validate payload against schema
+	const { error: validationError, data: emailPayload } = catchErrorSync(() =>
+		formDataSchema.parse(body),
+	);
+
+	if (validationError || !emailPayload) {
+		console.error("Validation error:", validationError);
+		return NextResponse.json(
+			{ error: "Invalid email data format" },
+			{ status: 400 },
+		);
+	}
+
+	// Create the wait token
+	const { error: tokenError, data: token } = await catchError(async () =>
+		wait.createToken({
 			tags: [`formId:${formId}`, `email:${emailPayload.email}`],
 			timeout: "2d",
-		});
-		console.log(
-			`Created approval token ${token.id} in API route for form ${formId}`,
-		);
+		}),
+	);
 
-		// This will generate the AI response, create the wait token, send notification, and wait for approval
-		const handle = await replyEmail.trigger({
-			...emailPayload,
+	if (tokenError || !token) {
+		console.error("Error creating approval token:", tokenError);
+		return NextResponse.json(
+			{ error: "Failed to create approval workflow" },
+			{ status: 500 },
+		);
+	}
+
+	console.log(
+		`Created approval token ${token.id} in API route for form ${formId}`,
+	);
+
+	// Ensure emailPayload has all required fields for the trigger
+	const safePayload = {
+		...emailPayload,
+		// Add any fields that might be undefined but required by trigger
+	};
+
+	// Trigger email response workflow
+	const { error: triggerError, data: handle } = await catchError(async () =>
+		replyEmail.trigger({
+			...safePayload,
 			agent: config.agent,
 			signature: config.signature || undefined,
 			plunkApiKey: config.plunkApiKey,
 			wechatPushApiKey: config.wechatPushApiKey,
 			approvalTokenId: token.id,
-		});
+		}),
+	);
 
-		console.log(`Email reply task triggered with handle ID: ${handle.id}`);
-
-		// Return success response
-		return NextResponse.json({
-			success: true,
-			message: "Email reply task initiated",
-			handleId: handle.id,
-			tokenId: token.id,
-		});
-	} catch (error) {
-		console.error("Error processing email webhook:", error);
+	if (triggerError || !handle) {
+		console.error("Error triggering email reply:", triggerError);
 		return NextResponse.json(
-			{ error: "Internal server error" },
+			{ error: "Failed to initiate email reply" },
 			{ status: 500 },
 		);
 	}
+
+	console.log(`Email reply task triggered with handle ID: ${handle.id}`);
+
+	// Return success response
+	return NextResponse.json({
+		success: true,
+		message: "Email reply task initiated",
+		handleId: handle.id,
+		tokenId: token.id,
+	});
 }
 
 export async function GET(
@@ -120,7 +194,21 @@ export async function GET(
 	{ params }: { params: Promise<{ formId: string }> },
 ) {
 	// Get formId
-	const { formId } = await params;
+	const { error: paramsError, data: paramsData } = await catchError(
+		async () => {
+			const { formId } = await params;
+			return { formId };
+		},
+	);
+
+	if (paramsError || !paramsData) {
+		return NextResponse.json(
+			{ error: "Invalid request parameters" },
+			{ status: 400 },
+		);
+	}
+
+	const { formId } = paramsData;
 
 	return NextResponse.json({
 		message: `Form-Data webhook endpoint is ready, formId: ${formId}`,

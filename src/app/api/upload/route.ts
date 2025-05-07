@@ -1,6 +1,7 @@
 import { getUploadPresignedUrl } from "@/lib/s3-service";
 import { auth } from "@/server/auth";
 import { type NextRequest, NextResponse } from "next/server";
+import { catchError } from "react-catch-error";
 
 /**
  * API routes for getting presigned URLs for S3 uploads
@@ -14,72 +15,90 @@ import { type NextRequest, NextResponse } from "next/server";
 
 // Generate presigned URL for S3 upload
 export async function POST(request: NextRequest) {
-	try {
-		// Check authentication
-		const session = await auth();
-		if (!session?.user) {
-			return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-		}
+	const session = await auth();
+	if (!session?.user) {
+		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+	}
 
-		const { fileName, fileType } = await request.json();
+	const { error, data } = await catchError(async () => {
+		const body = await request.json();
+		return body;
+	});
 
-		if (!fileName || !fileType) {
-			return NextResponse.json(
-				{ error: "fileName and fileType are required" },
-				{ status: 400 },
-			);
-		}
-
-		// Use our s3-service to get a presigned URL
-		const { url, key } = await getUploadPresignedUrl(fileName, fileType);
-
-		return NextResponse.json({ url, key });
-	} catch (error) {
-		console.error("Presigned URL generation error:", error);
+	if (error) {
+		console.error("Request parsing error:", error);
 		return NextResponse.json(
-			{
-				error:
-					error instanceof Error
-						? error.message
-						: "Failed to generate upload URL",
-			},
+			{ error: "Invalid request format" },
+			{ status: 400 },
+		);
+	}
+
+	const { fileName, fileType } = data;
+
+	if (!fileName || !fileType) {
+		return NextResponse.json(
+			{ error: "fileName and fileType are required" },
+			{ status: 400 },
+		);
+	}
+
+	const { error: uploadError, data: uploadData } = await catchError(async () =>
+		getUploadPresignedUrl(fileName, fileType),
+	);
+
+	if (uploadError || !uploadData) {
+		return NextResponse.json(
+			{ error: uploadError?.message || "Failed to generate upload URL" },
 			{ status: 500 },
 		);
 	}
+
+	const { url, key } = uploadData;
+
+	return NextResponse.json({ url, key });
 }
 
 // Generate presigned URL for updating existing file
 export async function PUT(request: NextRequest) {
-	try {
-		// Check authentication
-		const session = await auth();
-		if (!session?.user) {
-			return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-		}
+	const session = await auth();
+	if (!session?.user) {
+		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+	}
 
-		const { fileName, fileType, documentId } = await request.json();
+	const { error, data } = await catchError(async () => {
+		const body = await request.json();
+		return body;
+	});
 
-		if (!fileName || !fileType || !documentId) {
-			return NextResponse.json(
-				{ error: "fileName, fileType and documentId are required" },
-				{ status: 400 },
-			);
-		}
-
-		// Use our s3-service to get a presigned URL
-		const { url, key } = await getUploadPresignedUrl(fileName, fileType);
-
-		return NextResponse.json({ url, key });
-	} catch (error) {
-		console.error("Presigned URL generation error:", error);
+	if (error) {
+		console.error("Request parsing error:", error);
 		return NextResponse.json(
-			{
-				error:
-					error instanceof Error
-						? error.message
-						: "Failed to generate upload URL",
-			},
+			{ error: "Invalid request format" },
+			{ status: 400 },
+		);
+	}
+
+	const { fileName, fileType, documentId } = data;
+
+	if (!fileName || !fileType || !documentId) {
+		return NextResponse.json(
+			{ error: "fileName, fileType and documentId are required" },
+			{ status: 400 },
+		);
+	}
+
+	const { error: uploadError, data: uploadData } = await catchError(async () =>
+		getUploadPresignedUrl(fileName, fileType),
+	);
+
+	if (uploadError || !uploadData) {
+		return NextResponse.json(
+			{ error: uploadError?.message || "Failed to generate upload URL" },
 			{ status: 500 },
 		);
 	}
+
+	const { url, key } = uploadData;
+
+	return NextResponse.json({ url, key });
 }

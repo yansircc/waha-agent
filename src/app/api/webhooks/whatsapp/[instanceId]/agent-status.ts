@@ -1,4 +1,5 @@
 import { getRedisForInstance, safeRedisOperation } from "@/lib/redis";
+import { catchError } from "react-catch-error";
 
 // Redis键前缀
 const AGENT_STATUS_PREFIX = "agent-status:";
@@ -26,19 +27,20 @@ async function setAgentStatus(
 	chatId: string,
 	status: AgentStatus,
 ): Promise<boolean> {
-	try {
-		const redis = getRedisForInstance(instanceId);
-		const statusKey = getAgentStatusKey(instanceId, chatId);
+	const redis = getRedisForInstance(instanceId);
+	const statusKey = getAgentStatusKey(instanceId, chatId);
 
-		// 保存状态
-		await safeRedisOperation(() => redis.set(statusKey, status));
+	// 保存状态
+	const { error: setError, data: setData } = await catchError(async () =>
+		redis.set(statusKey, status),
+	);
 
-		console.log(`已设置Agent状态为: ${status}`);
-		return true;
-	} catch (error) {
-		console.error("设置Agent状态失败:", error);
+	if (setError || !setData) {
+		console.error("设置Agent状态失败:", setError);
 		return false;
 	}
+	console.log(`已设置Agent状态为: ${status}`);
+	return true;
 }
 
 /**
@@ -48,22 +50,20 @@ async function getAgentStatus(
 	instanceId: string,
 	chatId: string,
 ): Promise<AgentStatus> {
-	try {
-		const redis = getRedisForInstance(instanceId);
-		const statusKey = getAgentStatusKey(instanceId, chatId);
+	const redis = getRedisForInstance(instanceId);
+	const statusKey = getAgentStatusKey(instanceId, chatId);
 
-		// 获取状态
-		const status = await safeRedisOperation(() => redis.get(statusKey));
+	// 获取状态
+	const { error: getError, data: status } = await catchError(async () =>
+		redis.get(statusKey),
+	);
 
-		if (!status) {
-			return AgentStatus.IDLE;
-		}
-
-		return status as AgentStatus;
-	} catch (error) {
-		console.error("获取Agent状态失败:", error);
+	if (getError || !status) {
+		console.error("获取Agent状态失败:", getError);
 		return AgentStatus.IDLE;
 	}
+
+	return status as AgentStatus;
 }
 
 /**
@@ -73,7 +73,15 @@ export async function isAgentIdle(
 	instanceId: string,
 	chatId: string,
 ): Promise<boolean> {
-	const status = await getAgentStatus(instanceId, chatId);
+	const { error: getError, data: status } = await catchError(async () =>
+		getAgentStatus(instanceId, chatId),
+	);
+
+	if (getError || !status) {
+		console.error("获取Agent状态失败:", getError);
+		return false;
+	}
+
 	return status === AgentStatus.IDLE;
 }
 
@@ -84,7 +92,16 @@ export async function markAgentIdle(
 	instanceId: string,
 	chatId: string,
 ): Promise<boolean> {
-	return await setAgentStatus(instanceId, chatId, AgentStatus.IDLE);
+	const { error: setError, data: setData } = await catchError(async () =>
+		setAgentStatus(instanceId, chatId, AgentStatus.IDLE),
+	);
+
+	if (setError || !setData) {
+		console.error("设置Agent状态失败:", setError);
+		return false;
+	}
+
+	return true;
 }
 
 /**
@@ -94,5 +111,14 @@ export async function markAgentProcessing(
 	instanceId: string,
 	chatId: string,
 ): Promise<boolean> {
-	return await setAgentStatus(instanceId, chatId, AgentStatus.PROCESSING);
+	const { error: setError, data: setData } = await catchError(async () =>
+		setAgentStatus(instanceId, chatId, AgentStatus.PROCESSING),
+	);
+
+	if (setError || !setData) {
+		console.error("设置Agent状态失败:", setError);
+		return false;
+	}
+
+	return true;
 }
