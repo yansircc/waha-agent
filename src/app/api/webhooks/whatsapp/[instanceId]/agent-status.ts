@@ -46,7 +46,7 @@ async function setAgentStatus(
 /**
  * 获取Agent状态
  */
-async function getAgentStatus(
+export async function getAgentStatus(
 	instanceId: string,
 	chatId: string,
 ): Promise<AgentStatus> {
@@ -64,25 +64,6 @@ async function getAgentStatus(
 	}
 
 	return status as AgentStatus;
-}
-
-/**
- * 判断Agent是否空闲
- */
-export async function isAgentIdle(
-	instanceId: string,
-	chatId: string,
-): Promise<boolean> {
-	const { error: getError, data: status } = await catchError(async () =>
-		getAgentStatus(instanceId, chatId),
-	);
-
-	if (getError || !status) {
-		console.error("获取Agent状态失败:", getError);
-		return false;
-	}
-
-	return status === AgentStatus.IDLE;
 }
 
 /**

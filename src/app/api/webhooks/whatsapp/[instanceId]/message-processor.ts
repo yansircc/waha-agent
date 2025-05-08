@@ -1,5 +1,5 @@
 import {
-	isAgentIdle,
+	getAgentStatus,
 	markAgentIdle,
 	markAgentProcessing,
 } from "./agent-status";
@@ -51,8 +51,10 @@ export async function processQueuedMessages(
 		};
 	}
 
-	// 2. 检查Agent是否空闲
-	const agentIdle = await isAgentIdle(instanceId, chatId);
+	// 2. 检查Agent是否空闲 - 使用getAgentStatus
+	const agentStatus = await getAgentStatus(instanceId, chatId);
+	const agentIdle = agentStatus === "idle";
+
 	if (!agentIdle) {
 		console.log("Agent正在处理其他消息，稍后再尝试");
 		return {
@@ -116,6 +118,9 @@ export async function checkQueueAfterCompletion(
 	hasMessages: boolean;
 	queueLength: number;
 }> {
+	// 确保Agent状态被重置为空闲
+	await markAgentIdle(instanceId, chatId);
+
 	// 获取当前队列长度
 	const queueLength = await getQueueLength(instanceId, chatId);
 

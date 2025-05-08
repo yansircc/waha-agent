@@ -126,61 +126,75 @@ export async function handleOtherMessage(
 
 		// 监控处理状态
 		let isCompleted = false;
-		for await (const run of runs.subscribeToRun(handle.id)) {
-			// 当任务完成时标记Agent为空闲
-			if (run.status === "COMPLETED") {
-				isCompleted = true;
-				await markAgentIdle(instanceId, chatId);
-				console.log(`聊天 ${chatId} 的消息处理已完成`);
+		let hasError = false;
 
-				// Agent完成处理后，检查队列是否有更多消息需要处理
-				try {
-					// 检查队列中是否有消息
-					const queueCheck = await checkQueueAfterCompletion(
-						instanceId,
-						chatId,
-					);
+		try {
+			for await (const run of runs.subscribeToRun(handle.id)) {
+				// 当任务完成时标记Agent为空闲
+				if (run.status === "COMPLETED") {
+					isCompleted = true;
+					await markAgentIdle(instanceId, chatId);
+					console.log(`聊天 ${chatId} 的消息处理已完成`);
 
-					if (queueCheck.hasMessages) {
-						console.log(
-							`检测到队列中还有 ${queueCheck.queueLength} 条待处理消息，触发新的处理流程`,
+					// Agent完成处理后，检查队列是否有更多消息需要处理
+					try {
+						// 检查队列中是否有消息
+						const queueCheck = await checkQueueAfterCompletion(
+							instanceId,
+							chatId,
 						);
 
-						// 使用setTimeout异步触发新的处理，避免阻塞当前流程
-						setTimeout(async () => {
-							try {
-								// 重新触发webhook处理
-								await handleOtherMessage(
-									instanceId,
-									session,
-									{ from: chatId, body: "[QUEUE_CHECK]" }, // 创建一个虚拟消息触发处理
-									body,
-									botPhoneNumber,
-								);
-							} catch (error) {
-								console.error("触发队列检查处理失败:", error);
-							}
-						}, 500); // 稍微延迟以确保状态完全更新
+						if (queueCheck.hasMessages) {
+							console.log(
+								`检测到队列中还有 ${queueCheck.queueLength} 条待处理消息，触发新的处理流程`,
+							);
+
+							// 使用setTimeout异步触发新的处理，避免阻塞当前流程
+							setTimeout(async () => {
+								try {
+									// 重新触发webhook处理
+									await handleOtherMessage(
+										instanceId,
+										session,
+										{ from: chatId, body: "[QUEUE_CHECK]" }, // 创建一个虚拟消息触发处理
+										body,
+										botPhoneNumber,
+									);
+								} catch (error) {
+									console.error("触发队列检查处理失败:", error);
+									// 确保在任何错误情况下都重置Agent状态
+									await markAgentIdle(instanceId, chatId);
+								}
+							}, 500); // 稍微延迟以确保状态完全更新
+						}
+					} catch (error) {
+						console.error("检查剩余队列消息失败:", error);
+						// 确保在任何错误情况下都重置Agent状态
+						await markAgentIdle(instanceId, chatId);
 					}
-				} catch (error) {
-					console.error("检查剩余队列消息失败:", error);
+
+					break; // 一旦完成就退出监控循环
 				}
 
-				break; // 一旦完成就退出监控循环
+				if (run.status === "FAILED" || run.status === "CANCELED") {
+					// 如果任务失败或被取消，也应重置Agent状态
+					hasError = true;
+					await markAgentIdle(instanceId, chatId);
+					console.log(
+						`聊天 ${chatId} 的消息处理已${run.status === "FAILED" ? "失败" : "取消"}`,
+					);
+					break;
+				}
 			}
-
-			if (run.status === "FAILED" || run.status === "CANCELED") {
-				// 如果任务失败或被取消，也应重置Agent状态
-				await markAgentIdle(instanceId, chatId);
-				console.log(
-					`聊天 ${chatId} 的消息处理已${run.status === "FAILED" ? "失败" : "取消"}`,
-				);
-				break;
-			}
+		} catch (subscribeError) {
+			console.error("监控处理状态失败:", subscribeError);
+			hasError = true;
+			// 确保在任何错误情况下都重置Agent状态
+			await markAgentIdle(instanceId, chatId);
 		}
 
 		// 如果未能确定状态，手动重置
-		if (!isCompleted) {
+		if (!isCompleted && !hasError) {
 			await markAgentIdle(instanceId, chatId);
 			console.log(`聊天 ${chatId} 的消息处理状态无法确定，手动重置`);
 		}
@@ -219,5 +233,10 @@ export async function handleOtherMessage(
 			chatId,
 			error: "处理错误",
 		};
+	} finally {
+		// 额外确保在所有情况下Agent状态都被重置为空闲
+		if (chatId) {
+			await markAgentIdle(instanceId, chatId);
+		}
 	}
 }

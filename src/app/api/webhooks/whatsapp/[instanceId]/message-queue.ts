@@ -8,20 +8,11 @@ import type { WAMessage, WebhookNotification } from "@/types/api-responses";
 
 // Redis键前缀
 const MESSAGE_QUEUE_PREFIX = "message-queue:";
-const AGENT_STATUS_PREFIX = "agent-status:";
 
 // 消息队列的TTL (1小时，单位：秒)
 const QUEUE_TTL = 60 * 60;
 // 队列稳定性检查的等待时间 (单位：毫秒)
 const QUEUE_STABILITY_WAIT_TIME = 3000;
-
-/**
- * Agent处理状态
- */
-enum AgentStatus {
-	IDLE = "idle", // 空闲，可以处理新消息
-	PROCESSING = "processing", // 正在处理消息
-}
 
 /**
  * 消息队列项
@@ -37,13 +28,6 @@ export interface MessageQueueItem {
  */
 function getQueueKey(instanceId: string, chatId: string): string {
 	return `${MESSAGE_QUEUE_PREFIX}${instanceId}:${chatId}`;
-}
-
-/**
- * 获取Agent状态键
- */
-function getAgentStatusKey(instanceId: string, chatId: string): string {
-	return `${AGENT_STATUS_PREFIX}${instanceId}:${chatId}`;
 }
 
 /**
@@ -192,131 +176,4 @@ export async function isQueueStable(
 
 	// 如果队列长度没有变化，说明队列稳定
 	return currentQueueLength === initialQueueLength;
-}
-
-/**
- * 获取Agent状态
- */
-async function getAgentStatus(
-	instanceId: string,
-	chatId: string,
-): Promise<AgentStatus> {
-	try {
-		const redis = getRedisForInstance(instanceId);
-		const statusKey = getAgentStatusKey(instanceId, chatId);
-
-		// 获取状态
-		const status = await safeRedisOperation(() => redis.get(statusKey));
-
-		if (!status) {
-			return AgentStatus.IDLE;
-		}
-
-		return status as AgentStatus;
-	} catch (error) {
-		console.error("获取Agent状态失败:", error);
-		return AgentStatus.IDLE;
-	}
-}
-
-/**
- * 设置Agent状态
- */
-async function setAgentStatus(
-	instanceId: string,
-	chatId: string,
-	status: AgentStatus,
-): Promise<boolean> {
-	try {
-		const redis = getRedisForInstance(instanceId);
-		const statusKey = getAgentStatusKey(instanceId, chatId);
-
-		// 保存状态
-		await safeRedisOperation(() => redis.set(statusKey, status));
-
-		console.log(`已设置Agent状态为: ${status}`);
-		return true;
-	} catch (error) {
-		console.error("设置Agent状态失败:", error);
-		return false;
-	}
-}
-
-/**
- * 检查并处理消息队列
- * 只有当队列稳定且Agent空闲时才处理
- */
-async function checkAndProcessQueue(
-	instanceId: string,
-	chatId: string,
-	initialQueueLength: number,
-): Promise<{
-	shouldProcess: boolean;
-	messages: MessageQueueItem[];
-	combinedContent: string;
-	firstMessage: MessageQueueItem | null;
-}> {
-	// 1. 检查队列是否稳定
-	const isStable = await isQueueStable(instanceId, chatId, initialQueueLength);
-	if (!isStable) {
-		console.log("队列不稳定，用户可能正在输入更多消息");
-		return {
-			shouldProcess: false,
-			messages: [],
-			combinedContent: "",
-			firstMessage: null,
-		};
-	}
-
-	// 2. 检查Agent是否空闲
-	const agentStatus = await getAgentStatus(instanceId, chatId);
-	if (agentStatus !== AgentStatus.IDLE) {
-		console.log("Agent正在处理其他消息，稍后再尝试");
-		return {
-			shouldProcess: false,
-			messages: [],
-			combinedContent: "",
-			firstMessage: null,
-		};
-	}
-
-	// 3. 设置Agent状态为处理中
-	await setAgentStatus(instanceId, chatId, AgentStatus.PROCESSING);
-
-	// 4. 处理队列
-	const { messages, success } = await dequeueAllMessages(instanceId, chatId);
-
-	// 如果处理失败或没有消息，重置Agent状态
-	if (!success || messages.length === 0) {
-		await setAgentStatus(instanceId, chatId, AgentStatus.IDLE);
-		return {
-			shouldProcess: false,
-			messages: [],
-			combinedContent: "",
-			firstMessage: null,
-		};
-	}
-
-	// 合并消息内容
-	const combinedContent = messages
-		.map((item) => item.messageData.body || "")
-		.filter(Boolean)
-		.join("\n");
-
-	return {
-		shouldProcess: true,
-		messages,
-		combinedContent,
-		firstMessage: messages[0] || null,
-	};
-}
-
-/**
- * 标记Agent处理完成
- */
-async function markAgentCompleted(
-	instanceId: string,
-	chatId: string,
-): Promise<boolean> {
-	return await setAgentStatus(instanceId, chatId, AgentStatus.IDLE);
 }
