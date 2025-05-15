@@ -46,10 +46,10 @@ export async function chunkMessage(
 		idealChunkSize,
 	);
 
-	// 处理每个消息块，确保它们不以逗号结尾
+	// 处理每个消息块，确保它们不以逗号或句号结尾
 	const chunks = rawChunks.map((chunk) => {
-		// 移除块结尾的逗号，因为这会中断WhatsApp的自动回复机制
-		return chunk.replace(/,$/, "");
+		// 移除块结尾的逗号和句号，因为这会中断WhatsApp的自动回复机制
+		return chunk.replace(/[,.]$/, "");
 	});
 
 	// 为每个块计算打字延迟
