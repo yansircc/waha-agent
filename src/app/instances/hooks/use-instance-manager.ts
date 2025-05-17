@@ -10,6 +10,7 @@ export function useInstanceManager() {
 	const [isAddOpen, setIsAddOpen] = useState(false);
 	const [selectedAgentId, setSelectedAgentId] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
+	const [userWebhooks, setUserWebhooks] = useState<string[]>([]);
 
 	// Core hooks
 	const { instances, isLoadingInstances, createInstance, deleteInstance } =
@@ -32,11 +33,12 @@ export function useInstanceManager() {
 	const handleCloseAddDialog = useCallback(() => {
 		setIsAddOpen(false);
 		setSelectedAgentId("");
+		setUserWebhooks([]);
 	}, []);
 
 	// Create a new instance and WhatsApp session
 	const handleSubmit = useCallback(
-		async (agentId: string) => {
+		async (agentId: string, webhooks?: string[]) => {
 			if (!agentId) {
 				toast.error("请选择一个AI机器人");
 				return;
@@ -52,6 +54,7 @@ export function useInstanceManager() {
 				const newInstance = await createInstance({
 					name: agentName,
 					agentId: agentId,
+					userWebhooks: webhooks?.filter((url) => url.trim() !== ""),
 				});
 
 				if (!newInstance?.id) {
@@ -232,5 +235,9 @@ export function useInstanceManager() {
 		activeCount: queueState.create.activeCount,
 		errorMessage: queueState.create.errorMessage,
 		currentJobId: queueState.create.currentJob?.id,
+
+		// New webhook state and function
+		userWebhooks,
+		setUserWebhooks,
 	};
 }

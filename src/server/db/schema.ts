@@ -339,6 +339,7 @@ export const instances = createTable(
 			.references(() => users.id),
 		qrCode: d.text(),
 		sessionData: d.jsonb(),
+		userWebhooks: d.text().array(),
 		createdAt: d
 			.timestamp({ withTimezone: true })
 			.default(sql`CURRENT_TIMESTAMP`)

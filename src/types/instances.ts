@@ -17,6 +17,7 @@ export interface InstanceCreateInput {
 	name: string;
 	phoneNumber?: string;
 	agentId?: string;
+	userWebhooks?: string[];
 }
 
 export interface InstanceUpdateInput {
@@ -27,4 +28,5 @@ export interface InstanceUpdateInput {
 	status?: InstanceStatus;
 	qrCode?: string;
 	sessionData?: Record<string, unknown>;
+	userWebhooks?: string[];
 }

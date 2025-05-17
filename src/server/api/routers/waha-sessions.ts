@@ -55,21 +55,61 @@ export const wahaSessionsRouter = createTRPCRouter({
 				// Use instanceId as session name
 				const sessionName = input.instanceId;
 
-				// Create webhook URL for the instance
-				const webhookUrl = `${env.NEXT_PUBLIC_APP_URL}/api/webhooks/whatsapp/${input.instanceId}`;
+				// 从数据库获取实例信息，包括 userWebhooks
+				const instance = await ctx.db.query.instances.findFirst({
+					where: (instance, { eq }) => eq(instance.id, input.instanceId),
+				});
 
-				// Create webhook config
-				const webhook: WebhookConfig = {
-					url: webhookUrl,
+				// Create webhook URL for the instance (default webhook)
+				const defaultWebhookUrl = `${env.NEXT_PUBLIC_APP_URL}/api/webhooks/whatsapp/${input.instanceId}`;
+
+				// 默认 webhook 配置，包含所有事件
+				const defaultWebhookConfig = {
 					events: ["message.any", "session.status"],
 					hmac: null,
 					retries: null,
 					customHeaders: null,
 				};
 
+				// 用户自定义 webhook 配置，只包含消息事件
+				const userWebhookConfig = {
+					events: ["message.any"],
+					hmac: null,
+					retries: null,
+					customHeaders: null,
+				};
+
+				// 构造默认 webhook 对象
+				const defaultWebhook: WebhookConfig = {
+					url: defaultWebhookUrl,
+					...defaultWebhookConfig,
+				};
+
+				// 初始化 webhooks 数组，包含默认 webhook
+				const webhooks: WebhookConfig[] = [defaultWebhook];
+
+				// 如果实例存在且包含 userWebhooks，则添加它们
+				if (instance?.userWebhooks && instance.userWebhooks.length > 0) {
+					for (const userUrl of instance.userWebhooks) {
+						// 确保 URL 有效
+						try {
+							// eslint-disable-next-line no-new
+							new URL(userUrl); // 验证 URL 格式
+							webhooks.push({
+								url: userUrl,
+								...userWebhookConfig, // 只使用消息事件
+							});
+						} catch (e) {
+							console.warn(
+								`实例 ${input.instanceId} 的无效自定义 webhook URL: ${userUrl}`,
+							);
+						}
+					}
+				}
+
 				const sessionConfig: SessionConfig = {
 					debug: false,
-					webhooks: [webhook],
+					webhooks: webhooks, // 使用包含所有 webhooks 的数组
 					metadata: { instanceId: input.instanceId },
 				};
 

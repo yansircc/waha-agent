@@ -35,6 +35,7 @@ export function useInstances({ onSuccess, onError }: UseInstancesProps = {}) {
 		name: string;
 		phoneNumber?: string;
 		agentId?: string;
+		userWebhooks?: string[];
 	}) => {
 		setIsLoading(true);
 		try {
@@ -66,6 +67,7 @@ export function useInstances({ onSuccess, onError }: UseInstancesProps = {}) {
 		status?: "connected" | "disconnected" | "connecting";
 		qrCode?: string;
 		sessionData?: Record<string, unknown>;
+		userWebhooks?: string[];
 	}) => {
 		setIsLoading(true);
 		try {

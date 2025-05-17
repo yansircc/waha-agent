@@ -20,6 +20,8 @@ export default function InstancesPage() {
 		isApiLoading,
 		agents,
 		isLoadingAgents,
+		userWebhooks,
+		setUserWebhooks,
 		handleOpenAddDialog,
 		handleSubmit,
 		handleDeleteInstance,
@@ -100,6 +102,8 @@ export default function InstancesPage() {
 				isLoading={isApiLoading}
 				agents={agents}
 				isLoadingAgents={isLoadingAgents}
+				userWebhooks={userWebhooks}
+				setUserWebhooks={setUserWebhooks}
 				isQueued={isQueued}
 				queuePosition={queuePosition}
 				estimatedWaitTime={estimatedWaitTime}

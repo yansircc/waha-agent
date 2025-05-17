@@ -12,7 +12,7 @@ import { AlertTriangle, Loader2, RotateCw, Users } from "lucide-react";
 interface AddInstanceDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	onSubmit: (agentId: string) => Promise<void>;
+	onSubmit: (agentId: string, userWebhooks?: string[]) => Promise<void>;
 	selectedAgentId: string;
 	setSelectedAgentId: (id: string) => void;
 	isLoading: boolean;
@@ -27,6 +27,9 @@ interface AddInstanceDialogProps {
 	isTimeout?: boolean;
 	errorMessage?: string;
 	onRetry?: () => Promise<void>;
+	// Webhooks props
+	userWebhooks: string[];
+	setUserWebhooks: (urls: string[]) => void;
 }
 
 export function AddInstanceDialog({
@@ -45,10 +48,27 @@ export function AddInstanceDialog({
 	isTimeout,
 	errorMessage,
 	onRetry,
+	userWebhooks,
+	setUserWebhooks,
 }: AddInstanceDialogProps) {
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		await onSubmit(selectedAgentId);
+		await onSubmit(selectedAgentId, userWebhooks);
+	};
+
+	const handleWebhookChange = (index: number, value: string) => {
+		const newWebhooks = [...userWebhooks];
+		newWebhooks[index] = value;
+		setUserWebhooks(newWebhooks);
+	};
+
+	const handleAddWebhook = () => {
+		setUserWebhooks([...userWebhooks, ""]);
+	};
+
+	const handleRemoveWebhook = (index: number) => {
+		const newWebhooks = userWebhooks.filter((_, i) => i !== index);
+		setUserWebhooks(newWebhooks);
 	};
 
 	return (
@@ -80,6 +100,47 @@ export function AddInstanceDialog({
 							</select>
 							<p className="text-muted-foreground text-xs">
 								选择要与此WhatsApp账号关联的AI机器人。
+							</p>
+						</div>
+
+						{/* Webhooks 输入区域 */}
+						<div className="grid gap-2">
+							<Label htmlFor="webhooks">自定义 Webhook URL (可选)</Label>
+							{userWebhooks.map((webhook, index) => (
+								// biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+								<div key={index} className="flex items-center gap-2">
+									<input
+										type="url"
+										placeholder="https://example.com/webhook"
+										value={webhook}
+										onChange={(e) => handleWebhookChange(index, e.target.value)}
+										className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+									/>
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										onClick={() => handleRemoveWebhook(index)}
+										disabled={
+											userWebhooks.length === 0 && index === 0 && !webhook
+										}
+									>
+										移除
+									</Button>
+								</div>
+							))}
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								onClick={handleAddWebhook}
+								className="mt-1"
+							>
+								添加 Webhook
+							</Button>
+							<p className="text-muted-foreground text-xs">
+								在此处添加的 Webhook URL 将用于接收来自此 WhatsApp
+								账号的事件通知。
 							</p>
 						</div>
 

@@ -56,6 +56,7 @@ export const instancesRouter = createTRPCRouter({
 							sessionInfo.status === "SCAN_QR_CODE"
 								? sessionInfo.qrCode
 								: instance.qrCode,
+						userWebhooks: instance.userWebhooks || [],
 					};
 				} catch (error) {
 					// If session fetch fails, return DB data but mark as disconnected
@@ -68,6 +69,7 @@ export const instancesRouter = createTRPCRouter({
 						// Keep DB status if fetch fails, or set to disconnected
 						status:
 							instance.status === "connecting" ? "connecting" : "disconnected",
+						userWebhooks: instance.userWebhooks || [],
 					};
 				}
 			}),
@@ -104,6 +106,7 @@ export const instancesRouter = createTRPCRouter({
 						sessionInfo.status === "SCAN_QR_CODE"
 							? sessionInfo.qrCode
 							: dbInstance.qrCode,
+					userWebhooks: dbInstance.userWebhooks || [],
 				};
 			} catch (error) {
 				console.error(
@@ -114,6 +117,7 @@ export const instancesRouter = createTRPCRouter({
 					...dbInstance,
 					status:
 						dbInstance.status === "connecting" ? "connecting" : "disconnected",
+					userWebhooks: dbInstance.userWebhooks || [],
 				};
 			}
 		}),
@@ -125,6 +129,7 @@ export const instancesRouter = createTRPCRouter({
 				// phoneNumber: z.string().optional(), // phoneNumber will be set after connection
 				agentId: z.string().optional(),
 				isAgentActive: z.boolean().optional().default(true),
+				userWebhooks: z.array(z.string().url()).optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -133,6 +138,8 @@ export const instancesRouter = createTRPCRouter({
 				// phoneNumber: input.phoneNumber || "",
 				agentId: input.agentId,
 				createdById: ctx.session.user.id,
+				userWebhooks:
+					input.userWebhooks?.filter((url) => url.trim() !== "") || [],
 			};
 
 			const result = await ctx.db
@@ -186,6 +193,7 @@ export const instancesRouter = createTRPCRouter({
 				qrCode: z.string().optional(),
 				sessionData: z.record(z.any()).optional(),
 				isAgentActive: z.boolean().optional(),
+				userWebhooks: z.array(z.string().url()).optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -216,6 +224,9 @@ export const instancesRouter = createTRPCRouter({
 			if (input.qrCode !== undefined) updateData.qrCode = input.qrCode;
 			if (input.sessionData !== undefined)
 				updateData.sessionData = input.sessionData;
+			if (input.userWebhooks !== undefined)
+				updateData.userWebhooks =
+					input.userWebhooks.filter((url) => url.trim() !== "") || [];
 
 			const result = await ctx.db
 				.update(instances)
