@@ -112,17 +112,22 @@ export async function handleOtherMessage(
 		};
 
 		// 触发AI处理任务
-		const handle = await whatsAppChat.trigger({
-			session,
-			webhookData: {
-				...body,
-				payload: modifiedMessageData,
+		const handle = await whatsAppChat.trigger(
+			{
+				session,
+				webhookData: {
+					...body,
+					payload: modifiedMessageData,
+				},
+				instanceId,
+				...(botPhoneNumber ? { botPhoneNumber } : {}),
+				// 只在机器人存在且聊天已启用AI时提供
+				agent: agentFromRedis ? agentFromRedis : undefined,
 			},
-			instanceId,
-			...(botPhoneNumber ? { botPhoneNumber } : {}),
-			// 只在机器人存在且聊天已启用AI时提供
-			agent: agentFromRedis ? agentFromRedis : undefined,
-		});
+			{
+				tags: botPhoneNumber ? [botPhoneNumber] : [],
+			},
+		);
 
 		// 监控处理状态
 		let isCompleted = false;
