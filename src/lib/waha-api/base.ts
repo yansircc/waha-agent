@@ -12,7 +12,6 @@ export class BaseApiClient {
 
 	protected getHeaders(includeContentType = false): HeadersInit {
 		const headers: HeadersInit = {
-			"Content-type": "application/json",
 			"X-Api-Key": this.apiKey,
 		};
 
