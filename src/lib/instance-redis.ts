@@ -4,7 +4,7 @@ import type { Agent } from "@/types/agents";
 
 // Redis键前缀，用于命名空间隔离
 const INSTANCE_PREFIX = "instance:";
-const AGENT_PREFIX = "agent:";
+const _AGENT_PREFIX = "agent:";
 const CHAT_CONTROL_PREFIX = "chat-control:";
 const BOT_PHONE_PREFIX = "bot-phone:";
 
@@ -57,7 +57,7 @@ export async function saveInstanceAgent(
  */
 export async function getInstanceAgent(
 	instanceId: string,
-): Promise<AgentWithState | null> {
+): Promise<AgentWithState> {
 	try {
 		const key = `${INSTANCE_PREFIX}${instanceId}:agent`;
 
@@ -84,9 +84,7 @@ export async function getInstanceAgent(
 				await saveInstanceAgent(instanceId, dbAgent, true);
 				return agentWithState;
 			}
-
-			console.log(`实例 ${instanceId} 没有关联的机器人配置`);
-			return null;
+			throw new Error(`实例 ${instanceId} 没有关联的机器人配置`);
 		}
 
 		// 解析机器人配置
@@ -99,8 +97,7 @@ export async function getInstanceAgent(
 
 		return agent;
 	} catch (error) {
-		console.error(`获取实例 ${instanceId} 的机器人配置失败:`, error);
-		return null;
+		throw new Error(`获取实例 ${instanceId} 的机器人配置失败: ${error}`);
 	}
 }
 
@@ -169,42 +166,6 @@ export async function getChatAgentActive(
 }
 
 /**
- * 设置机器人的活动状态 (实例级别)
- * 为保持向后兼容性保留，但推荐使用 setChatAgentActive
- */
-async function setAgentActive(
-	instanceId: string,
-	isActive: boolean,
-): Promise<boolean> {
-	try {
-		// 先获取现有配置
-		const agent = await getInstanceAgent(instanceId);
-
-		// 如果没有配置，无法更新
-		if (!agent) {
-			console.log(`实例 ${instanceId} 没有机器人配置，无法设置活动状态`);
-			return false;
-		}
-
-		// 更新活动状态
-		agent.isActive = isActive;
-
-		// 保存更新后的配置
-		await safeRedisOperation(() =>
-			redis.set(`${INSTANCE_PREFIX}${instanceId}:agent`, JSON.stringify(agent)),
-		);
-
-		console.log(
-			`已将实例 ${instanceId} 的全局机器人状态设置为: ${isActive ? "激活" : "禁用"} (实例级别设置)`,
-		);
-		return true;
-	} catch (error) {
-		console.error(`设置实例 ${instanceId} 的机器人活动状态失败:`, error);
-		return false;
-	}
-}
-
-/**
  * 删除实例的所有Redis数据
  */
 export async function deleteInstanceData(instanceId: string): Promise<boolean> {
@@ -233,28 +194,6 @@ export async function deleteInstanceData(instanceId: string): Promise<boolean> {
 		return true;
 	} catch (error) {
 		console.error(`删除实例 ${instanceId} 的Redis数据失败:`, error);
-		return false;
-	}
-}
-
-/**
- * 删除特定聊天的控制设置
- */
-async function deleteChatControl(
-	instanceId: string,
-	chatId: string,
-): Promise<boolean> {
-	try {
-		// 构建聊天控制键
-		const key = `${CHAT_CONTROL_PREFIX}${instanceId}:${chatId}:active`;
-
-		// 删除键
-		await safeRedisOperation(() => redis.del(key));
-
-		console.log(`已删除聊天 ${chatId} (实例 ${instanceId}) 的特定控制设置`);
-		return true;
-	} catch (error) {
-		console.error(`删除聊天 ${chatId} 的控制设置失败:`, error);
 		return false;
 	}
 }

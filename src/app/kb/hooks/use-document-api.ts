@@ -528,7 +528,7 @@ export function useDocumentApi(options: UseDocumentApiOptions = {}) {
 	// Process crawl results
 	const processDocumentsCrawled = async (
 		kbId: string | undefined,
-		documentIds: string[],
+		_documentIds: string[],
 		crawlOutput?: BulkCrawlResult,
 	) => {
 		// If crawl output provided, first create document

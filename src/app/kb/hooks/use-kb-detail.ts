@@ -26,7 +26,6 @@ interface UseKbDetailParams {
 export function useKbDetail({
 	kb,
 	documents,
-	userId,
 	onDocumentsCrawled,
 }: UseKbDetailParams) {
 	// Crawl state

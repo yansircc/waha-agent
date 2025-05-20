@@ -1,11 +1,11 @@
 import type {
-	SessionCreateRequest,
-	SessionLogoutRequest as SessionLogoutDeprecatedRequest,
-	SessionStartRequest as SessionStartDeprecatedRequest,
-	SessionStopRequest as SessionStopDeprecatedRequest,
-	SessionUpdateRequest,
-} from "@/types/api-requests";
-import type { MyProfile, SessionDTO, SessionInfo } from "@/types/api-responses";
+	ApiSessionCreateRequest,
+	ApiSessionLogoutRequest,
+	ApiSessionStartRequest,
+	ApiSessionStopRequest,
+	ApiSessionUpdateRequest,
+} from "@/types";
+import type { MyProfile, SessionDTO, SessionInfo } from "@/types/waha";
 import { BaseApiClient } from "./base";
 
 // Sessions API client for managing WhatsApp sessions
@@ -20,9 +20,9 @@ export class SessionsApi extends BaseApiClient {
 		}
 	}
 
-	async createSession(data: SessionCreateRequest): Promise<SessionDTO> {
+	async createSession(data: ApiSessionCreateRequest): Promise<SessionDTO> {
 		try {
-			return await this.post<SessionDTO, SessionCreateRequest>(
+			return await this.post<SessionDTO, ApiSessionCreateRequest>(
 				"/api/sessions",
 				data,
 			);
@@ -41,10 +41,10 @@ export class SessionsApi extends BaseApiClient {
 
 	async updateSession(
 		sessionName: string,
-		data: SessionUpdateRequest,
+		data: ApiSessionUpdateRequest,
 	): Promise<SessionDTO> {
 		try {
-			return await this.put<SessionDTO, SessionUpdateRequest>(
+			return await this.put<SessionDTO, ApiSessionUpdateRequest>(
 				`/api/sessions/${sessionName}`,
 				data,
 			);
@@ -112,11 +112,9 @@ export class SessionsApi extends BaseApiClient {
 	}
 
 	// Deprecated endpoints
-	async legacyStartSession(
-		data: SessionStartDeprecatedRequest,
-	): Promise<SessionDTO> {
+	async legacyStartSession(data: ApiSessionStartRequest): Promise<SessionDTO> {
 		try {
-			return await this.post<SessionDTO, SessionStartDeprecatedRequest>(
+			return await this.post<SessionDTO, ApiSessionStartRequest>(
 				"/api/sessions/start",
 				data,
 			);
@@ -125,22 +123,17 @@ export class SessionsApi extends BaseApiClient {
 		}
 	}
 
-	async legacyStopSession(data: SessionStopDeprecatedRequest): Promise<void> {
+	async legacyStopSession(data: ApiSessionStopRequest): Promise<void> {
 		try {
-			await this.post<void, SessionStopDeprecatedRequest>(
-				"/api/sessions/stop",
-				data,
-			);
+			await this.post<void, ApiSessionStopRequest>("/api/sessions/stop", data);
 		} catch (error) {
 			throw new Error(`Failed to stop session: ${(error as Error).message}`);
 		}
 	}
 
-	async legacyLogoutSession(
-		data: SessionLogoutDeprecatedRequest,
-	): Promise<void> {
+	async legacyLogoutSession(data: ApiSessionLogoutRequest): Promise<void> {
 		try {
-			await this.post<void, SessionLogoutDeprecatedRequest>(
+			await this.post<void, ApiSessionLogoutRequest>(
 				"/api/sessions/logout",
 				data,
 			);

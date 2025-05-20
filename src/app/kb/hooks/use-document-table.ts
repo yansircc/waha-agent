@@ -95,7 +95,7 @@ export function useDocumentTable({
 						: doc,
 				),
 			);
-		} catch (error) {
+		} catch (_error) {
 			toast.error("Vectorization request failed, please try again");
 		}
 	};
@@ -121,7 +121,7 @@ export function useDocumentTable({
 		try {
 			await onDelete(document.id, document.kbId);
 			// Parent component will handle removing from list
-		} catch (error) {
+		} catch (_error) {
 			toast.error("Failed to delete document");
 		} finally {
 			setDocumentToDelete(null);

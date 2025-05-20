@@ -5,11 +5,10 @@ import { Button } from "@/components/ui/button";
 import type { BulkCrawlResult } from "@/trigger/bulk-crawl";
 import type { Document } from "@/types/document";
 import type { Kb } from "@/types/kb";
-import { FileText, Globe, Plus } from "lucide-react";
+import { Globe, Plus } from "lucide-react";
 import { useKbDetail } from "../hooks/use-kb-detail";
 import { CrawlWebpageDialog } from "./crawl-webpage-dialog";
 import { DocumentTable } from "./document-table";
-import { EmptyState } from "./empty-state";
 
 interface KbDetailProps {
 	kb: Kb;
@@ -27,7 +26,6 @@ interface KbDetailProps {
 export function KbDetail({
 	kb,
 	documents,
-	isLoading,
 	isVectorizing = false,
 	userId,
 	onBack,

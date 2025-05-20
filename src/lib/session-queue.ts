@@ -1,5 +1,5 @@
 import { getRedisForInstance, safeRedisOperation } from "@/lib/redis";
-import { wahaApi } from "@/server/api/routers/waha-api";
+import { createInstanceApiClient } from "@/lib/waha-api";
 
 interface QueueItem {
 	session: string;
@@ -20,6 +20,7 @@ const LAST_CHECK_KEY = "waha:session:lastCheck";
 export async function queueSessionStart(
 	session: string,
 	instanceId?: string,
+	userWahaApiEndpoint?: string,
 ): Promise<{ position: number }> {
 	const redis = getRedisForInstance();
 
@@ -32,7 +33,7 @@ export async function queueSessionStart(
 		const queueLength = await redis.llen(QUEUE_KEY);
 
 		// Trigger queue processing
-		void processQueue();
+		void processQueue(userWahaApiEndpoint);
 
 		return { position: queueLength };
 	});
@@ -41,7 +42,7 @@ export async function queueSessionStart(
 /**
  * Process the session start queue
  */
-async function processQueue(): Promise<void> {
+async function processQueue(userWahaApiEndpoint?: string): Promise<void> {
 	const redis = getRedisForInstance();
 
 	// Use a lock to prevent multiple concurrent processing attempts
@@ -75,13 +76,13 @@ async function processQueue(): Promise<void> {
 				break; // Queue is empty
 			}
 
-			const { session, instanceId } = JSON.parse(item as string) as QueueItem;
+			const { session } = JSON.parse(item as string) as QueueItem;
 
 			// Add to processing set using hash
 			await redis.hset(PROCESSING_KEY, { [session]: Date.now().toString() });
 
 			// Start session in the background
-			void startSessionAsync(session, instanceId);
+			void startSessionAsync(session, userWahaApiEndpoint);
 		}
 	} catch (error) {
 		console.error("Error processing session queue:", error);
@@ -93,13 +94,15 @@ async function processQueue(): Promise<void> {
  */
 async function startSessionAsync(
 	session: string,
-	instanceId?: string,
+	userWahaApiEndpoint?: string,
 ): Promise<void> {
 	const redis = getRedisForInstance();
 
 	try {
 		// Start the session
-		await wahaApi.sessions.startSession(session);
+		await createInstanceApiClient(userWahaApiEndpoint).sessions.startSession(
+			session,
+		);
 		console.log(`Session ${session} started successfully`);
 	} catch (error) {
 		console.error(`Failed to start session ${session}:`, error);

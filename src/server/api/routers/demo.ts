@@ -37,5 +37,3 @@ export const demoRouter = createTRPCRouter({
 			}
 		}),
 });
-
-type DemoRouter = typeof demoRouter;

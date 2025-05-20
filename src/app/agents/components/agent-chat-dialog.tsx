@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import type { Agent, Message } from "@/types/agents";
+import type { Agent } from "@/types/agents";
 import { Bot, Cloud, Loader2, Send, User } from "lucide-react";
 import { useRef } from "react";
 import { useChatTest } from "../hooks/use-chat-test";

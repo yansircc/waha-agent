@@ -18,8 +18,6 @@ const VectorizeDocumentSchema = z.object({
 	collectionName: z.string().min(1, "Collection name is required"),
 });
 
-type VectorizeDocumentPayload = z.infer<typeof VectorizeDocumentSchema>;
-
 interface VectorizeDocumentResult {
 	success: boolean;
 	kbId: string;

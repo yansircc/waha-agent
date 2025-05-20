@@ -22,6 +22,8 @@ export default function InstancesPage() {
 		isLoadingAgents,
 		userWebhooks,
 		setUserWebhooks,
+		userWahaApiEndpoint,
+		setUserWahaApiEndpoint,
 		handleOpenAddDialog,
 		handleSubmit,
 		handleDeleteInstance,
@@ -104,6 +106,8 @@ export default function InstancesPage() {
 				isLoadingAgents={isLoadingAgents}
 				userWebhooks={userWebhooks}
 				setUserWebhooks={setUserWebhooks}
+				userWahaApiEndpoint={userWahaApiEndpoint}
+				setUserWahaApiEndpoint={setUserWahaApiEndpoint}
 				isQueued={isQueued}
 				queuePosition={queuePosition}
 				estimatedWaitTime={estimatedWaitTime}

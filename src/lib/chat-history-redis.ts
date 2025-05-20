@@ -4,8 +4,8 @@ import {
 	safeRedisOperation,
 	stringifyValueIfNeeded,
 } from "@/lib/redis";
-import { wahaApi } from "@/server/api/routers/waha-api";
-import type { WAMessage } from "@/types/api-responses";
+import { createInstanceApiClient } from "@/lib/waha-api";
+import type { WAMessage } from "@/types/waha";
 
 // Redis key prefixes for chat history
 const CHAT_HISTORY_PREFIX = "chat-history:";
@@ -102,6 +102,29 @@ export async function addMessageToChatHistory(
 		const historyKey = getChatHistoryKey(instanceId, chatId);
 		const metaKey = getChatHistoryMetaKey(instanceId, chatId);
 
+		// 检查消息是否已存在（通过消息ID）
+		if (message.id) {
+			// 获取历史记录中的前10条消息检查重复
+			const recentMessages = await safeRedisOperation(() =>
+				redis.lrange(historyKey, 0, 9),
+			);
+
+			// 检查消息ID是否已存在
+			const isDuplicate = recentMessages.some((msgStr) => {
+				try {
+					const msg = parseJsonValueIfNeeded(msgStr) as WAMessage;
+					return msg.id === message.id;
+				} catch {
+					return false;
+				}
+			});
+
+			if (isDuplicate) {
+				console.log(`跳过重复消息 ID: ${message.id}`);
+				return true; // 重复消息也视为成功
+			}
+		}
+
 		// Serialize the message
 		const serializedMessage = stringifyValueIfNeeded(message);
 
@@ -163,6 +186,7 @@ export async function initializeChatHistory(
 	instanceId: string,
 	session: string,
 	chatId: string,
+	userWahaApiEndpoint?: string,
 ): Promise<boolean> {
 	try {
 		// Check if history already exists
@@ -177,7 +201,9 @@ export async function initializeChatHistory(
 		console.log(`Initializing chat history for ${chatId} from WhatsApp API`);
 
 		// Fetch messages from WhatsApp API
-		const messages = await wahaApi.chatting.getChatMessages({
+		const messages = await createInstanceApiClient(
+			userWahaApiEndpoint,
+		).chatting.getChatMessages({
 			session: session || DEFAULT_SESSION,
 			chatId,
 			limit: MAX_CHAT_HISTORY_MESSAGES,

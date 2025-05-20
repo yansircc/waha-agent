@@ -36,25 +36,3 @@ export function sanitizeUrl(url: string): string {
 
 	return url;
 }
-
-/**
- * 简单解析XML内容，提取指定标签内的内容
- * @param xmlText XML文本内容
- * @param tagName 要提取的标签名称
- * @returns 提取的内容数组
- */
-function parseXml(xmlText: string, tagName = "loc"): string[] {
-	const regex = new RegExp(`<${tagName}>(.*?)<\/${tagName}>`, "g");
-	const matches = xmlText.match(regex);
-
-	if (!matches) return [];
-
-	return matches.map((match) => {
-		const url = match
-			.replace(new RegExp(`<${tagName}>|<\/${tagName}>`, "g"), "")
-			.trim();
-
-		// Sanitize the URL to fix malformed patterns
-		return sanitizeUrl(url);
-	});
-}

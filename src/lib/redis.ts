@@ -46,7 +46,7 @@ class RedisConnectionManager {
 		try {
 			// 尝试从环境变量创建
 			return Redis.fromEnv();
-		} catch (error) {
+		} catch (_error) {
 			// 回退到自定义配置
 			return new Redis({
 				url: env.UPSTASH_REDIS_REST_URL,
@@ -172,7 +172,7 @@ class RedisConnectionManager {
 			for (const [instanceId, client] of this.instanceClients.entries()) {
 				try {
 					await client.ping();
-				} catch (error) {
+				} catch (_error) {
 					console.log(`[Redis] 实例${instanceId}连接故障，正在重置连接`);
 					this.instanceClients.delete(instanceId);
 				}
@@ -195,20 +195,6 @@ export function getRedisForInstance(instanceId?: string): Redis {
 
 // 为兼容现有代码，保留redis导出
 export const redis = RedisConnectionManager.getInstance().getDefaultClient();
-
-/**
- * 检查Redis连接状态
- */
-async function redisConnect(): Promise<Redis | null> {
-	try {
-		const client = RedisConnectionManager.getInstance().getDefaultClient();
-		await client.ping();
-		return client;
-	} catch (error) {
-		console.error("[Redis] 连接失败:", error);
-		return null;
-	}
-}
 
 /**
  * 安全的Redis操作，带重试逻辑
@@ -267,7 +253,7 @@ export function parseJsonValueIfNeeded(value: unknown): unknown {
 	// 否则尝试解析JSON字符串
 	try {
 		return JSON.parse(value);
-	} catch (e) {
+	} catch (_e) {
 		// 如果解析失败，返回原始值
 		return value;
 	}

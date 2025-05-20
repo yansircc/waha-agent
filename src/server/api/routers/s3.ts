@@ -339,7 +339,7 @@ export const s3Router = createTRPCRouter({
 		.mutation(async ({ input }) => {
 			try {
 				// 创建一个标记文件来表示桶初始化
-				const bytesWritten = await uploadFile(
+				const _bytesWritten = await uploadFile(
 					`${input.userId}/.initialized`,
 					"Bucket initialized",
 					"text/plain",

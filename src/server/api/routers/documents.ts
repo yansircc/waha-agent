@@ -27,7 +27,7 @@ export const documentsRouter = createTRPCRouter({
 			}),
 		)
 		.query(async ({ input, ctx }) => {
-			const { documentIds, since = 0 } = input;
+			const { documentIds } = input;
 
 			if (!documentIds.length) {
 				return {

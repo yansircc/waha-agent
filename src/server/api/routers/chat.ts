@@ -15,7 +15,7 @@ interface ChatTask {
 	messages: Message[];
 }
 
-const chatTasks = new Map<string, ChatTask>();
+const _chatTasks = new Map<string, ChatTask>();
 
 export const chatRouter = createTRPCRouter({
 	triggerAgentChat: protectedProcedure

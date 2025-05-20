@@ -1,5 +1,4 @@
 import {
-	addMessageToChatHistory,
 	chatHistoryExists,
 	deleteChatHistory,
 	getChatHistory,

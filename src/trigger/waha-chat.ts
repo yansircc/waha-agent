@@ -2,11 +2,10 @@ import {
 	type KbSearcherPayload,
 	kbSearcher,
 } from "@/lib/ai-agents/kb-searcher";
-import { getFormattedChatHistory } from "@/lib/chat-history-redis";
-import type { WAMessage } from "@/types/api-responses";
+import type { WAMessage } from "@/types/waha";
 import { logger, task } from "@trigger.dev/sdk";
 import { chunkMessage } from "./message-chunker";
-import type { WhatsAppMessagePayload } from "./types";
+import type { ChatMessage, WhatsAppMessagePayload } from "./types";
 import {
 	markMessageAsSeen,
 	sendErrorMessage,
@@ -21,7 +20,15 @@ import {
 export const whatsAppChat = task({
 	id: "whatsapp-chat",
 	run: async (payload: WhatsAppMessagePayload) => {
-		const { session, webhookData, instanceId, agent, botPhoneNumber } = payload;
+		const {
+			sessionName,
+			webhookData,
+			instanceId,
+			agent,
+			botPhoneNumber,
+			userWahaApiEndpoint,
+			chatHistory,
+		} = payload;
 
 		try {
 			// 提取消息数据
@@ -34,7 +41,7 @@ export const whatsAppChat = task({
 				logger.warn("Message missing required fields", {
 					chatId,
 					hasContent: !!messageContent,
-					session,
+					sessionName,
 					instanceId,
 				});
 				return { success: false, error: "Missing required message fields" };
@@ -46,10 +53,6 @@ export const whatsAppChat = task({
 				chatId === botPhoneNumber &&
 				messageData.to === botPhoneNumber
 			) {
-				logger.info("Skipping self-message", {
-					chatId,
-					botPhoneNumber,
-				});
 				return {
 					success: true,
 					skipped: true,
@@ -57,99 +60,49 @@ export const whatsAppChat = task({
 				};
 			}
 
-			logger.info("Processing WhatsApp message", {
-				chatId,
-				messageId: messageData.id,
-				messageLength: messageContent.length,
-				session,
-				instanceId,
-				fromBot: botPhoneNumber ? chatId === botPhoneNumber : undefined,
-			});
-
 			// 1. 标记消息为已读
-			await markMessageAsSeen(session, chatId, messageData.id);
+			await markMessageAsSeen(
+				sessionName,
+				chatId,
+				messageData.id,
+				userWahaApiEndpoint,
+			);
 
 			// 2. 开始输入状态
-			await startTypingIndicator(session, chatId);
+			await startTypingIndicator(sessionName, chatId, userWahaApiEndpoint);
 
 			// 3. 生成回复内容
 			let aiResponse = "";
 
 			// 使用AI机器人或简单响应处理消息
-			if (agent) {
-				// 使用AI机器人生成响应
-				logger.info("Using AI agent for response", {
-					agent,
-					chatId,
+
+			try {
+				// 获取聊天历史记录作为上下文
+				const messages: ChatMessage[] = [
+					...chatHistory,
+					{ role: "user", content: messageContent },
+				];
+
+				logger.info("Chat history", {
+					messages,
 				});
 
-				try {
-					// 获取聊天历史记录作为上下文
-					let messages: Array<{ role: "user" | "assistant"; content: string }> =
-						[{ role: "user", content: messageContent }];
+				// 创建带上下文的KB搜索器的消息格式
+				const kbSearcherPayload: KbSearcherPayload = {
+					messages,
+					agent,
+				};
 
-					if (instanceId) {
-						try {
-							// 确定正确的会话伙伴ID
-							const historyKey =
-								botPhoneNumber && messageData.from !== botPhoneNumber
-									? messageData.from // 消息来自用户，使用发送者ID
-									: messageData.to; // 消息来自机器人，使用接收者ID
-
-							if (historyKey) {
-								// 检索并格式化以前的消息作为上下文
-								const historyMessages = await getFormattedChatHistory(
-									instanceId,
-									historyKey,
-									10,
-								);
-
-								if (historyMessages.length > 0) {
-									logger.info("Retrieved chat history for context", {
-										count: historyMessages.length,
-										historyKey,
-									});
-
-									// 将历史记录与当前消息组合
-									// 当前消息应该是最后一个
-									messages = [
-										...historyMessages,
-										{ role: "user", content: messageContent },
-									];
-								}
-							}
-						} catch (historyError) {
-							logger.warn("Failed to retrieve chat history", {
-								error:
-									historyError instanceof Error
-										? historyError.message
-										: String(historyError),
-								chatId,
-							});
-							// 仅使用当前消息继续
-						}
-					}
-
-					// 创建带上下文的KB搜索器的消息格式
-					const kbSearcherPayload: KbSearcherPayload = {
-						messages,
-						agent,
-					};
-
-					// 调用KB搜索器
-					const result = await kbSearcher(kbSearcherPayload);
-					aiResponse = result.text;
-				} catch (aiError) {
-					logger.error("AI processing error", {
-						error: aiError instanceof Error ? aiError.message : String(aiError),
-						agentId: agent.id,
-					});
-					// AI错误时的后备响应
-					aiResponse = "Sorry, busy handling other things.";
-				}
-			} else {
-				// 如果没有提供机器人，则简单回复
-				aiResponse = `AFK for a while, I'll be back soon.`;
+				// 调用KB搜索器
+				const result = await kbSearcher(kbSearcherPayload);
+				aiResponse = result.text;
+			} catch (aiError) {
+				logger.error("AI processing error", {
+					error: aiError instanceof Error ? aiError.message : String(aiError),
+					agentId: agent.id,
+				});
+				// AI错误时的后备响应
+				aiResponse = "Sorry, busy handling other things.";
 			}
 
 			// 4. 使用AI驱动的chunk-splitter分割消息
@@ -165,29 +118,16 @@ export const whatsAppChat = task({
 
 			// 5. 发送消息块
 			const sendResult = await sendMessageChunks(
-				session,
+				sessionName,
 				chatId,
 				chunks,
 				delays,
-				instanceId,
-				botPhoneNumber,
 				messageData.id,
+				userWahaApiEndpoint,
 			);
 
 			// 6. 停止输入状态
-			await stopTypingIndicator(session, chatId);
-
-			logger.info("Sent WhatsApp response", {
-				chatId,
-				responseLength: aiResponse.length,
-				chunks: chunks.length,
-				session,
-				instanceId,
-				messageId: sendResult.messageId,
-				usingAgent: !!agent,
-				aiResponse:
-					aiResponse.substring(0, 100) + (aiResponse.length > 100 ? "..." : ""),
-			});
+			await stopTypingIndicator(sessionName, chatId, userWahaApiEndpoint);
 
 			return {
 				success: true,
@@ -202,7 +142,7 @@ export const whatsAppChat = task({
 
 			logger.error("WhatsApp message processing failed", {
 				error: errorMessage,
-				session,
+				sessionName,
 				instanceId,
 			});
 
@@ -212,7 +152,7 @@ export const whatsAppChat = task({
 				const chatId = messageData.from || messageData.chatId;
 
 				if (chatId) {
-					await sendErrorMessage(session, chatId);
+					await sendErrorMessage(sessionName, chatId, userWahaApiEndpoint);
 				}
 			} catch (sendError) {
 				logger.error("Failed to send error message to user", {

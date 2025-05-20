@@ -1,5 +1,13 @@
 import type { Agent } from "@/types/agents";
-import type { WAMessage, WebhookNotification } from "@/types/api-responses";
+import type { WebhookNotification } from "@/types/waha";
+
+/**
+ * 消息角色类型
+ */
+export interface ChatMessage {
+	role: "user" | "assistant";
+	content: string;
+}
 
 /**
  * 通用webhook响应接口
@@ -11,51 +19,16 @@ export interface WebhookResponse {
 }
 
 /**
- * Agent聊天的payload接口
- */
-interface AgentChatPayload {
-	messages: Array<{
-		role: "user" | "assistant";
-		content: string;
-	}>;
-	agent: Agent;
-	conversationId: string;
-	webhookUrl: string;
-	messageId?: string;
-}
-
-/**
- * Agent聊天的webhook响应接口
- */
-interface ChatWebhookResponse extends WebhookResponse {
-	response?: string;
-	messages?: Array<{
-		role: "user" | "assistant";
-		content: string;
-	}>;
-	agent: Agent;
-	conversationId: string;
-	messageId?: string;
-}
-
-/**
  * WhatsApp消息处理的payload接口
  */
 export interface WhatsAppMessagePayload {
-	session: string;
+	sessionName: string;
 	webhookData: WebhookNotification;
 	instanceId: string;
-	agent?: Agent;
+	agent: Agent;
+	chatHistory: ChatMessage[];
 	botPhoneNumber?: string;
-}
-
-/**
- * WhatsApp消息的webhook响应接口
- */
-interface WhatsAppWebhookResponse extends WebhookResponse {
-	response?: string;
-	chatId?: string;
-	messageId?: string;
+	userWahaApiEndpoint?: string;
 }
 
 /**

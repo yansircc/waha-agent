@@ -36,6 +36,7 @@ export function useInstances({ onSuccess, onError }: UseInstancesProps = {}) {
 		phoneNumber?: string;
 		agentId?: string;
 		userWebhooks?: string[];
+		userWahaApiEndpoint?: string;
 	}) => {
 		setIsLoading(true);
 		try {
@@ -68,6 +69,7 @@ export function useInstances({ onSuccess, onError }: UseInstancesProps = {}) {
 		qrCode?: string;
 		sessionData?: Record<string, unknown>;
 		userWebhooks?: string[];
+		userWahaApiEndpoint?: string;
 	}) => {
 		setIsLoading(true);
 		try {

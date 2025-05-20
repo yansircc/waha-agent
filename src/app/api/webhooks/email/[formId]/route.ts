@@ -189,10 +189,7 @@ export async function POST(
 	});
 }
 
-export async function GET(
-	request: NextRequest,
-	{ params }: { params: Promise<{ formId: string }> },
-) {
+export async function GET({ params }: { params: Promise<{ formId: string }> }) {
 	// Get formId
 	const { error: paramsError, data: paramsData } = await catchError(
 		async () => {

@@ -159,7 +159,7 @@ export async function fileExists(key: string): Promise<boolean> {
 	try {
 		await s3Client.send(command);
 		return true;
-	} catch (error) {
+	} catch (_error) {
 		// No need to log this error as it's expected when file doesn't exist
 		return false;
 	}
@@ -340,7 +340,7 @@ export async function uploadFileAndGetLink(
  * @param key - The file path/name in S3
  * @returns Promise with file stats
  */
-export async function getFileStats(key: string) {
+async function getFileStats(key: string) {
 	const command = new HeadObjectCommand({
 		Bucket: s3Config.bucket,
 		Key: key,

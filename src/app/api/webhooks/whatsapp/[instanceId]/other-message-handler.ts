@@ -1,9 +1,10 @@
+import { getChatHistory } from "@/lib/chat-history-redis";
 import { getChatAgentActive, getInstanceAgent } from "@/lib/instance-redis";
-import { wahaApi } from "@/server/api/routers/waha-api";
 import { whatsAppChat } from "@/trigger/waha-chat";
-import type { WAMessage, WebhookNotification } from "@/types/api-responses";
+import type { WAMessage, WebhookNotification } from "@/types/waha";
 import { runs } from "@trigger.dev/sdk";
 import { markAgentIdle } from "./agent-status";
+import { convertToFormatMessages } from "./helpers";
 import {
 	checkQueueAfterCompletion,
 	processQueuedMessages,
@@ -15,17 +16,11 @@ import { enqueueMessage } from "./message-queue";
  */
 export async function handleOtherMessage(
 	instanceId: string,
-	session: string,
+	sessionName: string,
 	messageData: Partial<WAMessage>,
 	body: WebhookNotification,
 	botPhoneNumber: string | null,
-): Promise<{
-	success: boolean;
-	chatId?: string;
-	message?: string;
-	aiStatus?: string;
-	error?: string;
-}> {
+): Promise<void> {
 	const chatId = messageData.from || "";
 
 	try {
@@ -34,8 +29,13 @@ export async function handleOtherMessage(
 
 		if (!messageContent) {
 			console.log("消息缺少必要字段，无法处理");
-			return { success: true };
+			return;
 		}
+
+		const chatHistory = await getChatHistory(instanceId, chatId);
+
+		// 将WAMessage[]转换为ChatMessage[]
+		const formattedChatHistory = convertToFormatMessages(chatHistory);
 
 		console.log(`收到来自 ${chatId} 的消息: ${messageContent}`);
 
@@ -48,20 +48,7 @@ export async function handleOtherMessage(
 		// 如果AI未启用，直接返回
 		if (!isChatActive) {
 			console.log(`与 ${chatId} 的聊天已禁用AI回复，跳过处理`);
-			return {
-				success: true,
-				aiStatus: "inactive",
-				chatId,
-			};
-		}
-
-		// 记录日志
-		if (agentFromRedis) {
-			console.log(
-				`与 ${chatId} 的聊天已启用AI回复，将使用机器人 ID: ${agentFromRedis.id}`,
-			);
-		} else {
-			console.log(`账号 ${instanceId} 没有关联的机器人配置，将使用默认回复`);
+			return;
 		}
 
 		// 添加消息到队列
@@ -72,9 +59,6 @@ export async function handleOtherMessage(
 			body,
 		);
 
-		// 是否是队列检查的虚拟消息
-		const isQueueCheck = messageContent === "[QUEUE_CHECK]";
-
 		// 处理队列（如果条件满足）
 		const processResult = await processQueuedMessages(
 			instanceId,
@@ -84,21 +68,13 @@ export async function handleOtherMessage(
 
 		// 如果不应处理（队列不稳定或Agent已在处理其他消息），返回等待状态
 		if (!processResult.shouldProcess) {
-			return {
-				success: true,
-				chatId,
-				message: "消息已加入队列，等待处理",
-			};
+			return;
 		}
 
 		// 如果没有内容可处理，返回
 		if (!processResult.combinedContent || !processResult.firstMessage) {
 			await markAgentIdle(instanceId, chatId);
-			return {
-				success: true,
-				chatId,
-				message: "队列中没有有效消息内容",
-			};
+			return;
 		}
 
 		console.log(
@@ -114,15 +90,15 @@ export async function handleOtherMessage(
 		// 触发AI处理任务
 		const handle = await whatsAppChat.trigger(
 			{
-				session,
+				sessionName,
 				webhookData: {
 					...body,
 					payload: modifiedMessageData,
 				},
 				instanceId,
 				...(botPhoneNumber ? { botPhoneNumber } : {}),
-				// 只在机器人存在且聊天已启用AI时提供
-				agent: agentFromRedis ? agentFromRedis : undefined,
+				agent: agentFromRedis,
+				chatHistory: formattedChatHistory,
 			},
 			{
 				tags: botPhoneNumber ? [botPhoneNumber] : [],
@@ -160,7 +136,7 @@ export async function handleOtherMessage(
 									// 重新触发webhook处理
 									await handleOtherMessage(
 										instanceId,
-										session,
+										sessionName,
 										{ from: chatId, body: "[QUEUE_CHECK]" }, // 创建一个虚拟消息触发处理
 										body,
 										botPhoneNumber,
@@ -205,11 +181,7 @@ export async function handleOtherMessage(
 		}
 
 		// 返回成功响应
-		return {
-			success: true,
-			chatId,
-			message: "已处理合并后的消息，正在生成回复",
-		};
+		return;
 	} catch (error) {
 		// 记录错误但仍然返回成功响应
 		const errorMessage = error instanceof Error ? error.message : String(error);
@@ -218,26 +190,8 @@ export async function handleOtherMessage(
 		// 重置Agent状态，以便后续消息可以正常处理
 		await markAgentIdle(instanceId, chatId);
 
-		// 如果触发失败，尝试手动处理消息以确保用户收到响应
-		try {
-			if (chatId) {
-				await wahaApi.chatting.sendText({
-					session,
-					chatId,
-					text: "很抱歉，我目前遇到了技术问题，请稍后再试。",
-					linkPreview: false,
-				});
-			}
-		} catch (innerError) {
-			console.error("发送故障回复失败:", innerError);
-		}
-
 		// 仍然返回成功以告知WhatsApp已收到webhook
-		return {
-			success: true,
-			chatId,
-			error: "处理错误",
-		};
+		return;
 	} finally {
 		// 额外确保在所有情况下Agent状态都被重置为空闲
 		if (chatId) {

@@ -12,8 +12,6 @@ const AgentChatSchema = z.object({
 	messageId: z.string(),
 });
 
-type AgentChatSchemaPayload = z.infer<typeof AgentChatSchema>;
-
 export const agentChat = schemaTask({
 	id: "agent-chat",
 	schema: AgentChatSchema,

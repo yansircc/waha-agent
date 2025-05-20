@@ -12,7 +12,11 @@ import { AlertTriangle, Loader2, RotateCw, Users } from "lucide-react";
 interface AddInstanceDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	onSubmit: (agentId: string, userWebhooks?: string[]) => Promise<void>;
+	onSubmit: (
+		agentId: string,
+		userWebhooks?: string[],
+		userWahaApiEndpoint?: string,
+	) => Promise<void>;
 	selectedAgentId: string;
 	setSelectedAgentId: (id: string) => void;
 	isLoading: boolean;
@@ -30,6 +34,9 @@ interface AddInstanceDialogProps {
 	// Webhooks props
 	userWebhooks: string[];
 	setUserWebhooks: (urls: string[]) => void;
+	// WAHA API 端点
+	userWahaApiEndpoint: string;
+	setUserWahaApiEndpoint: (url: string) => void;
 }
 
 export function AddInstanceDialog({
@@ -50,10 +57,12 @@ export function AddInstanceDialog({
 	onRetry,
 	userWebhooks,
 	setUserWebhooks,
+	userWahaApiEndpoint,
+	setUserWahaApiEndpoint,
 }: AddInstanceDialogProps) {
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		await onSubmit(selectedAgentId, userWebhooks);
+		await onSubmit(selectedAgentId, userWebhooks, userWahaApiEndpoint);
 	};
 
 	const handleWebhookChange = (index: number, value: string) => {
@@ -100,6 +109,22 @@ export function AddInstanceDialog({
 							</select>
 							<p className="text-muted-foreground text-xs">
 								选择要与此WhatsApp账号关联的AI机器人。
+							</p>
+						</div>
+
+						{/* 自定义 WAHA API 端点输入 */}
+						<div className="grid gap-2">
+							<Label htmlFor="wahaApi">自定义 WAHA API 端点 (可选)</Label>
+							<input
+								id="wahaApi"
+								type="url"
+								placeholder="https://waha-api-endpoint.com"
+								value={userWahaApiEndpoint}
+								onChange={(e) => setUserWahaApiEndpoint(e.target.value)}
+								className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+							/>
+							<p className="text-muted-foreground text-xs">
+								指定自定义的 WAHA API 端点，留空则使用默认端点。
 							</p>
 						</div>
 

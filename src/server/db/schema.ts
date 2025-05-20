@@ -340,6 +340,7 @@ export const instances = createTable(
 		qrCode: d.text(),
 		sessionData: d.jsonb(),
 		userWebhooks: d.text().array(),
+		userWahaApiEndpoint: d.text(),
 		createdAt: d
 			.timestamp({ withTimezone: true })
 			.default(sql`CURRENT_TIMESTAMP`)

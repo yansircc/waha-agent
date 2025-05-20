@@ -1,4 +1,4 @@
-import type { WAMessage, WebhookNotification } from "@/types/api-responses";
+import type { WAMessage, WebhookNotification } from "@/types/waha";
 
 /**
  * 验证webhook请求是否有效

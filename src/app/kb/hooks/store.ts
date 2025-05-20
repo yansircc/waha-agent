@@ -121,4 +121,4 @@ export const useKbStore = create<KbState>((set) => ({
 }));
 
 // Export documented vectorization runs for compatibility
-const documentVectorizationRuns: Record<string, VectorizationRun> = {};
+const _documentVectorizationRuns: Record<string, VectorizationRun> = {};

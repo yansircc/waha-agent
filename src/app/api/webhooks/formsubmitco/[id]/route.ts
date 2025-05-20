@@ -64,10 +64,7 @@ export async function POST(
 	});
 }
 
-export async function GET(
-	request: NextRequest,
-	{ params }: { params: Promise<{ id: string }> },
-) {
+export async function GET({ params }: { params: Promise<{ id: string }> }) {
 	const { error: paramsError, data: paramsData } = await catchError(
 		async () => {
 			const { id } = await params;

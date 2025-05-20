@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/tooltip";
 import { MailIcon, PenIcon, TrashIcon } from "lucide-react";
 import { useState } from "react";
-import type { FreeEmailFormInput } from "../types";
 import { FreeEmailTestDialog } from "./free-email-test-dialog";
 
 interface FreeEmailCardProps {
@@ -35,15 +34,8 @@ export function FreeEmailCard({
 }: FreeEmailCardProps) {
 	const [isTestDialogOpen, setIsTestDialogOpen] = useState(false);
 
-	const {
-		id,
-		emailAddress,
-		alias,
-		plunkApiKey,
-		wechatPushApiKey,
-		setupCompleted,
-		formSubmitActivated,
-	} = emailData;
+	const { id, emailAddress, alias, setupCompleted, formSubmitActivated } =
+		emailData;
 
 	return (
 		<div className="group relative flex flex-col overflow-hidden rounded-lg border bg-background shadow transition-all hover:shadow-md">

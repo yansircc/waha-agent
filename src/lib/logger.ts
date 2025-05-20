@@ -5,8 +5,6 @@
 // 检查当前环境
 const isDev = process.env.NODE_ENV === "development";
 
-type LogLevel = "info" | "warn" | "error" | "debug";
-
 interface LoggerOptions {
 	module?: string;
 	enabled?: boolean;
@@ -75,9 +73,9 @@ function createLogger(options?: LoggerOptions) {
 }
 
 // 创建默认日志记录器
-const logger = createLogger();
+const _logger = createLogger();
 
 // 导出用于特定模块的日志记录器
 export const kbLogger = createLogger({ module: "KB-SERVICE" });
 export const s3Logger = createLogger({ module: "S3-SERVICE" });
-const uploadLogger = createLogger({ module: "UPLOAD" });
+const _uploadLogger = createLogger({ module: "UPLOAD" });

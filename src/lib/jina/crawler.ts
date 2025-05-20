@@ -88,7 +88,7 @@ export class JinaCrawlerService {
 		// Validate the URL
 		try {
 			new URL(sanitizedUrl);
-		} catch (error) {
+		} catch (_error) {
 			throw new Error(`Invalid URL: ${url}`);
 		}
 

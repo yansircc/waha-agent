@@ -1,5 +1,5 @@
+import type { Base64File, QRCodeValue, RequestCodeRequest } from "@/types/waha";
 import { BaseApiClient } from "./base";
-import type { Base64File, QRCodeValue, RequestCodeRequest } from "./types";
 
 // Auth API client for handling WhatsApp authentication
 export class AuthApi extends BaseApiClient {

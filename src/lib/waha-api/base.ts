@@ -5,9 +5,9 @@ export class BaseApiClient {
 	protected apiKey: string;
 	protected apiUrl: string;
 
-	constructor() {
+	constructor(customApiUrl?: string) {
 		this.apiKey = env.WAHA_API_KEY;
-		this.apiUrl = env.NEXT_PUBLIC_WAHA_API_URL;
+		this.apiUrl = customApiUrl || env.NEXT_PUBLIC_WAHA_API_URL;
 	}
 
 	protected getHeaders(includeContentType = false): HeadersInit {

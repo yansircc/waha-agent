@@ -35,7 +35,6 @@ export function KbClient({
 		handleSubmitKb,
 		handleDeleteKb,
 		handleOpenAddDocDialog,
-		handleCloseAddDocDialog,
 		handleSubmitDoc,
 		handleDeleteDocument,
 		handleVectorizeDocument,

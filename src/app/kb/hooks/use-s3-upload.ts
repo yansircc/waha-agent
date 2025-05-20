@@ -69,7 +69,7 @@ export function useS3Upload(options: UseS3UploadOptions = {}) {
 								longLivedUrl: response.longLivedUrl,
 								expiresAt: response.expiresAt,
 							});
-						} catch (e) {
+						} catch (_e) {
 							reject(new Error("服务器响应无效"));
 						}
 					} else {
@@ -80,7 +80,7 @@ export function useS3Upload(options: UseS3UploadOptions = {}) {
 									errorResponse.error || `上传失败，状态码 ${xhr.status}`,
 								),
 							);
-						} catch (e) {
+						} catch (_e) {
 							reject(new Error(`上传失败，状态码 ${xhr.status}`));
 						}
 					}

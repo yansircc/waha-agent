@@ -1,7 +1,71 @@
 import { chunkSplitter } from "@/lib/ai-agents/chunk-splitter";
-import { calculateTypingDelay } from "@/lib/human-typing-simulator";
 import { logger } from "@trigger.dev/sdk";
 import type { MessageChunkingOptions, MessageChunkingResult } from "./types";
+
+/**
+ * 模拟类似人类的在聊天软件中的打字行为
+ */
+
+interface HumanTypingOptions {
+	/**
+	 * 每个消息块的最大字符数
+	 * @default 120
+	 */
+	maxChunkLength?: number;
+
+	/**
+	 * 最小打字延迟（毫秒）
+	 * @default 500
+	 */
+	minTypingDelay?: number;
+
+	/**
+	 * 最大额外随机打字延迟（毫秒）
+	 * @default 1500
+	 */
+	maxAdditionalDelay?: number;
+
+	/**
+	 * 包含拼写错误的概率（0-1）
+	 * @default 0.05
+	 */
+	typoRate?: number;
+
+	/**
+	 * 使用非正式缩写的概率（0-1）
+	 * @default 0.2
+	 */
+	abbreviationRate?: number;
+}
+
+const DEFAULT_OPTIONS: HumanTypingOptions = {
+	maxChunkLength: 120,
+	minTypingDelay: 500,
+	maxAdditionalDelay: 1500,
+	typoRate: 0.05,
+	abbreviationRate: 0.2,
+};
+
+/**
+ * 计算给定文本块的打字延迟
+ */
+export function calculateTypingDelay(
+	text: string,
+	options: HumanTypingOptions = {},
+): number {
+	const opts = { ...DEFAULT_OPTIONS, ...options };
+	const { minTypingDelay = 500, maxAdditionalDelay = 1500 } = opts;
+
+	// Assuming average typing speed of 40 WPM (~200 characters/minute)
+	// 如果要调速度，可以调整 60 / x，x 越大，速度越快，反之亦然
+	const baseDelay = text.length * (60 / 400) * 1000;
+
+	// Add random variable to make it more natural
+	// Reduce the random delay to be more reasonable
+	const randomDelay = Math.random() * Math.min(maxAdditionalDelay, 1000);
+
+	return Math.max(minTypingDelay, baseDelay + randomDelay);
+}
 
 /**
  * 智能分割消息为更小的块，并计算每个块的打字延迟

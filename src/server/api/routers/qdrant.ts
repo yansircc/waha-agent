@@ -1,43 +1,6 @@
 import { qdrantService } from "@/lib/qdrant-service";
-import { cohere } from "@ai-sdk/cohere";
-import { embed } from "ai";
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
-
-// 定义类型以消除any
-interface SearchResult {
-	id: string;
-	score: number;
-	payload: {
-		text: string;
-		[key: string]: unknown;
-	};
-	metadata: {
-		raw_rrf_score?: number;
-		source: "vector" | "keyword";
-		vector_rank: number;
-		keyword_rank: number;
-		originalScore?: number;
-	};
-}
-
-interface FusionResult {
-	id: string;
-	score: number;
-	payload: {
-		text: string;
-		[key: string]: unknown;
-	};
-	metadata: {
-		raw_rrf_score?: number;
-		source: "vector" | "keyword";
-		vector_rank: number;
-		keyword_rank: number;
-	};
-}
-
-// 定义规范化方法的类型
-type NormalizationMethod = "none" | "percentage" | "exponential";
 
 const pointDataSchema = z.object({
 	id: z.union([z.string(), z.number()]),

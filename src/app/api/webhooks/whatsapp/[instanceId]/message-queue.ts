@@ -4,7 +4,7 @@ import {
 	safeRedisOperation,
 	stringifyValueIfNeeded,
 } from "@/lib/redis";
-import type { WAMessage, WebhookNotification } from "@/types/api-responses";
+import type { WAMessage, WebhookNotification } from "@/types/waha";
 
 // Redis键前缀
 const MESSAGE_QUEUE_PREFIX = "message-queue:";
@@ -132,25 +132,6 @@ export async function getQueueLength(
 	} catch (error) {
 		console.error("获取队列长度失败:", error);
 		return 0;
-	}
-}
-
-/**
- * 清空队列
- */
-async function clearQueue(
-	instanceId: string,
-	chatId: string,
-): Promise<boolean> {
-	try {
-		const redis = getRedisForInstance(instanceId);
-		const queueKey = getQueueKey(instanceId, chatId);
-		await safeRedisOperation(() => redis.del(queueKey));
-		console.log("已清空队列");
-		return true;
-	} catch (error) {
-		console.error("清空队列失败:", error);
-		return false;
 	}
 }
 

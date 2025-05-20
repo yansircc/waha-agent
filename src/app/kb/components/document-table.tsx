@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/tooltip";
 import { formatFileSize } from "@/lib/utils";
 import type { Document } from "@/types/document";
-import { Check, Loader2, Trash2, Wand2, XCircle } from "lucide-react";
+import { Loader2, Trash2, Wand2, XCircle } from "lucide-react";
 import React from "react";
 import { useDocumentTable } from "../hooks";
 import { DocumentStatus } from "./document-status";
@@ -64,14 +64,12 @@ export function DocumentTable({
 	documents,
 	onDelete,
 	onVectorize,
-	isVectorizing = false,
 }: DocumentTableProps) {
 	// Use the document table hook for all table functionality
 	const {
 		localDocuments,
 		documentToDelete,
 		isProcessing,
-		isPending,
 		isFailed,
 		isCompleted,
 		isDeleting,

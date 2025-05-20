@@ -173,7 +173,7 @@ function extractUrlsFromSitemap(
 				}
 
 				return true;
-			} catch (error) {
+			} catch (_error) {
 				console.warn(`无效的URL: ${url}`);
 				return false;
 			}
@@ -198,5 +198,3 @@ function parseXml(xml: string, tagName: string): string[] {
 function sanitizeUrl(url: string): string {
 	return url.trim().replace(/&amp;/g, "&");
 }
-
-type CrawlRouter = typeof crawlRouter;

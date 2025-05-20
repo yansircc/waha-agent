@@ -18,8 +18,8 @@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { History, Info, Loader2, Plus, RefreshCcw } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Loader2, Plus } from "lucide-react";
+import { useState } from "react";
 import { FormConfigAltert } from "./components/form-config-altert";
 import { FreeEmailCard } from "./components/free-email-card";
 import { FreeEmailForm } from "./components/free-email-form";
@@ -48,8 +48,6 @@ export default function FreeEmailsPage() {
 		formState: savedFormState,
 		isFormStateLoaded,
 		isLoadingEmails,
-		createFreeEmail,
-		updateFreeEmail,
 		deleteFreeEmail,
 		clearFormState,
 		refreshFormState,
@@ -145,7 +143,7 @@ export default function FreeEmailsPage() {
 	};
 
 	// 获取未完成的邮箱地址
-	const getIncompleteEmailAddress = () => {
+	const _getIncompleteEmailAddress = () => {
 		const emailAddress = savedFormState?.emailAddress;
 		return typeof emailAddress === "string" ? emailAddress : "";
 	};

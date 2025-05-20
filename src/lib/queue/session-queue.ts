@@ -1,5 +1,5 @@
 import { getRedisForInstance, safeRedisOperation } from "@/lib/redis";
-import { wahaApi } from "@/server/api/routers/waha-api";
+import { createInstanceApiClient } from "@/lib/waha-api";
 
 // 支持的会话操作类型
 export type SessionOperation =
@@ -46,6 +46,7 @@ function getQueueKeys(operation: SessionOperation) {
  */
 export async function addToQueue(
 	instanceId: string,
+	userWahaApiEndpoint?: string,
 	operation: SessionOperation = "create",
 ): Promise<SessionJob | null> {
 	const redis = getRedisForInstance();
@@ -83,7 +84,10 @@ export async function addToQueue(
 				// 异步执行删除操作
 				setTimeout(async () => {
 					try {
-						const success = await executeSessionDelete(instanceId);
+						const success = await executeSessionDelete(
+							instanceId,
+							userWahaApiEndpoint,
+						);
 
 						// 执行完成后更新任务状态
 						const updatedJob = {
@@ -412,27 +416,6 @@ async function failJob(jobId: string): Promise<SessionJob | null> {
 }
 
 /**
- * 获取任务状态
- */
-async function getJobStatus(jobId: string): Promise<SessionJob | null> {
-	const redis = getRedisForInstance();
-
-	return await safeRedisOperation(async () => {
-		const jobData = await redis.hget(`${QUEUE_PREFIX}:jobs`, jobId);
-		if (!jobData) return null;
-
-		try {
-			return typeof jobData === "string"
-				? (JSON.parse(jobData) as SessionJob)
-				: (jobData as unknown as SessionJob);
-		} catch (error) {
-			console.error("解析任务状态数据出错:", error);
-			return null;
-		}
-	});
-}
-
-/**
  * 根据实例ID和操作类型查找活跃任务
  */
 export async function findActiveJobByInstanceId(
@@ -621,10 +604,11 @@ export async function cleanupOldJobs(olderThanHours = 24): Promise<number> {
  */
 export async function queueSessionDelete(
 	instanceId: string,
+	userWahaApiEndpoint?: string,
 ): Promise<SessionJob | null> {
 	try {
 		// 使用统一的队列机制
-		const job = await addToQueue(instanceId, "delete");
+		const job = await addToQueue(instanceId, userWahaApiEndpoint, "delete");
 
 		if (job) {
 			console.log(
@@ -645,12 +629,17 @@ export async function queueSessionDelete(
  * 执行会话删除操作
  * 用于执行删除队列中的任务
  */
-async function executeSessionDelete(instanceId: string): Promise<boolean> {
+async function executeSessionDelete(
+	instanceId: string,
+	userWahaApiEndpoint?: string,
+): Promise<boolean> {
 	try {
 		console.log(`正在执行实例 ${instanceId} 的删除操作`);
 
+		const WahaApiClient = createInstanceApiClient(userWahaApiEndpoint);
+
 		// 直接调用wahaApi删除会话
-		await wahaApi.sessions.deleteSession(instanceId);
+		await WahaApiClient.sessions.deleteSession(instanceId);
 
 		console.log(`实例 ${instanceId} 删除操作完成`);
 		return true;

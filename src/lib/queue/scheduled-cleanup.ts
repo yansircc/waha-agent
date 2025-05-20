@@ -33,27 +33,3 @@ export async function performQueueCleanup(): Promise<number> {
 		return 0;
 	}
 }
-
-/**
- * 启动定期清理任务
- * 只在服务器端执行
- */
-function startPeriodicCleanup(): void {
-	// 避免在客户端执行
-	if (typeof window !== "undefined") return;
-
-	// 立即执行一次清理
-	void performQueueCleanup();
-
-	// 设置定期执行
-	const intervalId = setInterval(() => {
-		void performQueueCleanup();
-	}, CLEANUP_INTERVAL_MS);
-
-	// 确保进程退出时清理定时器
-	if (typeof process !== "undefined") {
-		process.on("beforeExit", () => {
-			clearInterval(intervalId);
-		});
-	}
-}

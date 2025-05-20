@@ -60,7 +60,7 @@ export function KbSearchDialog({
 	const [query, setQuery] = useState("");
 	const [isSearching, setIsSearching] = useState(false);
 	const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-	const [searchDetails, setSearchDetails] = useState<SearchDetails | null>(
+	const [_searchDetails, setSearchDetails] = useState<SearchDetails | null>(
 		null,
 	);
 

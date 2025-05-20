@@ -67,7 +67,7 @@ export function ScanQRCodeHandler({
 					duration: 5000,
 				});
 			}
-		} catch (error) {
+		} catch (_error) {
 			toast.error("获取二维码失败", {
 				description: "无法获取二维码，请稍后再试",
 				action: {

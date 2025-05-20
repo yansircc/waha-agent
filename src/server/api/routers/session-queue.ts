@@ -65,12 +65,17 @@ export const sessionQueueRouter = createTRPCRouter({
 				operation: z
 					.enum(["create", "start", "stop", "restart", "logout"])
 					.optional(),
+				userWahaApiEndpoint: z.string().optional(),
 			}),
 		)
 		.mutation(async ({ input }) => {
 			// 将操作添加到相应队列，默认为创建操作
 			const operation = (input.operation as SessionOperation) || "create";
-			const job = await addToQueue(input.instanceId, operation);
+			const job = await addToQueue(
+				input.instanceId,
+				input.userWahaApiEndpoint,
+				operation,
+			);
 			return { success: true, job };
 		}),
 

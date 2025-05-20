@@ -1,11 +1,11 @@
-import { BaseApiClient } from "./base";
 import type {
 	MyProfile,
 	ProfileNameRequest,
 	ProfilePictureRequest,
 	ProfileStatusRequest,
 	Result,
-} from "./types";
+} from "@/types/waha";
+import { BaseApiClient } from "./base";
 
 // Profile API client for managing WhatsApp profile
 export class ProfileApi extends BaseApiClient {

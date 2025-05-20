@@ -31,17 +31,10 @@ interface EmailCardProps {
 }
 
 export function EmailCard({
-	id,
-	plunkApiKey,
-	wechatPushApiKey,
 	formDataFormId,
-	formDataWebhookSecret,
-	agentId,
 	agent,
 	onEdit,
 	onDelete,
-	createdAt,
-	updatedAt,
 }: EmailCardProps) {
 	const [isTestDialogOpen, setIsTestDialogOpen] = useState(false);
 

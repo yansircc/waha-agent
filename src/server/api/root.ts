@@ -6,10 +6,7 @@ import { freeEmailsRouter } from "@/server/api/routers/free-emails";
 import { instancesRouter } from "@/server/api/routers/instances";
 import { kbsRouter } from "@/server/api/routers/kb";
 import { sessionQueueRouter } from "@/server/api/routers/session-queue";
-import { wahaAuthRouter } from "@/server/api/routers/waha-auth";
-import { wahaChattingRouter } from "@/server/api/routers/waha-chatting";
-import { wahaProfileRouter } from "@/server/api/routers/waha-profile";
-import { wahaSessionsRouter } from "@/server/api/routers/waha-sessions";
+import { wahaSessionsRouter } from "@/server/api/routers/waha";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 import { crawlRouter } from "./routers/crawl";
 import { demoRouter } from "./routers/demo";
@@ -27,9 +24,6 @@ export const appRouter = createTRPCRouter({
 	kbs: kbsRouter,
 	instances: instancesRouter,
 	wahaSessions: wahaSessionsRouter,
-	wahaAuth: wahaAuthRouter,
-	wahaProfile: wahaProfileRouter,
-	wahaChatting: wahaChattingRouter,
 	chat: chatRouter,
 	chatHistory: chatHistoryRouter,
 	s3: s3Router,

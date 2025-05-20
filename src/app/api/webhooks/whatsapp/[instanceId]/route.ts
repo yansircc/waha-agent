@@ -1,8 +1,9 @@
-import type { WAMessage, WebhookNotification } from "@/types/api-responses";
+import type { WAMessage, WebhookNotification } from "@/types/waha";
 import { type NextRequest, NextResponse } from "next/server";
 import { catchError } from "react-catch-error";
 import {
 	determineOtherPartyId,
+	getUserWahaApiEndpoint,
 	handleChatHistory,
 	identifyAndSaveBotPhoneNumber,
 } from "./helpers";
@@ -28,6 +29,7 @@ export async function POST(
 			return { instanceId };
 		},
 	);
+
 	if (paramsError || !paramsData) {
 		console.error("参数解析失败:", paramsError);
 		return NextResponse.json({
@@ -35,6 +37,7 @@ export async function POST(
 			error: "Invalid instanceId parameter",
 		});
 	}
+
 	const { instanceId } = paramsData;
 
 	const { error: bodyError, data: body } = await catchError(async () => {
@@ -57,12 +60,15 @@ export async function POST(
 	}
 
 	// 确保session存在
-	const session = body.session || "default";
+	const sessionName = body.session || "default";
+
+	// 根据 instanceId 获取 userWahaApiEndpoint
+	const userWahaApiEndpoint = await getUserWahaApiEndpoint(instanceId);
 
 	// 检查是否为会话事件
 	if (isSessionEvent(body.event)) {
 		const { error: sessionError, data: sessionResult } = await catchError(
-			async () => handleSessionEvent(instanceId, body),
+			async () => handleSessionEvent(instanceId, body, userWahaApiEndpoint),
 		);
 		if (sessionError || !sessionResult) {
 			console.error("处理会话事件失败:", sessionError);
@@ -98,11 +104,9 @@ export async function POST(
 		});
 	}
 
-	const chatId = validationResult.chatId as string;
-
 	// 动态识别机器人的电话号码
 	const { error: botError, data: botPhoneNumber } = await catchError(async () =>
-		identifyAndSaveBotPhoneNumber(instanceId, messageData, session),
+		identifyAndSaveBotPhoneNumber(instanceId, messageData, sessionName),
 	);
 	if (botError) {
 		console.error("识别机器人号码失败:", botError);
@@ -123,9 +127,22 @@ export async function POST(
 
 	// 将消息添加到聊天历史记录
 	if (otherPartyId) {
-		const { error: historyError } = await catchError(async () =>
-			handleChatHistory(instanceId, session, messageData, otherPartyId),
-		);
+		const { error: historyError } = await catchError(async () => {
+			// 对于机器人自己发送的消息，在存储前进行更严格的检查
+			// 这是因为这些消息可能已通过API回调被添加过
+			if (messageData.fromMe === true && messageData.id) {
+				console.log(`处理机器人自己发送的消息: ${messageData.id}`);
+			}
+
+			// 所有消息都使用相同的处理方法，但该方法内部会检查消息ID是否已存在
+			return await handleChatHistory(
+				instanceId,
+				sessionName,
+				messageData,
+				otherPartyId,
+				userWahaApiEndpoint,
+			);
+		});
 		if (historyError) {
 			console.error("添加聊天历史失败:", historyError);
 		}
@@ -151,7 +168,7 @@ export async function POST(
 	const { error: otherError, data: result } = await catchError(async () =>
 		handleOtherMessage(
 			instanceId,
-			session,
+			sessionName,
 			messageData,
 			body,
 			safeBotPhoneNumber,

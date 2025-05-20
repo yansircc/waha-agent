@@ -1,4 +1,5 @@
 import { deleteInstanceData, saveInstanceAgent } from "@/lib/instance-redis";
+import { createInstanceApiClient } from "@/lib/waha-api";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { instances } from "@/server/db/schema";
 import type {
@@ -6,10 +7,9 @@ import type {
 	InstanceStatus,
 	InstanceUpdateInput,
 } from "@/types";
-import type { SessionStatus } from "@/types/api-responses";
+import type { SessionStatus } from "@/types/waha";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { wahaApi } from "./waha-api";
 
 // Helper function to map Waha status to Instance status
 function mapWahaStatusToInstanceStatus(
@@ -43,7 +43,9 @@ export const instancesRouter = createTRPCRouter({
 		const enrichedInstances = await Promise.all(
 			dbInstances.map(async (instance) => {
 				try {
-					const sessionInfo = await wahaApi.sessions.getSession(instance.id);
+					const sessionInfo = await createInstanceApiClient(
+						instance.userWahaApiEndpoint ?? undefined,
+					).sessions.getSession(instance.id);
 					return {
 						...instance,
 						status: mapWahaStatusToInstanceStatus(sessionInfo.status),
@@ -96,7 +98,9 @@ export const instancesRouter = createTRPCRouter({
 
 			// Fetch real-time status from Waha
 			try {
-				const sessionInfo = await wahaApi.sessions.getSession(dbInstance.id);
+				const sessionInfo = await createInstanceApiClient(
+					dbInstance.userWahaApiEndpoint ?? undefined,
+				).sessions.getSession(dbInstance.id);
 				return {
 					...dbInstance,
 					status: mapWahaStatusToInstanceStatus(sessionInfo.status),
@@ -327,7 +331,9 @@ export const instancesRouter = createTRPCRouter({
 
 			// 删除对应的 Waha session
 			try {
-				await wahaApi.sessions.deleteSession(input.id);
+				await createInstanceApiClient(
+					instance.userWahaApiEndpoint ?? undefined,
+				).sessions.deleteSession(input.id);
 				console.log(`已删除实例 ${input.id} 的 Waha 会话`);
 			} catch (error) {
 				console.error(`删除实例 ${input.id} 的 Waha 会话失败:`, error);
@@ -429,7 +435,9 @@ export const instancesRouter = createTRPCRouter({
 
 			// If not in database, try the Waha API
 			try {
-				const sessionInfo = await wahaApi.sessions.getSession(instance.id);
+				const sessionInfo = await createInstanceApiClient(
+					instance.userWahaApiEndpoint ?? undefined,
+				).sessions.getSession(instance.id);
 
 				// Check if QR code is available
 				const hasQRCode =

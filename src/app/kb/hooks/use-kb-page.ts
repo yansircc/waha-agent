@@ -27,7 +27,6 @@ export function useKbPage() {
 
 	const {
 		getDocumentsByKbId,
-		createDocument,
 		createDocuments,
 		deleteDocument,
 		vectorizeDocument,

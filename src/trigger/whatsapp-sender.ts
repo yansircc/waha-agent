@@ -1,6 +1,4 @@
-import { addMessageToChatHistory } from "@/lib/chat-history-redis";
-import { wahaApi } from "@/server/api/routers/waha-api";
-import type { WAMessage } from "@/types/api-responses";
+import { createInstanceApiClient } from "@/lib/waha-api";
 import { logger, wait } from "@trigger.dev/sdk";
 import type { MessageSendResult } from "./types";
 
@@ -11,9 +9,10 @@ export async function markMessageAsSeen(
 	session: string,
 	chatId: string,
 	messageId?: string,
+	userWahaApiEndpoint?: string,
 ): Promise<void> {
 	// 根据API定义，直接传递messageId参数，有或没有都可以
-	await wahaApi.chatting.sendSeen({
+	await createInstanceApiClient(userWahaApiEndpoint).chatting.sendSeen({
 		session,
 		chatId,
 		messageId,
@@ -32,8 +31,9 @@ export async function markMessageAsSeen(
 export async function startTypingIndicator(
 	session: string,
 	chatId: string,
+	userWahaApiEndpoint?: string,
 ): Promise<void> {
-	await wahaApi.chatting.startTyping({
+	await createInstanceApiClient(userWahaApiEndpoint).chatting.startTyping({
 		session,
 		chatId,
 	});
@@ -47,8 +47,9 @@ export async function startTypingIndicator(
 export async function stopTypingIndicator(
 	session: string,
 	chatId: string,
+	userWahaApiEndpoint?: string,
 ): Promise<void> {
-	await wahaApi.chatting.stopTyping({
+	await createInstanceApiClient(userWahaApiEndpoint).chatting.stopTyping({
 		session,
 		chatId,
 	});
@@ -64,9 +65,8 @@ export async function sendMessageChunks(
 	chatId: string,
 	chunks: string[],
 	delays: number[],
-	instanceId?: string,
-	botPhoneNumber?: string,
 	replyToMessageId?: string,
+	userWahaApiEndpoint?: string,
 ): Promise<MessageSendResult> {
 	if (!chunks.length) {
 		return {
@@ -98,7 +98,9 @@ export async function sendMessageChunks(
 		await wait.for({ seconds: typingTimeInSeconds });
 
 		// 发送消息块
-		const sendResult = await wahaApi.chatting.sendText({
+		const sendResult = await createInstanceApiClient(
+			userWahaApiEndpoint,
+		).chatting.sendText({
 			session,
 			chatId,
 			text: chunk,
@@ -109,22 +111,6 @@ export async function sendMessageChunks(
 		// 保存最后发送的消息ID
 		lastMessageId = sendResult.id;
 
-		// 添加到聊天历史
-		if (instanceId && sendResult) {
-			try {
-				await addToChatHistory(instanceId, chatId, sendResult, botPhoneNumber);
-			} catch (historyError) {
-				logger.error("Failed to add message to chat history", {
-					error:
-						historyError instanceof Error
-							? historyError.message
-							: String(historyError),
-					instanceId,
-					chatId,
-				});
-			}
-		}
-
 		// 如果不是最后一块，需要做额外处理
 		if (!isLastChunk) {
 			// 短暂的思考时间
@@ -133,10 +119,12 @@ export async function sendMessageChunks(
 			// 重新激活打字状态，因为发送消息后打字状态会自动消失
 			// 这确保了下一个消息块发送前，用户能看到"正在输入"的状态
 			try {
-				await wahaApi.chatting.startTyping({
-					session,
-					chatId,
-				});
+				await createInstanceApiClient(userWahaApiEndpoint).chatting.startTyping(
+					{
+						session,
+						chatId,
+					},
+				);
 
 				logger.debug("Re-activated typing indicator for next chunk", {
 					chunkIndex: i + 1,
@@ -170,47 +158,23 @@ export async function sendMessageChunks(
 }
 
 /**
- * 添加消息到聊天历史
- */
-async function addToChatHistory(
-	instanceId: string,
-	chatId: string,
-	message: WAMessage,
-	botPhoneNumber?: string,
-): Promise<void> {
-	// 计算正确的历史记录键
-	let historyKey = chatId;
-
-	if (botPhoneNumber && message.from && message.to) {
-		// 根据发送者和接收者关系确定历史记录键
-		historyKey =
-			message.from === botPhoneNumber
-				? message.to // 如果是机器人发送，使用接收者
-				: message.from; // 如果是用户发送，使用发送者
-	}
-
-	if (historyKey) {
-		await addMessageToChatHistory(instanceId, historyKey, message);
-	}
-}
-
-/**
  * 发送错误消息到用户
  */
 export async function sendErrorMessage(
 	session: string,
 	chatId: string,
 	message = "Sorry, AFK for a while, I'll be back soon.",
+	userWahaApiEndpoint?: string,
 ): Promise<void> {
 	try {
 		// 尝试停止输入状态
 		try {
-			await stopTypingIndicator(session, chatId);
-		} catch (typingError) {
+			await stopTypingIndicator(session, chatId, userWahaApiEndpoint);
+		} catch (_typingError) {
 			// 忽略停止输入时的错误
 		}
 
-		await wahaApi.chatting.sendText({
+		await createInstanceApiClient(userWahaApiEndpoint).chatting.sendText({
 			session,
 			chatId,
 			text: message,

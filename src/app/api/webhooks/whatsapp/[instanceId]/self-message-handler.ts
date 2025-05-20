@@ -1,5 +1,5 @@
 import { setChatAgentActive } from "@/lib/instance-redis";
-import type { WAMessage } from "@/types/api-responses";
+import type { WAMessage } from "@/types/waha";
 
 /**
  * 处理自己发送的消息

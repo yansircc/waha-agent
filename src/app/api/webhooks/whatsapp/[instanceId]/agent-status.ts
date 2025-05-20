@@ -1,4 +1,4 @@
-import { getRedisForInstance, safeRedisOperation } from "@/lib/redis";
+import { getRedisForInstance } from "@/lib/redis";
 import { catchError } from "react-catch-error";
 
 // Redis键前缀

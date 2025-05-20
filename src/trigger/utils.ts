@@ -1,38 +1,4 @@
 import { qdrantService } from "@/lib/qdrant-service";
-import { logger } from "@trigger.dev/sdk";
-import type { WebhookResponse } from "./types";
-
-/**
- * Send a webhook response
- */
-async function sendWebhookResponse<T extends WebhookResponse>(
-	webhookUrl: string,
-	data: T,
-): Promise<T> {
-	try {
-		const response = await fetch(webhookUrl, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-			},
-			body: JSON.stringify(data),
-		});
-
-		if (!response.ok) {
-			logger.error("Failed to send webhook response", {
-				status: response.status,
-				statusText: response.statusText,
-			});
-		}
-
-		return data;
-	} catch (error) {
-		logger.error("Error sending webhook response", {
-			error: error instanceof Error ? error.message : String(error),
-		});
-		return data;
-	}
-}
 
 /**
  * Interface for text chunks
@@ -289,19 +255,5 @@ export async function createCollectionIfNotExists(
 				default_segment_number: 2, // Optimize for faster searches
 			},
 		});
-	}
-}
-
-/**
- * Check if the URL points to a markdown or text file
- * Handles URLs with query parameters
- */
-function isMarkdownOrTextFile(url: string): boolean {
-	try {
-		// Remove query parameters and get the base URL
-		const baseUrl = new URL(url).pathname.toLowerCase();
-		return baseUrl.endsWith(".md") || baseUrl.endsWith(".txt");
-	} catch (error) {
-		return false;
 	}
 }

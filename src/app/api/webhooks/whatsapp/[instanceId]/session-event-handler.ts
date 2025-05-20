@@ -1,7 +1,7 @@
 import { db } from "@/server/db";
 import { instances } from "@/server/db/schema";
 import type { InstanceStatus } from "@/types";
-import type { WebhookNotification } from "@/types/api-responses";
+import type { WebhookNotification } from "@/types/waha";
 import { eq } from "drizzle-orm";
 import { catchError } from "react-catch-error";
 import { handleQRCodeEvent } from "./qr-code-handler";
@@ -50,6 +50,7 @@ type WebhookPayload =
 export async function handleSessionEvent(
 	instanceId: string,
 	body: WebhookNotification,
+	userWahaApiEndpoint?: string,
 ): Promise<{
 	success: boolean;
 	eventType: string;
@@ -60,12 +61,6 @@ export async function handleSessionEvent(
 	const eventType = body.event || "unknown";
 	const sessionName = body.session || "default";
 
-	// 记录会话事件
-	console.log(`[${instanceId}] 收到会话事件: ${eventType}`, {
-		sessionName: body.session,
-		payload: body.payload,
-	});
-
 	// 初始化实例状态变量
 	let instanceStatus: InstanceStatus | undefined;
 
@@ -74,7 +69,7 @@ export async function handleSessionEvent(
 		console.log(`[${instanceId}] 检测到QR码相关事件，正在处理...`);
 		// 调用QR码处理函数，传递webhook body
 		const { error } = await catchError(async () =>
-			handleQRCodeEvent(instanceId, sessionName, body),
+			handleQRCodeEvent(instanceId, sessionName, userWahaApiEndpoint, body),
 		);
 		if (error) {
 			console.error("处理QR码事件出错:", error);

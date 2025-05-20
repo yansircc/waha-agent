@@ -195,11 +195,10 @@ export const agentsRouter = createTRPCRouter({
 								// 获取当前实例 agent 的活跃状态，保持不变
 								let isActive = true;
 								try {
-									const redisAgentData = await ctx.db.query.instances.findFirst(
-										{
+									const _redisAgentData =
+										await ctx.db.query.instances.findFirst({
 											where: (inst) => eq(inst.id, instance.id),
-										},
-									);
+										});
 									// 这里假设实例中有一个字段保存了 agent 是否活跃的信息
 									// 如果没有特定字段，请根据实际情况调整
 									isActive = true; // 默认为活跃

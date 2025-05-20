@@ -12,6 +12,7 @@ export const freeEmailApiService = {
 		emailAddress: string,
 		alias: string,
 	): Promise<boolean> => {
+		console.log("validateAlias", emailAddress, alias);
 		// In a real implementation, you would check with formsubmit.co
 		// but they don't offer an API for validation
 		// For now, we'll just do basic validation
@@ -22,6 +23,7 @@ export const freeEmailApiService = {
 	 * Check Plunk API key validity
 	 */
 	validatePlunkApiKey: async (apiKey: string): Promise<boolean> => {
+		console.log("validatePlunkApiKey", apiKey);
 		// For demo purposes only - in production, you would validate against Plunk API
 		return true;
 		// return apiKey.startsWith("plunk_") && apiKey.length > 10;
@@ -51,7 +53,8 @@ export const freeEmailApiService = {
 	): Promise<{ success: boolean; id?: string; error?: string }> => {
 		try {
 			// In a real implementation, you would save this to your database
-			// through your API
+			// through your APIe
+			console.log("saveFreeEmailConfig", formData, userId);
 			return {
 				success: true,
 				id: crypto.randomUUID(),

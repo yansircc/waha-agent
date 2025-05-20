@@ -30,7 +30,6 @@ export function AddKbDialog({
 		description,
 		setDescription,
 		isSubmitting,
-		handleSubmit: hookHandleSubmit,
 		handleClose,
 	} = useAddKbDialog();
 
