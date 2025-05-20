@@ -7,7 +7,7 @@ import { type NextRequest, NextResponse } from "next/server";
  * API endpoint to manually delete all session jobs
  * GET /api/del-all-sessions
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
 	try {
 		const session = await auth();
 		if (!session || !(session.user?.email === "cnmarkyan@gmail.com")) {

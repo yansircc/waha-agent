@@ -4,7 +4,7 @@ import { catchError } from "react-catch-error";
 import { showErrorHtml, showExpiredHtml, showSuccessHtml } from "./show-result";
 
 export async function GET(
-	request: NextRequest,
+	_request: NextRequest,
 	{ params }: { params: Promise<{ tokenId: string }> },
 ) {
 	const { error: paramsError, data: paramsData } = await catchError(
