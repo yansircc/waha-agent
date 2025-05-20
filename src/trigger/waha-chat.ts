@@ -27,6 +27,7 @@ export const whatsAppChat = task({
 			agent,
 			botPhoneNumber,
 			userWahaApiEndpoint,
+			userWahaApiKey,
 			chatHistory,
 		} = payload;
 
@@ -66,10 +67,16 @@ export const whatsAppChat = task({
 				chatId,
 				messageData.id,
 				userWahaApiEndpoint,
+				userWahaApiKey,
 			);
 
 			// 2. 开始输入状态
-			await startTypingIndicator(sessionName, chatId, userWahaApiEndpoint);
+			await startTypingIndicator(
+				sessionName,
+				chatId,
+				userWahaApiEndpoint,
+				userWahaApiKey,
+			);
 
 			// 3. 生成回复内容
 			let aiResponse = "";
@@ -122,12 +129,17 @@ export const whatsAppChat = task({
 				chatId,
 				chunks,
 				delays,
-				messageData.id,
 				userWahaApiEndpoint,
+				userWahaApiKey,
 			);
 
 			// 6. 停止输入状态
-			await stopTypingIndicator(sessionName, chatId, userWahaApiEndpoint);
+			await stopTypingIndicator(
+				sessionName,
+				chatId,
+				userWahaApiEndpoint,
+				userWahaApiKey,
+			);
 
 			return {
 				success: true,
@@ -152,7 +164,12 @@ export const whatsAppChat = task({
 				const chatId = messageData.from || messageData.chatId;
 
 				if (chatId) {
-					await sendErrorMessage(sessionName, chatId, userWahaApiEndpoint);
+					await sendErrorMessage(
+						sessionName,
+						chatId,
+						userWahaApiEndpoint,
+						userWahaApiKey,
+					);
 				}
 			} catch (sendError) {
 				logger.error("Failed to send error message to user", {

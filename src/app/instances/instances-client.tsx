@@ -24,6 +24,8 @@ export default function InstancesPage() {
 		setUserWebhooks,
 		userWahaApiEndpoint,
 		setUserWahaApiEndpoint,
+		userWahaApiKey,
+		setUserWahaApiKey,
 		handleOpenAddDialog,
 		handleSubmit,
 		handleDeleteInstance,
@@ -58,6 +60,8 @@ export default function InstancesPage() {
 		}
 	};
 
+	console.log("instances", instances);
+
 	return (
 		<div>
 			<div className="mb-8 flex items-center justify-end">
@@ -80,6 +84,8 @@ export default function InstancesPage() {
 							phoneNumber={instance.phoneNumber || undefined}
 							agentName={instance.agent?.name}
 							status={instance.status as InstanceStatus}
+							userWahaApiEndpoint={instance.userWahaApiEndpoint || undefined}
+							userWahaApiKey={instance.userWahaApiKey || undefined}
 							qrCode={instance.qrCode || undefined}
 							queueJobId={
 								instance.status === "connecting" ? currentJobId : undefined
@@ -108,6 +114,8 @@ export default function InstancesPage() {
 				setUserWebhooks={setUserWebhooks}
 				userWahaApiEndpoint={userWahaApiEndpoint}
 				setUserWahaApiEndpoint={setUserWahaApiEndpoint}
+				userWahaApiKey={userWahaApiKey}
+				setUserWahaApiKey={setUserWahaApiKey}
 				isQueued={isQueued}
 				queuePosition={queuePosition}
 				estimatedWaitTime={estimatedWaitTime}

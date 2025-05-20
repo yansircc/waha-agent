@@ -26,10 +26,14 @@ async function fetchAndUpdateQRCode(
 	instanceId: string,
 	sessionName: string,
 	userWahaApiEndpoint?: string,
+	userWahaApiKey?: string,
 ): Promise<string | null> {
 	try {
 		// 获取QR码数据
-		const apiClient = createInstanceApiClient(userWahaApiEndpoint);
+		const apiClient = createInstanceApiClient(
+			userWahaApiEndpoint,
+			userWahaApiKey,
+		);
 		const qrData = await apiClient.auth.getQRCode(sessionName, "image");
 
 		if (!qrData || typeof qrData !== "object" || !("data" in qrData)) {
@@ -76,6 +80,7 @@ export async function handleQRCodeEvent(
 	instanceId: string,
 	sessionName: string,
 	userWahaApiEndpoint?: string,
+	userWahaApiKey?: string,
 	body?: WebhookNotification,
 ): Promise<void> {
 	console.log(`[${instanceId}] 处理QR码事件, 会话: ${sessionName}`);
@@ -104,5 +109,10 @@ export async function handleQRCodeEvent(
 	}
 
 	// 如果载荷中没有QR码，则通过API获取
-	await fetchAndUpdateQRCode(instanceId, sessionName, userWahaApiEndpoint);
+	await fetchAndUpdateQRCode(
+		instanceId,
+		sessionName,
+		userWahaApiEndpoint,
+		userWahaApiKey,
+	);
 }

@@ -5,14 +5,15 @@ export class BaseApiClient {
 	protected apiKey: string;
 	protected apiUrl: string;
 
-	constructor(customApiUrl?: string) {
-		this.apiKey = env.WAHA_API_KEY;
+	constructor(customApiUrl?: string, customApiKey?: string) {
 		this.apiUrl = customApiUrl || env.NEXT_PUBLIC_WAHA_API_URL;
+		this.apiKey = customApiKey || env.WHATSAPP_API_KEY;
 	}
 
 	protected getHeaders(includeContentType = false): HeadersInit {
 		const headers: HeadersInit = {
-			Authorization: `Bearer ${this.apiKey}`,
+			"Content-type": "application/json",
+			"X-Api-Key": this.apiKey,
 		};
 
 		if (includeContentType) {

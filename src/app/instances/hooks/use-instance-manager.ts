@@ -12,6 +12,7 @@ export function useInstanceManager() {
 	const [isLoading, setIsLoading] = useState(false);
 	const [userWebhooks, setUserWebhooks] = useState<string[]>([]);
 	const [userWahaApiEndpoint, setUserWahaApiEndpoint] = useState("");
+	const [userWahaApiKey, setUserWahaApiKey] = useState("");
 
 	// Core hooks
 	const { instances, isLoadingInstances, createInstance, deleteInstance } =
@@ -36,11 +37,17 @@ export function useInstanceManager() {
 		setSelectedAgentId("");
 		setUserWebhooks([]);
 		setUserWahaApiEndpoint("");
+		setUserWahaApiKey("");
 	}, []);
 
 	// Create a new instance and WhatsApp session
 	const handleSubmit = useCallback(
-		async (agentId: string, webhooks?: string[], apiEndpoint?: string) => {
+		async (
+			agentId: string,
+			webhooks?: string[],
+			apiEndpoint?: string,
+			apiKey?: string,
+		) => {
 			if (!agentId) {
 				toast.error("请选择一个AI机器人");
 				return;
@@ -58,6 +65,7 @@ export function useInstanceManager() {
 					agentId: agentId,
 					userWebhooks: webhooks?.filter((url) => url.trim() !== ""),
 					userWahaApiEndpoint: apiEndpoint?.trim() || undefined,
+					userWahaApiKey: apiKey?.trim() || undefined,
 				});
 
 				if (!newInstance?.id) {
@@ -246,5 +254,9 @@ export function useInstanceManager() {
 		// WAHA API 端点
 		userWahaApiEndpoint,
 		setUserWahaApiEndpoint,
+
+		// WAHA API Key
+		userWahaApiKey,
+		setUserWahaApiKey,
 	};
 }

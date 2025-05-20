@@ -29,6 +29,7 @@ export interface WhatsAppMessagePayload {
 	chatHistory: ChatMessage[];
 	botPhoneNumber?: string;
 	userWahaApiEndpoint?: string;
+	userWahaApiKey?: string;
 }
 
 /**

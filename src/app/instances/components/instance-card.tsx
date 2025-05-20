@@ -1,5 +1,12 @@
+import { env } from "@/env";
 import type { InstanceStatus } from "@/types";
-import { PhoneIcon } from "lucide-react";
+import {
+	EyeIcon,
+	EyeOffIcon,
+	InfoIcon,
+	PhoneIcon,
+	ServerIcon,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ConnectedActions } from "./connected-actions";
 import { DisconnectedActions } from "./disconnected-actions";
@@ -13,6 +20,8 @@ interface InstanceCardProps {
 	name: string;
 	phoneNumber?: string;
 	agentName?: string;
+	userWahaApiEndpoint?: string;
+	userWahaApiKey?: string;
 	status: InstanceStatus;
 	qrCode?: string;
 	queueJobId?: string; // 队列任务ID
@@ -30,6 +39,8 @@ export function InstanceCard({
 	phoneNumber,
 	agentName,
 	status,
+	userWahaApiEndpoint,
+	userWahaApiKey,
 	qrCode,
 	queueJobId,
 	onDelete,
@@ -40,6 +51,8 @@ export function InstanceCard({
 	onRefresh,
 }: InstanceCardProps) {
 	const [showQR, setShowQR] = useState(false);
+	const [showDetails, setShowDetails] = useState(false);
+	const [showApiKey, setShowApiKey] = useState(false);
 	const hasRequestedQR = useRef(false);
 
 	// Listen for open QR dialog events
@@ -91,42 +104,105 @@ export function InstanceCard({
 		}
 	};
 
+	// 切换详细信息显示
+	const toggleDetails = () => {
+		setShowDetails(!showDetails);
+	};
+
+	// 切换API Key显示
+	const toggleApiKeyVisibility = (e: React.MouseEvent) => {
+		e.stopPropagation();
+		setShowApiKey(!showApiKey);
+	};
+
+	// 将API Key显示为星号
+	const maskApiKey = (key?: string) => {
+		if (!key) return "********";
+		return "*".repeat(Math.min(12, key.length));
+	};
+
 	return (
 		<div
-			className="col-span-1 divide-y divide-gray-200 rounded-lg bg-white shadow"
+			className="col-span-1 rounded-xl bg-white shadow-sm ring-1 ring-gray-200 transition-all hover:shadow-md"
 			id={`instance-card-${id}`}
 		>
-			<div className="flex flex-col p-6">
+			<div className="flex flex-col p-5">
 				<div className="flex items-center justify-between">
-					<h3 className="truncate font-medium text-gray-900 text-lg">{name}</h3>
+					<h3 className="truncate font-semibold text-gray-900 text-lg">
+						{name}
+					</h3>
 					<div className="flex items-center gap-2">
-						{/* 队列状态指示器 */}
 						{status === "connecting" && (
 							<QueueStatusIndicator instanceId={id} jobId={queueJobId} />
 						)}
 						<StatusBadge status={status} />
 					</div>
 				</div>
-				<div className="mt-2 flex items-center text-gray-500 text-sm">
-					<PhoneIcon
-						className="mr-1.5 h-5 w-5 flex-shrink-0 text-gray-400"
-						aria-hidden="true"
-					/>
-					{phoneNumber || "没有手机号码"}
+
+				<div className="mt-2 flex items-center space-x-1 text-gray-600 text-sm">
+					<PhoneIcon className="h-4 w-4" />
+					<span className="truncate">{phoneNumber || "没有手机号码"}</span>
 				</div>
-				<div className="mt-4 space-y-3">
-					<div>
-						<h4 className="font-medium text-gray-500 text-sm">
-							连接的AI机器人
-						</h4>
-						<p className="mt-1 font-medium text-gray-900 text-sm">
-							{agentName || "没有AI机器人"}
-						</p>
+
+				<div className="mt-2 flex items-center space-x-1 text-gray-600 text-sm">
+					<ServerIcon className="h-4 w-4" />
+					<span className="truncate">{agentName || "没有AI机器人"}</span>
+				</div>
+
+				{/* 详细信息按钮 */}
+				<button
+					onClick={toggleDetails}
+					className="mt-3 flex items-center text-gray-500 text-xs hover:text-gray-700"
+					type="button"
+				>
+					<InfoIcon className="mr-1 h-3.5 w-3.5" />
+					{showDetails ? "隐藏详情" : "查看详情"}
+				</button>
+
+				{/* 详细信息面板 */}
+				{showDetails && (
+					<div className="mt-2 rounded-md bg-gray-50 p-3 text-xs">
+						<div className="mb-1 flex">
+							<span className="w-20 font-medium text-gray-500">API端点:</span>
+							<span className="truncate text-gray-700">
+								{userWahaApiEndpoint || env.NEXT_PUBLIC_WAHA_API_URL}
+							</span>
+						</div>
+
+						{/* 只有在提供了API端点时才显示API Key */}
+						{userWahaApiEndpoint && (
+							<div className="mb-1 flex items-center">
+								<span className="w-20 font-medium text-gray-500">API Key:</span>
+								<span className="truncate text-gray-700">
+									{showApiKey
+										? userWahaApiKey || "当前 API_KEY 仅管理员可见"
+										: maskApiKey(userWahaApiKey)}
+								</span>
+								<button
+									onClick={toggleApiKeyVisibility}
+									className="ml-1 text-gray-500 hover:text-gray-700"
+									type="button"
+									aria-label={showApiKey ? "隐藏API Key" : "显示API Key"}
+								>
+									{showApiKey ? (
+										<EyeOffIcon className="h-3.5 w-3.5" />
+									) : (
+										<EyeIcon className="h-3.5 w-3.5" />
+									)}
+								</button>
+							</div>
+						)}
+
+						<div className="flex">
+							<span className="w-20 font-medium text-gray-500">实例ID:</span>
+							<span className="truncate text-gray-700">{id}</span>
+						</div>
 					</div>
-				</div>
+				)}
 			</div>
-			<div>
-				<div className="-mt-px flex divide-x divide-gray-200">
+
+			<div className="px-1 pb-1">
+				<div className="flex divide-x divide-gray-100 rounded-lg bg-gray-50">
 					{status === "disconnected" ? (
 						<DisconnectedActions
 							onScanQR={handleScanQR}

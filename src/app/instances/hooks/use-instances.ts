@@ -37,6 +37,7 @@ export function useInstances({ onSuccess, onError }: UseInstancesProps = {}) {
 		agentId?: string;
 		userWebhooks?: string[];
 		userWahaApiEndpoint?: string;
+		userWahaApiKey?: string;
 	}) => {
 		setIsLoading(true);
 		try {
@@ -70,6 +71,7 @@ export function useInstances({ onSuccess, onError }: UseInstancesProps = {}) {
 		sessionData?: Record<string, unknown>;
 		userWebhooks?: string[];
 		userWahaApiEndpoint?: string;
+		userWahaApiKey?: string;
 	}) => {
 		setIsLoading(true);
 		try {

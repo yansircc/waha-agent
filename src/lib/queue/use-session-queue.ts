@@ -184,15 +184,22 @@ export function useSessionQueue({
 		async (params: {
 			instanceId: string;
 			userWahaApiEndpoint?: string;
+			userWahaApiKey?: string;
 			// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 			executeOperation: () => Promise<any>;
 		}) => {
-			const { instanceId, executeOperation, userWahaApiEndpoint } = params;
+			const {
+				instanceId,
+				executeOperation,
+				userWahaApiEndpoint,
+				userWahaApiKey,
+			} = params;
 
 			// 先添加到队列
 			const result = await addToQueueMutation.mutateAsync({
 				instanceId,
 				userWahaApiEndpoint,
+				userWahaApiKey,
 				operation: queueState.operation as
 					| "start"
 					| "create"

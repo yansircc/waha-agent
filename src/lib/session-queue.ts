@@ -21,6 +21,7 @@ export async function queueSessionStart(
 	session: string,
 	instanceId?: string,
 	userWahaApiEndpoint?: string,
+	userWahaApiKey?: string,
 ): Promise<{ position: number }> {
 	const redis = getRedisForInstance();
 
@@ -33,7 +34,7 @@ export async function queueSessionStart(
 		const queueLength = await redis.llen(QUEUE_KEY);
 
 		// Trigger queue processing
-		void processQueue(userWahaApiEndpoint);
+		void processQueue(userWahaApiEndpoint, userWahaApiKey);
 
 		return { position: queueLength };
 	});
@@ -42,7 +43,10 @@ export async function queueSessionStart(
 /**
  * Process the session start queue
  */
-async function processQueue(userWahaApiEndpoint?: string): Promise<void> {
+async function processQueue(
+	userWahaApiEndpoint?: string,
+	userWahaApiKey?: string,
+): Promise<void> {
 	const redis = getRedisForInstance();
 
 	// Use a lock to prevent multiple concurrent processing attempts
@@ -82,7 +86,7 @@ async function processQueue(userWahaApiEndpoint?: string): Promise<void> {
 			await redis.hset(PROCESSING_KEY, { [session]: Date.now().toString() });
 
 			// Start session in the background
-			void startSessionAsync(session, userWahaApiEndpoint);
+			void startSessionAsync(session, userWahaApiEndpoint, userWahaApiKey);
 		}
 	} catch (error) {
 		console.error("Error processing session queue:", error);
@@ -95,14 +99,16 @@ async function processQueue(userWahaApiEndpoint?: string): Promise<void> {
 async function startSessionAsync(
 	session: string,
 	userWahaApiEndpoint?: string,
+	userWahaApiKey?: string,
 ): Promise<void> {
 	const redis = getRedisForInstance();
 
 	try {
 		// Start the session
-		await createInstanceApiClient(userWahaApiEndpoint).sessions.startSession(
-			session,
-		);
+		await createInstanceApiClient(
+			userWahaApiEndpoint,
+			userWahaApiKey,
+		).sessions.startSession(session);
 		console.log(`Session ${session} started successfully`);
 	} catch (error) {
 		console.error(`Failed to start session ${session}:`, error);

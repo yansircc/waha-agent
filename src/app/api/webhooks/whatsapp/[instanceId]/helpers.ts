@@ -6,7 +6,7 @@ import {
 import { getBotPhoneNumber, saveBotPhoneNumber } from "@/lib/instance-redis";
 import { createInstanceApiClient } from "@/lib/waha-api";
 import { db } from "@/server/db";
-import { instances } from "@/server/db/schema";
+import { type Instance, instances } from "@/server/db/schema";
 import type { ChatMessage } from "@/trigger/types";
 import type { WAMessage } from "@/types/waha";
 import { eq } from "drizzle-orm";
@@ -61,15 +61,19 @@ export async function identifyAndSaveBotPhoneNumber(
 		return detectedNumber;
 	}
 
-	const { data: userWahaApiEndpoint, error: userWahaApiEndpointError } =
-		await catchError(async () => getUserWahaApiEndpoint(instanceId));
+	const { data: instance, error: instanceError } = await catchError(async () =>
+		getInstanceById(instanceId),
+	);
 
-	if (userWahaApiEndpointError) {
-		console.error("获取WhatsApp账号失败:", userWahaApiEndpointError);
+	if (instanceError || !instance) {
+		console.error("获取WhatsApp账号失败:", instanceError);
 		return null;
 	}
 
-	const wahaApi = createInstanceApiClient(userWahaApiEndpoint);
+	const wahaApi = createInstanceApiClient(
+		instance.userWahaApiEndpoint || undefined,
+		instance.userWahaApiKey || undefined,
+	);
 
 	// 尝试从API获取机器人信息
 	const { error: apiError, data: meInfo } = await catchError(async () =>
@@ -110,6 +114,7 @@ export async function handleChatHistory(
 	messageData: Partial<WAMessage>,
 	otherPartyId: string,
 	userWahaApiEndpoint?: string,
+	userWahaApiKey?: string,
 ): Promise<void> {
 	if (!messageData.id || !messageData.timestamp || !otherPartyId) {
 		console.log("消息缺少必要信息，无法添加到聊天历史");
@@ -139,6 +144,7 @@ export async function handleChatHistory(
 				session,
 				historyKey,
 				userWahaApiEndpoint,
+				userWahaApiKey,
 			),
 		);
 
@@ -172,21 +178,21 @@ export function determineOtherPartyId(
 /**
  * 获取用户实例的 WhatsApp API 端点
  */
-export async function getUserWahaApiEndpoint(
+export async function getInstanceById(
 	instanceId: string,
-): Promise<string | undefined> {
+): Promise<Instance | undefined> {
 	const { data: instance, error: instanceError } = await catchError(async () =>
 		db.query.instances.findFirst({
 			where: eq(instances.id, instanceId),
 		}),
 	);
 
-	if (instanceError || !instance) {
+	if (instanceError) {
 		console.error("获取WhatsApp账号失败:", instanceError);
 		throw new Error("获取WhatsApp账号失败");
 	}
 
-	return instance.userWahaApiEndpoint ?? undefined;
+	return instance;
 }
 
 /**

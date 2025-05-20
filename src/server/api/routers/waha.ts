@@ -30,26 +30,32 @@ export const wahaSessionsRouter = createTRPCRouter({
 						eq(instance.createdById, ctx.session.user.id),
 				});
 
-				// 创建一个 Set 来存储唯一的 API 端点
-				const uniqueApiEndpoints = new Set<string>();
+				// 创建一个 Map 来存储 API 端点和对应的 API 密钥
+				const apiEndpointsWithKeys = new Map<string, string>();
 
-				// 添加默认 API 端点
-				uniqueApiEndpoints.add(env.NEXT_PUBLIC_WAHA_API_URL);
+				// 添加默认 API 端点和密钥
+				apiEndpointsWithKeys.set(
+					env.NEXT_PUBLIC_WAHA_API_URL,
+					env.WHATSAPP_API_KEY,
+				);
 
-				// 添加所有自定义 API 端点
+				// 添加所有自定义 API 端点和对应的密钥
 				for (const instance of instances) {
-					if (instance.userWahaApiEndpoint) {
-						uniqueApiEndpoints.add(instance.userWahaApiEndpoint);
+					if (instance.userWahaApiEndpoint && instance.userWahaApiKey) {
+						apiEndpointsWithKeys.set(
+							instance.userWahaApiEndpoint,
+							instance.userWahaApiKey,
+						);
 					}
 				}
 
 				// 对每个 API 端点查询会话
 				let allSessions: SessionInfo[] = [];
 
-				for (const apiEndpoint of uniqueApiEndpoints) {
+				for (const [apiEndpoint, apiKey] of apiEndpointsWithKeys.entries()) {
 					try {
-						// 为每个 API 端点创建一个客户端
-						const apiClient = createInstanceApiClient(apiEndpoint);
+						// 为每个 API 端点创建一个客户端，并传入对应的 API 密钥
+						const apiClient = createInstanceApiClient(apiEndpoint, apiKey);
 
 						// 查询此 API 端点的会话
 						const endpointSessions = await apiClient.sessions.listSessions(
@@ -102,6 +108,7 @@ export const wahaSessionsRouter = createTRPCRouter({
 				instanceId: z.string(),
 				start: z.boolean().optional().default(true),
 				userWahaApiEndpoint: z.string().optional(),
+				userWahaApiKey: z.string().optional(),
 			}),
 		)
 		.mutation(async ({ input, ctx }) => {
@@ -114,9 +121,12 @@ export const wahaSessionsRouter = createTRPCRouter({
 					where: (instance, { eq }) => eq(instance.id, input.instanceId),
 				});
 
-				// 创建实例特定的 API 客户端，使用自定义 API 端点（如果有）
+				// 创建实例特定的 API 客户端，使用自定义 API 端点和密钥（如果有）
 				const instanceApi = createInstanceApiClient(
-					instance?.userWahaApiEndpoint || undefined,
+					instance?.userWahaApiEndpoint ||
+						input.userWahaApiEndpoint ||
+						undefined,
+					instance?.userWahaApiKey || input.userWahaApiKey || undefined,
 				);
 
 				// Create webhook URL for the instance (default webhook)
@@ -132,7 +142,7 @@ export const wahaSessionsRouter = createTRPCRouter({
 
 				// 用户自定义 webhook 配置，只包含消息事件
 				const userWebhookConfig = {
-					events: ["message.any"],
+					events: ["message.any", "session.status"],
 					hmac: null,
 					retries: null,
 					customHeaders: null,
@@ -166,10 +176,21 @@ export const wahaSessionsRouter = createTRPCRouter({
 					}
 				}
 
+				// 确保元数据保留 userWahaApiKey 和 userWahaApiEndpoint
+				const metadata = {};
+				if (input.userWahaApiEndpoint) {
+					Object.assign(metadata, {
+						userWahaApiEndpoint: input.userWahaApiEndpoint,
+					});
+				}
+				if (input.userWahaApiKey) {
+					Object.assign(metadata, { userWahaApiKey: input.userWahaApiKey });
+				}
+
 				const sessionConfig: SessionConfig = {
 					debug: false,
 					webhooks: webhooks, // 使用包含所有 webhooks 的数组
-					metadata: { instanceId: input.instanceId },
+					metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
 				};
 
 				// Create session request
@@ -196,7 +217,7 @@ export const wahaSessionsRouter = createTRPCRouter({
 		.input(z.object({ instanceId: z.string() }))
 		.query(async ({ input, ctx }) => {
 			try {
-				// 获取实例信息，包括 userWahaApiEndpoint
+				// 获取实例信息，包括 userWahaApiEndpoint 和 userWahaApiKey
 				const instance = await ctx.db.query.instances.findFirst({
 					where: (instance, { eq }) => eq(instance.id, input.instanceId),
 				});
@@ -205,9 +226,10 @@ export const wahaSessionsRouter = createTRPCRouter({
 					throw new Error("Instance not found");
 				}
 
-				// 创建实例特定的 API 客户端
+				// 创建实例特定的 API 客户端，使用自定义端点和密钥
 				const instanceApi = createInstanceApiClient(
-					instance?.userWahaApiEndpoint || undefined,
+					instance.userWahaApiEndpoint || undefined,
+					instance.userWahaApiKey || undefined,
 				);
 
 				// 尝试获取具体会话
@@ -225,6 +247,7 @@ export const wahaSessionsRouter = createTRPCRouter({
 						...parsed.data,
 						apiEndpoint:
 							instance.userWahaApiEndpoint || env.NEXT_PUBLIC_WAHA_API_URL,
+						apiKey: instance.userWahaApiKey || env.WHATSAPP_API_KEY,
 					};
 				} catch (sessionError) {
 					// 如果在自定义API没有找到，尝试在默认API中查找
@@ -278,14 +301,15 @@ export const wahaSessionsRouter = createTRPCRouter({
 		)
 		.mutation(async ({ input, ctx }) => {
 			try {
-				// 获取实例信息，包括 userWahaApiEndpoint
+				// 获取实例信息，包括 userWahaApiEndpoint 和 userWahaApiKey
 				const instance = await ctx.db.query.instances.findFirst({
 					where: (instance, { eq }) => eq(instance.id, input.instanceId),
 				});
 
-				// 创建实例特定的 API 客户端
+				// 创建实例特定的 API 客户端，确保同时使用API端点和密钥
 				const instanceApi = createInstanceApiClient(
 					instance?.userWahaApiEndpoint || undefined,
+					instance?.userWahaApiKey || undefined,
 				);
 
 				return await instanceApi.sessions.updateSession(
@@ -304,14 +328,15 @@ export const wahaSessionsRouter = createTRPCRouter({
 		.input(z.object({ instanceId: z.string() }))
 		.mutation(async ({ input, ctx }) => {
 			try {
-				// 获取实例信息，包括 userWahaApiEndpoint
+				// 获取实例信息，包括 userWahaApiEndpoint 和 userWahaApiKey
 				const instance = await ctx.db.query.instances.findFirst({
 					where: (instance, { eq }) => eq(instance.id, input.instanceId),
 				});
 
-				// 创建实例特定的 API 客户端
+				// 创建实例特定的 API 客户端，确保同时使用API端点和密钥
 				const instanceApi = createInstanceApiClient(
 					instance?.userWahaApiEndpoint || undefined,
+					instance?.userWahaApiKey || undefined,
 				);
 
 				await instanceApi.sessions.deleteSession(input.instanceId);
@@ -328,14 +353,15 @@ export const wahaSessionsRouter = createTRPCRouter({
 		.input(z.object({ instanceId: z.string() }))
 		.query(async ({ input, ctx }) => {
 			try {
-				// 获取实例信息，包括 userWahaApiEndpoint
+				// 获取实例信息，包括 userWahaApiEndpoint 和 userWahaApiKey
 				const instance = await ctx.db.query.instances.findFirst({
 					where: (instance, { eq }) => eq(instance.id, input.instanceId),
 				});
 
-				// 创建实例特定的 API 客户端
+				// 创建实例特定的 API 客户端，确保同时使用API端点和密钥
 				const instanceApi = createInstanceApiClient(
 					instance?.userWahaApiEndpoint || undefined,
+					instance?.userWahaApiKey || undefined,
 				);
 
 				const meInfo = await instanceApi.sessions.getMeInfo(input.instanceId);
@@ -353,14 +379,16 @@ export const wahaSessionsRouter = createTRPCRouter({
 			z.object({
 				instanceId: z.string(),
 				userWahaApiEndpoint: z.string().optional(),
+				userWahaApiKey: z.string().optional(),
 			}),
 		)
 		.mutation(async ({ input }) => {
 			try {
-				// Add to the queue
+				// Add to the queue, 确保同时传递API端点和密钥
 				const queueResult = await queueSessionStart(
 					input.instanceId,
 					input.userWahaApiEndpoint,
+					input.userWahaApiKey,
 				);
 
 				return {
@@ -405,12 +433,15 @@ export const wahaSessionsRouter = createTRPCRouter({
 			z.object({
 				instanceId: z.string(),
 				userWahaApiEndpoint: z.string().optional(),
+				userWahaApiKey: z.string().optional(),
 			}),
 		)
 		.mutation(async ({ input }) => {
 			try {
+				// 确保同时使用API端点和密钥
 				return await createInstanceApiClient(
 					input.userWahaApiEndpoint || undefined,
+					input.userWahaApiKey || undefined,
 				).sessions.stopSession(input.instanceId);
 			} catch (error) {
 				throw new Error(`Failed to stop session: ${(error as Error).message}`);
@@ -423,12 +454,15 @@ export const wahaSessionsRouter = createTRPCRouter({
 			z.object({
 				instanceId: z.string(),
 				userWahaApiEndpoint: z.string().optional(),
+				userWahaApiKey: z.string().optional(),
 			}),
 		)
 		.mutation(async ({ input }) => {
 			try {
+				// 确保同时使用API端点和密钥
 				return await createInstanceApiClient(
 					input.userWahaApiEndpoint || undefined,
+					input.userWahaApiKey || undefined,
 				).sessions.logoutSession(input.instanceId);
 			} catch (error) {
 				throw new Error(`Failed to logout: ${(error as Error).message}`);
@@ -441,12 +475,15 @@ export const wahaSessionsRouter = createTRPCRouter({
 			z.object({
 				instanceId: z.string(),
 				userWahaApiEndpoint: z.string().optional(),
+				userWahaApiKey: z.string().optional(),
 			}),
 		)
 		.mutation(async ({ input }) => {
 			try {
+				// 确保同时使用API端点和密钥
 				return await createInstanceApiClient(
 					input.userWahaApiEndpoint || undefined,
+					input.userWahaApiKey || undefined,
 				).sessions.restartSession(input.instanceId);
 			} catch (error) {
 				throw new Error(

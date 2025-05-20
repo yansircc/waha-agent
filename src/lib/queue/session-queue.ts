@@ -47,6 +47,7 @@ function getQueueKeys(operation: SessionOperation) {
 export async function addToQueue(
 	instanceId: string,
 	userWahaApiEndpoint?: string,
+	userWahaApiKey?: string,
 	operation: SessionOperation = "create",
 ): Promise<SessionJob | null> {
 	const redis = getRedisForInstance();
@@ -87,6 +88,7 @@ export async function addToQueue(
 						const success = await executeSessionDelete(
 							instanceId,
 							userWahaApiEndpoint,
+							userWahaApiKey,
 						);
 
 						// 执行完成后更新任务状态
@@ -605,10 +607,16 @@ export async function cleanupOldJobs(olderThanHours = 24): Promise<number> {
 export async function queueSessionDelete(
 	instanceId: string,
 	userWahaApiEndpoint?: string,
+	userWahaApiKey?: string,
 ): Promise<SessionJob | null> {
 	try {
 		// 使用统一的队列机制
-		const job = await addToQueue(instanceId, userWahaApiEndpoint, "delete");
+		const job = await addToQueue(
+			instanceId,
+			userWahaApiEndpoint,
+			userWahaApiKey,
+			"delete",
+		);
 
 		if (job) {
 			console.log(
@@ -632,11 +640,15 @@ export async function queueSessionDelete(
 async function executeSessionDelete(
 	instanceId: string,
 	userWahaApiEndpoint?: string,
+	userWahaApiKey?: string,
 ): Promise<boolean> {
 	try {
 		console.log(`正在执行实例 ${instanceId} 的删除操作`);
 
-		const WahaApiClient = createInstanceApiClient(userWahaApiEndpoint);
+		const WahaApiClient = createInstanceApiClient(
+			userWahaApiEndpoint,
+			userWahaApiKey,
+		);
 
 		// 直接调用wahaApi删除会话
 		await WahaApiClient.sessions.deleteSession(instanceId);

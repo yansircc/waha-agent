@@ -177,7 +177,11 @@ export function useWhatsAppSession() {
 
 	// Session creation (uses server-side webhook configuration)
 	const createSession = useCallback(
-		async (instanceId: string, userWahaApiEndpoint?: string) => {
+		async (
+			instanceId: string,
+			userWahaApiEndpoint?: string,
+			userWahaApiKey?: string,
+		) => {
 			// 实例状态更新为连接中
 			await updateInstance({
 				id: instanceId,
@@ -188,10 +192,12 @@ export function useWhatsAppSession() {
 			return createQueue.executeQueuedOperation({
 				instanceId,
 				userWahaApiEndpoint,
+				userWahaApiKey,
 				executeOperation: async () => {
 					return createSessionMutation.mutateAsync({
 						instanceId,
 						userWahaApiEndpoint,
+						userWahaApiKey,
 					});
 				},
 			});
@@ -201,7 +207,11 @@ export function useWhatsAppSession() {
 
 	// Start session
 	const startSession = useCallback(
-		async (instanceId: string, userWahaApiEndpoint?: string) => {
+		async (
+			instanceId: string,
+			userWahaApiEndpoint?: string,
+			userWahaApiKey?: string,
+		) => {
 			// 实例状态更新为连接中
 			await updateInstance({
 				id: instanceId,
@@ -212,10 +222,12 @@ export function useWhatsAppSession() {
 			return startQueue.executeQueuedOperation({
 				instanceId,
 				userWahaApiEndpoint,
+				userWahaApiKey,
 				executeOperation: async () => {
 					return startSessionMutation.mutateAsync({
 						instanceId,
 						userWahaApiEndpoint,
+						userWahaApiKey,
 					});
 				},
 			});
@@ -225,15 +237,21 @@ export function useWhatsAppSession() {
 
 	// Stop session
 	const stopSession = useCallback(
-		async (instanceId: string, userWahaApiEndpoint?: string) => {
+		async (
+			instanceId: string,
+			userWahaApiEndpoint?: string,
+			userWahaApiKey?: string,
+		) => {
 			// 通过队列停止会话
 			return stopQueue.executeQueuedOperation({
 				instanceId,
 				userWahaApiEndpoint,
+				userWahaApiKey,
 				executeOperation: async () => {
 					return stopSessionMutation.mutateAsync({
 						instanceId,
 						userWahaApiEndpoint,
+						userWahaApiKey,
 					});
 				},
 			});
@@ -243,15 +261,21 @@ export function useWhatsAppSession() {
 
 	// Logout session
 	const logoutSession = useCallback(
-		async (instanceId: string, userWahaApiEndpoint?: string) => {
+		async (
+			instanceId: string,
+			userWahaApiEndpoint?: string,
+			userWahaApiKey?: string,
+		) => {
 			// 通过队列退出会话
 			return logoutQueue.executeQueuedOperation({
 				instanceId,
 				userWahaApiEndpoint,
+				userWahaApiKey,
 				executeOperation: async () => {
 					return logoutSessionMutation.mutateAsync({
 						instanceId,
 						userWahaApiEndpoint,
+						userWahaApiKey,
 					});
 				},
 			});
@@ -261,7 +285,11 @@ export function useWhatsAppSession() {
 
 	// Restart session
 	const restartSession = useCallback(
-		async (instanceId: string, userWahaApiEndpoint?: string) => {
+		async (
+			instanceId: string,
+			userWahaApiEndpoint?: string,
+			userWahaApiKey?: string,
+		) => {
 			// 实例状态更新为连接中
 			await updateInstance({
 				id: instanceId,
@@ -272,10 +300,12 @@ export function useWhatsAppSession() {
 			return restartQueue.executeQueuedOperation({
 				instanceId,
 				userWahaApiEndpoint,
+				userWahaApiKey,
 				executeOperation: async () => {
 					return restartSessionMutation.mutateAsync({
 						instanceId,
 						userWahaApiEndpoint,
+						userWahaApiKey,
 					});
 				},
 			});
@@ -289,35 +319,55 @@ export function useWhatsAppSession() {
 
 	// Retry session creation
 	const retrySession = useCallback(
-		async (instanceId: string, userWahaApiEndpoint?: string) => {
+		async (
+			instanceId: string,
+			userWahaApiEndpoint?: string,
+			userWahaApiKey?: string,
+		) => {
 			try {
 				const operation = createQueue.queueState.operation;
 
 				// 根据操作类型选择正确的队列和执行方法
 				switch (operation) {
 					case "create":
-						await createSession(instanceId, userWahaApiEndpoint);
+						await createSession(
+							instanceId,
+							userWahaApiEndpoint,
+							userWahaApiKey,
+						);
 						toast.success("正在重新创建会话");
 						break;
 					case "start":
-						await startSession(instanceId, userWahaApiEndpoint);
+						await startSession(instanceId, userWahaApiEndpoint, userWahaApiKey);
 						toast.success("正在重新启动会话");
 						break;
 					case "restart":
-						await restartSession(instanceId, userWahaApiEndpoint);
+						await restartSession(
+							instanceId,
+							userWahaApiEndpoint,
+							userWahaApiKey,
+						);
 						toast.success("正在重新刷新会话");
 						break;
 					case "stop":
-						await stopSession(instanceId, userWahaApiEndpoint);
+						await stopSession(instanceId, userWahaApiEndpoint, userWahaApiKey);
 						toast.success("正在重新停止会话");
 						break;
 					case "logout":
-						await logoutSession(instanceId, userWahaApiEndpoint);
+						await logoutSession(
+							instanceId,
+							userWahaApiEndpoint,
+							userWahaApiKey,
+						);
 						toast.success("正在重新退出会话");
 						break;
 					default:
 						// 如果不确定操作类型，默认创建会话
-						await createSession(instanceId, userWahaApiEndpoint);
+						await createSession(
+							instanceId,
+							userWahaApiEndpoint,
+							userWahaApiKey,
+						);
 						toast.success("正在创建会话");
 				}
 
@@ -343,9 +393,13 @@ export function useWhatsAppSession() {
 
 	// Display QR code dialog
 	const displayQRDialog = useCallback(
-		(instanceId: string, userWahaApiEndpoint?: string) => {
+		(
+			instanceId: string,
+			userWahaApiEndpoint?: string,
+			userWahaApiKey?: string,
+		) => {
 			const event = new CustomEvent("open-qr-dialog", {
-				detail: { instanceId, userWahaApiEndpoint },
+				detail: { instanceId, userWahaApiEndpoint, userWahaApiKey },
 			});
 			document.dispatchEvent(event);
 		},

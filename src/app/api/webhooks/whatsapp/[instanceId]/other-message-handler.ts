@@ -20,6 +20,8 @@ export async function handleOtherMessage(
 	messageData: Partial<WAMessage>,
 	body: WebhookNotification,
 	botPhoneNumber: string | null,
+	userWahaApiEndpoint?: string,
+	userWahaApiKey?: string,
 ): Promise<void> {
 	const chatId = messageData.from || "";
 
@@ -98,6 +100,8 @@ export async function handleOtherMessage(
 				instanceId,
 				...(botPhoneNumber ? { botPhoneNumber } : {}),
 				agent: agentFromRedis,
+				userWahaApiEndpoint,
+				userWahaApiKey,
 				chatHistory: formattedChatHistory,
 			},
 			{
@@ -140,6 +144,8 @@ export async function handleOtherMessage(
 										{ from: chatId, body: "[QUEUE_CHECK]" }, // 创建一个虚拟消息触发处理
 										body,
 										botPhoneNumber,
+										userWahaApiEndpoint,
+										userWahaApiKey,
 									);
 								} catch (error) {
 									console.error("触发队列检查处理失败:", error);

@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { catchError } from "react-catch-error";
 import {
 	determineOtherPartyId,
-	getUserWahaApiEndpoint,
+	getInstanceById,
 	handleChatHistory,
 	identifyAndSaveBotPhoneNumber,
 } from "./helpers";
@@ -63,12 +63,20 @@ export async function POST(
 	const sessionName = body.session || "default";
 
 	// 根据 instanceId 获取 userWahaApiEndpoint
-	const userWahaApiEndpoint = await getUserWahaApiEndpoint(instanceId);
+	const instance = await getInstanceById(instanceId);
+	const userWahaApiEndpoint = instance?.userWahaApiEndpoint ?? undefined;
+	const userWahaApiKey = instance?.userWahaApiKey ?? undefined;
 
 	// 检查是否为会话事件
 	if (isSessionEvent(body.event)) {
 		const { error: sessionError, data: sessionResult } = await catchError(
-			async () => handleSessionEvent(instanceId, body, userWahaApiEndpoint),
+			async () =>
+				handleSessionEvent(
+					instanceId,
+					body,
+					userWahaApiEndpoint,
+					userWahaApiKey,
+				),
 		);
 		if (sessionError || !sessionResult) {
 			console.error("处理会话事件失败:", sessionError);
@@ -141,6 +149,7 @@ export async function POST(
 				messageData,
 				otherPartyId,
 				userWahaApiEndpoint,
+				userWahaApiKey,
 			);
 		});
 		if (historyError) {
@@ -172,6 +181,8 @@ export async function POST(
 			messageData,
 			body,
 			safeBotPhoneNumber,
+			userWahaApiEndpoint,
+			userWahaApiKey,
 		),
 	);
 	if (otherError || !result) {

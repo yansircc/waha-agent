@@ -11,17 +11,20 @@ class WahaApiClient {
 	public profile: ProfileApi;
 	public chatting: ChattingApi;
 
-	constructor(customApiUrl?: string) {
-		this.sessions = new SessionsApi(customApiUrl);
-		this.auth = new AuthApi(customApiUrl);
-		this.profile = new ProfileApi(customApiUrl);
-		this.chatting = new ChattingApi(customApiUrl);
+	constructor(customApiUrl?: string, apiKey?: string) {
+		this.sessions = new SessionsApi(customApiUrl, apiKey);
+		this.auth = new AuthApi(customApiUrl, apiKey);
+		this.profile = new ProfileApi(customApiUrl, apiKey);
+		this.chatting = new ChattingApi(customApiUrl, apiKey);
 	}
 }
 
 // 创建针对特定实例的 API 客户端
-export function createInstanceApiClient(customApiUrl?: string): WahaApiClient {
-	return new WahaApiClient(customApiUrl);
+export function createInstanceApiClient(
+	customApiUrl?: string,
+	apiKey?: string,
+): WahaApiClient {
+	return new WahaApiClient(customApiUrl, apiKey);
 }
 
 // // Export singleton instance (使用默认 API URL)

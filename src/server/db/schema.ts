@@ -341,6 +341,7 @@ export const instances = createTable(
 		sessionData: d.jsonb(),
 		userWebhooks: d.text().array(),
 		userWahaApiEndpoint: d.text(),
+		userWahaApiKey: d.text(),
 		createdAt: d
 			.timestamp({ withTimezone: true })
 			.default(sql`CURRENT_TIMESTAMP`)
@@ -352,6 +353,9 @@ export const instances = createTable(
 		index("instance_agent_idx").on(t.agentId),
 	],
 );
+
+export type Instance = typeof instances.$inferSelect;
+export type InsertInstance = typeof instances.$inferInsert;
 
 export const instancesRelations = relations(instances, ({ one }) => ({
 	user: one(users, { fields: [instances.createdById], references: [users.id] }),

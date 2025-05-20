@@ -187,6 +187,7 @@ export async function initializeChatHistory(
 	session: string,
 	chatId: string,
 	userWahaApiEndpoint?: string,
+	userWahaApiKey?: string,
 ): Promise<boolean> {
 	try {
 		// Check if history already exists
@@ -203,6 +204,7 @@ export async function initializeChatHistory(
 		// Fetch messages from WhatsApp API
 		const messages = await createInstanceApiClient(
 			userWahaApiEndpoint,
+			userWahaApiKey,
 		).chatting.getChatMessages({
 			session: session || DEFAULT_SESSION,
 			chatId,

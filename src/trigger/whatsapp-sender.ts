@@ -10,9 +10,13 @@ export async function markMessageAsSeen(
 	chatId: string,
 	messageId?: string,
 	userWahaApiEndpoint?: string,
+	userWahaApiKey?: string,
 ): Promise<void> {
 	// 根据API定义，直接传递messageId参数，有或没有都可以
-	await createInstanceApiClient(userWahaApiEndpoint).chatting.sendSeen({
+	await createInstanceApiClient(
+		userWahaApiEndpoint,
+		userWahaApiKey,
+	).chatting.sendSeen({
 		session,
 		chatId,
 		messageId,
@@ -32,8 +36,12 @@ export async function startTypingIndicator(
 	session: string,
 	chatId: string,
 	userWahaApiEndpoint?: string,
+	userWahaApiKey?: string,
 ): Promise<void> {
-	await createInstanceApiClient(userWahaApiEndpoint).chatting.startTyping({
+	await createInstanceApiClient(
+		userWahaApiEndpoint,
+		userWahaApiKey,
+	).chatting.startTyping({
 		session,
 		chatId,
 	});
@@ -48,8 +56,12 @@ export async function stopTypingIndicator(
 	session: string,
 	chatId: string,
 	userWahaApiEndpoint?: string,
+	userWahaApiKey?: string,
 ): Promise<void> {
-	await createInstanceApiClient(userWahaApiEndpoint).chatting.stopTyping({
+	await createInstanceApiClient(
+		userWahaApiEndpoint,
+		userWahaApiKey,
+	).chatting.stopTyping({
 		session,
 		chatId,
 	});
@@ -65,8 +77,8 @@ export async function sendMessageChunks(
 	chatId: string,
 	chunks: string[],
 	delays: number[],
-	replyToMessageId?: string,
 	userWahaApiEndpoint?: string,
+	userWahaApiKey?: string,
 ): Promise<MessageSendResult> {
 	if (!chunks.length) {
 		return {
@@ -81,14 +93,7 @@ export async function sendMessageChunks(
 	// 逐块发送消息，模拟真人打字
 	for (let i = 0; i < chunks.length; i++) {
 		const chunk = chunks[i] || "";
-		const isFirstChunk = i === 0;
 		const isLastChunk = i === chunks.length - 1;
-
-		// 为第一块消息添加引用回复
-		const replyOptions =
-			isFirstChunk && replyToMessageId
-				? { reply_to: replyToMessageId }
-				: { reply_to: null };
 
 		// 计算打字时间（转换为秒，确保至少1秒）
 		const typingDelay = delays[i] || 1000;
@@ -100,12 +105,12 @@ export async function sendMessageChunks(
 		// 发送消息块
 		const sendResult = await createInstanceApiClient(
 			userWahaApiEndpoint,
+			userWahaApiKey,
 		).chatting.sendText({
 			session,
 			chatId,
 			text: chunk,
 			linkPreview: isLastChunk, // 只在最后一个块启用链接预览
-			...replyOptions,
 		});
 
 		// 保存最后发送的消息ID
@@ -119,12 +124,13 @@ export async function sendMessageChunks(
 			// 重新激活打字状态，因为发送消息后打字状态会自动消失
 			// 这确保了下一个消息块发送前，用户能看到"正在输入"的状态
 			try {
-				await createInstanceApiClient(userWahaApiEndpoint).chatting.startTyping(
-					{
-						session,
-						chatId,
-					},
-				);
+				await createInstanceApiClient(
+					userWahaApiEndpoint,
+					userWahaApiKey,
+				).chatting.startTyping({
+					session,
+					chatId,
+				});
 
 				logger.debug("Re-activated typing indicator for next chunk", {
 					chunkIndex: i + 1,
@@ -165,16 +171,25 @@ export async function sendErrorMessage(
 	chatId: string,
 	message = "Sorry, AFK for a while, I'll be back soon.",
 	userWahaApiEndpoint?: string,
+	userWahaApiKey?: string,
 ): Promise<void> {
 	try {
 		// 尝试停止输入状态
 		try {
-			await stopTypingIndicator(session, chatId, userWahaApiEndpoint);
+			await stopTypingIndicator(
+				session,
+				chatId,
+				userWahaApiEndpoint,
+				userWahaApiKey,
+			);
 		} catch (_typingError) {
 			// 忽略停止输入时的错误
 		}
 
-		await createInstanceApiClient(userWahaApiEndpoint).chatting.sendText({
+		await createInstanceApiClient(
+			userWahaApiEndpoint,
+			userWahaApiKey,
+		).chatting.sendText({
 			session,
 			chatId,
 			text: message,

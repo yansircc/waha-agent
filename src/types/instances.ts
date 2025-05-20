@@ -5,6 +5,8 @@ export interface InstanceCreateInput {
 	phoneNumber?: string;
 	agentId?: string;
 	userWebhooks?: string[];
+	userWahaApiEndpoint?: string;
+	userWahaApiKey?: string;
 }
 
 export interface InstanceUpdateInput {
@@ -16,4 +18,6 @@ export interface InstanceUpdateInput {
 	qrCode?: string;
 	sessionData?: Record<string, unknown>;
 	userWebhooks?: string[];
+	userWahaApiEndpoint?: string;
+	userWahaApiKey?: string;
 }

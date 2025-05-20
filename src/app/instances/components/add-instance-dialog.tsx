@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { AlertTriangle, Loader2, RotateCw, Users } from "lucide-react";
+import { useState } from "react";
 
 interface AddInstanceDialogProps {
 	open: boolean;
@@ -16,6 +17,7 @@ interface AddInstanceDialogProps {
 		agentId: string,
 		userWebhooks?: string[],
 		userWahaApiEndpoint?: string,
+		userWahaApiKey?: string,
 	) => Promise<void>;
 	selectedAgentId: string;
 	setSelectedAgentId: (id: string) => void;
@@ -37,6 +39,9 @@ interface AddInstanceDialogProps {
 	// WAHA API 端点
 	userWahaApiEndpoint: string;
 	setUserWahaApiEndpoint: (url: string) => void;
+	// WAHA API Key
+	userWahaApiKey: string;
+	setUserWahaApiKey: (key: string) => void;
 }
 
 export function AddInstanceDialog({
@@ -59,10 +64,20 @@ export function AddInstanceDialog({
 	setUserWebhooks,
 	userWahaApiEndpoint,
 	setUserWahaApiEndpoint,
+	userWahaApiKey,
+	setUserWahaApiKey,
 }: AddInstanceDialogProps) {
+	// 添加状态控制API Key可见性
+	const [showApiKey, setShowApiKey] = useState(false);
+
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		await onSubmit(selectedAgentId, userWebhooks, userWahaApiEndpoint);
+		await onSubmit(
+			selectedAgentId,
+			userWebhooks,
+			userWahaApiEndpoint,
+			userWahaApiKey,
+		);
 	};
 
 	const handleWebhookChange = (index: number, value: string) => {
@@ -127,6 +142,59 @@ export function AddInstanceDialog({
 								指定自定义的 WAHA API 端点，留空则使用默认端点。
 							</p>
 						</div>
+
+						{/* WAHA API Key 输入区域 - 只在填写了API端点时显示 */}
+						{userWahaApiEndpoint && (
+							<div className="grid gap-2">
+								<Label htmlFor="wahaApiKey">WAHA API Key (可选)</Label>
+								<div className="relative">
+									<input
+										id="wahaApiKey"
+										type={showApiKey ? "text" : "password"}
+										placeholder="您的 WAHA API Key"
+										value={userWahaApiKey}
+										onChange={(e) => setUserWahaApiKey(e.target.value)}
+										className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+									/>
+									<button
+										type="button"
+										className="-translate-y-1/2 absolute top-1/2 right-2 text-gray-500 hover:text-gray-700"
+										onClick={() => setShowApiKey(!showApiKey)}
+										aria-label={showApiKey ? "隐藏密码" : "显示密码"}
+									>
+										<svg
+											xmlns="http://www.w3.org/2000/svg"
+											width="18"
+											height="18"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											strokeWidth="2"
+											strokeLinecap="round"
+											strokeLinejoin="round"
+											aria-hidden="true"
+										>
+											{showApiKey ? (
+												<>
+													<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+													<path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+													<path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+													<line x1="2" x2="22" y1="2" y2="22" />
+												</>
+											) : (
+												<>
+													<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+													<circle cx="12" cy="12" r="3" />
+												</>
+											)}
+										</svg>
+									</button>
+								</div>
+								<p className="text-muted-foreground text-xs">
+									指定自定义的 WAHA API Key，留空则使用默认 Key。
+								</p>
+							</div>
+						)}
 
 						{/* Webhooks 输入区域 */}
 						<div className="grid gap-2">

@@ -51,6 +51,7 @@ export async function handleSessionEvent(
 	instanceId: string,
 	body: WebhookNotification,
 	userWahaApiEndpoint?: string,
+	userWahaApiKey?: string,
 ): Promise<{
 	success: boolean;
 	eventType: string;
@@ -69,7 +70,13 @@ export async function handleSessionEvent(
 		console.log(`[${instanceId}] 检测到QR码相关事件，正在处理...`);
 		// 调用QR码处理函数，传递webhook body
 		const { error } = await catchError(async () =>
-			handleQRCodeEvent(instanceId, sessionName, userWahaApiEndpoint, body),
+			handleQRCodeEvent(
+				instanceId,
+				sessionName,
+				userWahaApiEndpoint,
+				userWahaApiKey,
+				body,
+			),
 		);
 		if (error) {
 			console.error("处理QR码事件出错:", error);

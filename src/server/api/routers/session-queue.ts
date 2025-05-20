@@ -66,6 +66,7 @@ export const sessionQueueRouter = createTRPCRouter({
 					.enum(["create", "start", "stop", "restart", "logout"])
 					.optional(),
 				userWahaApiEndpoint: z.string().optional(),
+				userWahaApiKey: z.string().optional(),
 			}),
 		)
 		.mutation(async ({ input }) => {
@@ -74,6 +75,7 @@ export const sessionQueueRouter = createTRPCRouter({
 			const job = await addToQueue(
 				input.instanceId,
 				input.userWahaApiEndpoint,
+				input.userWahaApiKey,
 				operation,
 			);
 			return { success: true, job };

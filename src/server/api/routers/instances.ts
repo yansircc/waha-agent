@@ -45,6 +45,7 @@ export const instancesRouter = createTRPCRouter({
 				try {
 					const sessionInfo = await createInstanceApiClient(
 						instance.userWahaApiEndpoint ?? undefined,
+						instance.userWahaApiKey ?? undefined,
 					).sessions.getSession(instance.id);
 					return {
 						...instance,
@@ -100,6 +101,7 @@ export const instancesRouter = createTRPCRouter({
 			try {
 				const sessionInfo = await createInstanceApiClient(
 					dbInstance.userWahaApiEndpoint ?? undefined,
+					dbInstance.userWahaApiKey ?? undefined,
 				).sessions.getSession(dbInstance.id);
 				return {
 					...dbInstance,
@@ -134,6 +136,8 @@ export const instancesRouter = createTRPCRouter({
 				agentId: z.string().optional(),
 				isAgentActive: z.boolean().optional().default(true),
 				userWebhooks: z.array(z.string().url()).optional(),
+				userWahaApiEndpoint: z.string().url().optional(),
+				userWahaApiKey: z.string().optional(),
 			}),
 		)
 		.mutation(async ({ ctx, input }) => {
@@ -144,6 +148,8 @@ export const instancesRouter = createTRPCRouter({
 				createdById: ctx.session.user.id,
 				userWebhooks:
 					input.userWebhooks?.filter((url) => url.trim() !== "") || [],
+				userWahaApiEndpoint: input.userWahaApiEndpoint,
+				userWahaApiKey: input.userWahaApiKey,
 			};
 
 			const result = await ctx.db
@@ -333,6 +339,7 @@ export const instancesRouter = createTRPCRouter({
 			try {
 				await createInstanceApiClient(
 					instance.userWahaApiEndpoint ?? undefined,
+					instance.userWahaApiKey ?? undefined,
 				).sessions.deleteSession(input.id);
 				console.log(`已删除实例 ${input.id} 的 Waha 会话`);
 			} catch (error) {
@@ -437,6 +444,7 @@ export const instancesRouter = createTRPCRouter({
 			try {
 				const sessionInfo = await createInstanceApiClient(
 					instance.userWahaApiEndpoint ?? undefined,
+					instance.userWahaApiKey ?? undefined,
 				).sessions.getSession(instance.id);
 
 				// Check if QR code is available
