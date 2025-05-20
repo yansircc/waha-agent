@@ -1,13 +1,13 @@
 import { getRedisForInstance, safeRedisOperation } from "@/lib/redis";
 import { auth } from "@/server/auth";
 import type { Redis } from "@upstash/redis";
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
 /**
  * API endpoint to manually delete all session jobs
  * GET /api/del-all-sessions
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
 	try {
 		const session = await auth();
 		if (!session || !(session.user?.email === "cnmarkyan@gmail.com")) {

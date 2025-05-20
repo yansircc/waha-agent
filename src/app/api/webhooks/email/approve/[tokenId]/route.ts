@@ -1,10 +1,12 @@
 import { wait } from "@trigger.dev/sdk";
+import type { NextRequest } from "next/server";
 import { catchError } from "react-catch-error";
 import { showErrorHtml, showExpiredHtml, showSuccessHtml } from "./show-result";
 
-export async function GET({
-	params,
-}: { params: Promise<{ tokenId: string }> }) {
+export async function GET(
+	request: NextRequest,
+	{ params }: { params: Promise<{ tokenId: string }> },
+) {
 	const { error: paramsError, data: paramsData } = await catchError(
 		async () => {
 			const { tokenId } = await params;
