@@ -163,6 +163,8 @@ export async function POST(
 		replyEmail.trigger({
 			...safePayload,
 			agent: config.agent,
+			// notificationEmail: config.email,
+			notificationEmail: "markyan@foxmail.com", // TODO: remove this
 			signature: config.signature || undefined,
 			plunkApiKey: config.plunkApiKey,
 			wechatPushApiKey: config.wechatPushApiKey,

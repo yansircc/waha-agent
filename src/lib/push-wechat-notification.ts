@@ -1,4 +1,3 @@
-import { scSend } from "serverchan-sdk";
 import { z } from "zod";
 
 /**
@@ -27,16 +26,7 @@ interface WechatPushArgs extends z.infer<typeof wechatPushSchema> {
 }
 
 /**
- * Schema for ServerChan API response
- */
-const pushWechatNotificationResponseSchema = z.object({
-	code: z.number(),
-	message: z.string(),
-	data: z.any().optional(),
-});
-
-/**
- * Push a WeChat notification using ServerChan
+ * Push a WeChat notification using ServerChan direct API
  */
 export async function pushWechatNotification({
 	title,
@@ -44,33 +34,39 @@ export async function pushWechatNotification({
 	apiKey,
 }: WechatPushArgs) {
 	try {
-		const result = await scSend(apiKey, title, description);
-		const response = pushWechatNotificationResponseSchema.safeParse(result);
+		// Use the direct ServerChan API endpoint with GET request
+		const url = new URL(`https://sctapi.ftqq.com/${apiKey}.send`);
+		url.searchParams.set("title", title);
+		url.searchParams.set("desp", description);
 
-		if (!response.success) {
-			console.error("Invalid ServerChan API response format:", result);
+		const response = await fetch(url.toString(), {
+			method: "GET",
+		});
+
+		if (!response.ok) {
+			console.error(
+				`ServerChan notification failed for key starting with ${apiKey.substring(0, 4)}... HTTP Status: ${response.status}`,
+			);
 			return formatToolResponse(
-				"Invalid response format from ServerChan API",
+				`Failed to push WeChat notification. HTTP Status: ${response.status}`,
 				true,
 			);
 		}
 
-		const { data } = response;
+		const result = await response.json();
 
-		if (data.code === 0) {
-			console.log(
-				`ServerChan notification successful for key starting with ${apiKey.substring(0, 4)}...`,
-			);
+		// ServerChan API returns { code: 0 } for success
+		if (result.code === 0) {
 			return formatToolResponse(
-				`WeChat notification sent successfully. Message: ${data.message}`,
+				`WeChat notification sent successfully. Message: ${result.message || "Success"}`,
 			);
 		}
 
 		console.error(
-			`ServerChan notification failed for key starting with ${apiKey.substring(0, 4)}... Code: ${data.code}, Message: ${data.message}`,
+			`ServerChan notification failed for key starting with ${apiKey.substring(0, 4)}... Code: ${result.code}, Message: ${result.message}`,
 		);
 		return formatToolResponse(
-			`Failed to push WeChat notification. Error: ${data.message} (Code: ${data.code})`,
+			`Failed to push WeChat notification. Error: ${result.message || "Unknown error"} (Code: ${result.code})`,
 			true,
 		);
 	} catch (error) {

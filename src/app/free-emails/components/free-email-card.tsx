@@ -10,18 +10,17 @@ import {
 } from "@/components/ui/tooltip";
 import { MailIcon, PenIcon, TrashIcon } from "lucide-react";
 import { useState } from "react";
+import type { FreeEmailFormInput } from "../types";
 import { FreeEmailTestDialog } from "./free-email-test-dialog";
 
 interface FreeEmailCardProps {
-	emailData: {
+	emailData: FreeEmailFormInput & {
 		id: string;
-		emailAddress: string;
-		alias: string | null;
-		plunkApiKey: string | null;
-		wechatPushApiKey: string | null;
-		setupCompleted: boolean;
-		formSubmitActivated: boolean;
 		createdAt?: Date | null;
+		agent?: {
+			id: string;
+			name: string;
+		};
 	};
 	onEdit: (id: string) => void;
 	onDelete: (id: string) => void;
@@ -34,39 +33,35 @@ export function FreeEmailCard({
 }: FreeEmailCardProps) {
 	const [isTestDialogOpen, setIsTestDialogOpen] = useState(false);
 
-	const { id, emailAddress, alias, setupCompleted, formSubmitActivated } =
-		emailData;
+	const { id, email, plunkApiKey, wechatPushApiKey, agent } = emailData;
 
 	return (
 		<div className="group relative flex flex-col overflow-hidden rounded-lg border bg-background shadow transition-all hover:shadow-md">
-			<div className="p-6">
-				<div className="mb-4 flex flex-col items-start justify-between gap-2">
-					<h3 className="font-semibold text-xl tracking-tight">
-						{emailAddress}
-					</h3>
-					{alias && (
-						<p className="max-w-full break-all font-mono text-gray-500 text-sm">
-							<span className="font-semibold">FormSubmit Alias:</span> {alias}
-						</p>
-					)}
-				</div>
+			<div className="flex flex-col gap-2 p-6">
+				<h3 className="font-semibold text-xl tracking-tight">{email}</h3>
 
 				<div className="flex flex-wrap gap-2">
-					{formSubmitActivated ? (
-						<Badge variant="secondary" className="bg-green-100 text-green-800">
-							FormSubmit Activated
+					{agent && (
+						<Badge variant="default" className="bg-purple-100 text-purple-800">
+							AI Agent: {agent.name}
 						</Badge>
-					) : (
-						<Badge variant="destructive">FormSubmit Pending</Badge>
 					)}
 
-					{setupCompleted ? (
-						<Badge variant="outline" className="bg-green-50">
-							Setup Complete
+					{plunkApiKey ? (
+						<Badge variant="secondary" className="bg-green-100 text-green-800">
+							Plunk API已配置
 						</Badge>
 					) : (
-						<Badge variant="outline" className="bg-yellow-50">
-							Setup Incomplete
+						<Badge variant="destructive">Plunk API未配置</Badge>
+					)}
+
+					{wechatPushApiKey ? (
+						<Badge variant="outline" className="bg-blue-50">
+							微信推送已启用
+						</Badge>
+					) : (
+						<Badge variant="outline" className="bg-gray-50">
+							微信推送未配置
 						</Badge>
 					)}
 				</div>
@@ -82,7 +77,6 @@ export function FreeEmailCard({
 										variant="ghost"
 										className="relative inline-flex w-0 flex-1 cursor-pointer items-center justify-center rounded-bl-lg border border-transparent py-4"
 										onClick={() => setIsTestDialogOpen(true)}
-										disabled={!setupCompleted || !formSubmitActivated || !alias}
 									>
 										<MailIcon
 											className="h-5 w-5 text-gray-500"
@@ -141,13 +135,11 @@ export function FreeEmailCard({
 				</div>
 			</div>
 
-			{formSubmitActivated && alias && (
-				<FreeEmailTestDialog
-					open={isTestDialogOpen}
-					onOpenChange={setIsTestDialogOpen}
-					alias={alias}
-				/>
-			)}
+			<FreeEmailTestDialog
+				open={isTestDialogOpen}
+				onOpenChange={setIsTestDialogOpen}
+				emailConfig={emailData}
+			/>
 		</div>
 	);
 }

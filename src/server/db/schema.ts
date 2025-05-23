@@ -117,6 +117,7 @@ export const agentsRelations = relations(agents, ({ one, many }) => ({
 		relationName: "agentToKb",
 	}),
 	emailConfigs: many(emailConfigs),
+	freeEmails: many(freeEmails),
 }));
 
 // Email Configuration schema
@@ -174,12 +175,19 @@ export const freeEmails = createTable(
 			.notNull()
 			.primaryKey()
 			.$defaultFn(() => crypto.randomUUID()),
-		emailAddress: d.varchar({ length: 255 }).notNull().unique(),
-		alias: d.varchar({ length: 255 }).unique(), // formsubmit.co alias
-		plunkApiKey: d.text(),
-		wechatPushApiKey: d.text(),
-		formSubmitActivated: d.boolean().default(false).notNull(), // indicates if formsubmit.co has been activated
-		setupCompleted: d.boolean().default(false).notNull(), // indicates if all setup steps are completed
+		email: d.varchar({ length: 255 }).notNull().unique(), // formsubmit.co email
+		alias: d.varchar({ length: 255 }).notNull().unique(), // formsubmit.co alias
+		plunkApiKey: d.text().notNull(), // Plunk API key for email replies
+		wechatPushApiKey: d.text(), // 微信推送API密钥，高级选项
+		ccEmails: d.text(), // 抄送邮箱，逗号分隔
+		redirectUrl: d.text(), // 跳转页面URL
+		disableCaptcha: d.boolean().default(false).notNull(), // 是否关闭reCAPTCHA
+		enableFileUpload: d.boolean().default(false).notNull(), // 是否启用文件上传
+		customWebhooks: d.text(), // 用户自定义webhooks，逗号分隔
+		agentId: d
+			.varchar({ length: 255 })
+			.notNull()
+			.references(() => agents.id), // Associated agent for responses
 		createdById: d
 			.varchar({ length: 255 })
 			.notNull()
@@ -191,9 +199,10 @@ export const freeEmails = createTable(
 		updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
 	}),
 	(t) => [
+		index("free_email_email_idx").on(t.email),
 		index("free_email_created_by_idx").on(t.createdById),
-		index("free_email_email_address_idx").on(t.emailAddress),
 		index("free_email_alias_idx").on(t.alias),
+		index("free_email_agent_idx").on(t.agentId),
 	],
 );
 
@@ -201,6 +210,10 @@ export const freeEmailsRelations = relations(freeEmails, ({ one }) => ({
 	user: one(users, {
 		fields: [freeEmails.createdById],
 		references: [users.id],
+	}),
+	agent: one(agents, {
+		fields: [freeEmails.agentId],
+		references: [agents.id],
 	}),
 }));
 

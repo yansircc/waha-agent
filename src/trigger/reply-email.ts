@@ -5,6 +5,7 @@ import {
 } from "@/lib/ai-agents/kb-searcher";
 import { mailSender } from "@/lib/ai-agents/mail-sender";
 import { pushWechatNotification } from "@/lib/push-wechat-notification";
+import { sendEmail } from "@/lib/send-email";
 import type { Agent } from "@/types/agents";
 import type { FormDataEmailPayload } from "@/types/email";
 import { wait } from "@trigger.dev/sdk";
@@ -13,8 +14,9 @@ import type { WebhookResponse } from "./types";
 
 interface EmailFormPayload extends FormDataEmailPayload {
 	agent: Agent;
-	signature?: string;
 	plunkApiKey: string;
+	notificationEmail: string;
+	signature?: string;
 	wechatPushApiKey?: string;
 	approvalTokenId: string;
 }
@@ -40,6 +42,7 @@ export const replyEmail = task({
 			message,
 			_country,
 			agent,
+			notificationEmail,
 			signature,
 			plunkApiKey,
 			wechatPushApiKey,
@@ -125,6 +128,15 @@ ${text}
 
 Token ID: ${approvalTokenId}
 `;
+
+			await sendEmail(
+				{
+					to: notificationEmail,
+					subject: "Email Response Approval",
+					body: notificationMessage,
+				},
+				plunkApiKey,
+			);
 
 			if (wechatPushApiKey) {
 				// Send notification via WeChat

@@ -38,6 +38,7 @@ export const env = createEnv({
 		MASTRA_API_URL: z.string(),
 		PLUNK_API_KEY: z.string(),
 		CRON_SECRET: z.string().optional(),
+		FORMSUBMIT_SECRET: z.string().optional(),
 	},
 
 	/**
@@ -83,6 +84,7 @@ export const env = createEnv({
 		MASTRA_API_URL: process.env.MASTRA_API_URL,
 		PLUNK_API_KEY: process.env.PLUNK_API_KEY,
 		CRON_SECRET: process.env.CRON_SECRET,
+		FORMSUBMIT_SECRET: process.env.FORMSUBMIT_SECRET,
 	},
 	/**
 	 * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

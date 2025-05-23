@@ -20,8 +20,8 @@ const navItems = [
 	{ name: "仪表盘", href: "/dashboard", icon: Home },
 	{ name: "机器人", href: "/agents", icon: Brain },
 	{ name: "知识库", href: "/kb", icon: Database },
-	{ name: "WS 账号", href: "/instances", icon: Smartphone },
-	{ name: "邮箱", href: "/emails", icon: Mail },
+	{ name: "WS 自动化", href: "/instances", icon: Smartphone },
+	{ name: "邮件自动化", href: "/free-emails", icon: Mail },
 ];
 
 export function SideNav() {

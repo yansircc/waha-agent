@@ -1,32 +1,22 @@
 import { z } from "zod";
 
-export const emailStepSchema = z.object({
-	emailAddress: z.string().email("Please enter a valid email address"),
-});
-
-export const aliasStepSchema = z.object({
-	alias: z.string().min(1, "Please enter the alias provided by formsubmit.co"),
-});
-
-export const plunkApiStepSchema = z.object({
-	plunkApiKey: z.string().min(1, "Please enter your Plunk API key"),
-});
-
-export const wechatApiStepSchema = z.object({
-	wechatPushApiKey: z.string().min(1, "Please enter your WeChat Push API key"),
-});
-
 export const freeEmailFormSchema = z.object({
-	emailAddress: z.string().email("Please enter a valid email address"),
-	alias: z.string().min(1, "Please enter the alias provided by formsubmit.co"),
-	plunkApiKey: z.string().min(1, "Please enter your Plunk API key"),
-	wechatPushApiKey: z.string().min(1, "Please enter your WeChat Push API key"),
-	formSubmitActivated: z.boolean().default(false),
-	setupCompleted: z.boolean().default(false),
+	// 主要字段
+	email: z.string().email("请输入有效的邮箱地址"),
+	alias: z.string().min(1, "请输入FormSubmit.co的别名"),
+	plunkApiKey: z.string().min(1, "请输入Plunk API key"),
+	agentId: z.string().min(1, "请选择AI Agent"),
+
+	// FormSubmit 高级选项
+	wechatPushApiKey: z.union([z.string(), z.literal("")]),
+	ccEmails: z.union([z.string().min(1, "请输入有效的邮箱地址"), z.literal("")]),
+	redirectUrl: z.union([z.string().url("请输入有效的URL"), z.literal("")]),
+	disableCaptcha: z.boolean(), // 是否关闭reCAPTCHA
+	enableFileUpload: z.boolean(), // 是否启用文件上传
+	customWebhooks: z.union([
+		z.string().min(1, "请输入有效的URL"),
+		z.literal(""),
+	]),
 });
 
-export type EmailStepInput = z.infer<typeof emailStepSchema>;
-export type AliasStepInput = z.infer<typeof aliasStepSchema>;
-export type PlunkApiStepInput = z.infer<typeof plunkApiStepSchema>;
-export type WechatApiStepInput = z.infer<typeof wechatApiStepSchema>;
 export type FreeEmailFormInput = z.infer<typeof freeEmailFormSchema>;

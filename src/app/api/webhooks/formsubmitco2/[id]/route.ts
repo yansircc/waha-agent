@@ -38,8 +38,6 @@ export async function POST(
 		);
 	}
 
-	console.log("Raw body:", bodyText);
-
 	// 尝试解析为 JSON（如果是 JSON 格式）
 	const { error: parseError, data: bodyJson } = catchErrorSync(() =>
 		JSON.parse(bodyText || ""),
