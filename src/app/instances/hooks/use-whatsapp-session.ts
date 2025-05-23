@@ -1,6 +1,5 @@
 "use client";
 
-import { useSessionQueue } from "@/lib/queue/use-session-queue";
 import { api } from "@/utils/api";
 import { useCallback, useMemo } from "react";
 import { toast } from "sonner";
@@ -16,157 +15,15 @@ export function useWhatsAppSession() {
 	const logoutSessionMutation = api.wahaSessions.logout.useMutation();
 	const restartSessionMutation = api.wahaSessions.restart.useMutation();
 
-	// 为每种操作类型创建单独的会话队列Hook
-	const createQueue = useSessionQueue({
-		operation: "create",
-		onQueued: (job) => {
-			console.log("会话创建请求已加入队列", job);
-		},
-		onActive: (job) => {
-			console.log("正在处理会话创建请求", job);
-		},
-		onFailed: (job) => {
-			console.log("会话创建请求失败或超时", job);
-			toast.error("创建会话超时，已自动为您重新排队");
-
-			// 实例状态更新为断开
-			if (job.instanceId) {
-				void updateInstance({
-					id: job.instanceId,
-					status: "disconnected",
-				});
-			}
-		},
-		onCompleted: (job) => {
-			console.log("会话创建请求完成", job);
-
-			// 实例状态更新为已连接
-			if (job.instanceId) {
-				void updateInstance({
-					id: job.instanceId,
-					status: "connected",
-				});
-			}
-		},
-	});
-
-	const startQueue = useSessionQueue({
-		operation: "start",
-		onQueued: (job) => {
-			console.log("会话启动请求已加入队列", job);
-			toast.info("启动请求已加入队列");
-		},
-		onActive: (job) => {
-			console.log("正在处理会话启动请求", job);
-		},
-		onFailed: (job) => {
-			console.log("会话启动请求失败或超时", job);
-			toast.error("启动会话超时");
-
-			// 实例状态更新为断开
-			if (job.instanceId) {
-				void updateInstance({
-					id: job.instanceId,
-					status: "disconnected",
-				});
-			}
-		},
-		onCompleted: (job) => {
-			console.log("会话启动请求完成", job);
-
-			// 实例状态更新为已连接
-			if (job.instanceId) {
-				void updateInstance({
-					id: job.instanceId,
-					status: "connected",
-				});
-			}
-		},
-	});
-
-	const stopQueue = useSessionQueue({
-		operation: "stop",
-		onQueued: (job) => {
-			console.log("会话停止请求已加入队列", job);
-			toast.info("停止请求已加入队列");
-		},
-		onCompleted: (job) => {
-			console.log("会话停止请求完成", job);
-
-			// 实例状态更新为断开
-			if (job.instanceId) {
-				void updateInstance({
-					id: job.instanceId,
-					status: "disconnected",
-				});
-			}
-		},
-	});
-
-	const logoutQueue = useSessionQueue({
-		operation: "logout",
-		onQueued: (job) => {
-			console.log("会话退出请求已加入队列", job);
-			toast.info("退出登录请求已加入队列");
-		},
-		onCompleted: (job) => {
-			console.log("会话退出请求完成", job);
-
-			// 实例状态更新为断开
-			if (job.instanceId) {
-				void updateInstance({
-					id: job.instanceId,
-					status: "disconnected",
-				});
-			}
-		},
-	});
-
-	const restartQueue = useSessionQueue({
-		operation: "restart",
-		onQueued: (job) => {
-			console.log("会话重启请求已加入队列", job);
-			toast.info("重启请求已加入队列");
-		},
-		onActive: (job) => {
-			console.log("正在处理会话重启请求", job);
-		},
-		onFailed: (job) => {
-			console.log("会话重启请求失败或超时", job);
-			toast.error("重启会话超时");
-		},
-		onCompleted: (job) => {
-			console.log("会话重启请求完成", job);
-
-			// 实例状态更新为已连接
-			if (job.instanceId) {
-				void updateInstance({
-					id: job.instanceId,
-					status: "connected",
-				});
-			}
-		},
-	});
-
-	// 所有队列的加载状态
+	// 简化的加载状态，只依赖 mutations
 	const isLoading = useMemo(
 		() =>
-			createQueue.isLoading ||
-			startQueue.isLoading ||
-			stopQueue.isLoading ||
-			logoutQueue.isLoading ||
-			restartQueue.isLoading ||
 			createSessionMutation.isPending ||
 			startSessionMutation.isPending ||
 			stopSessionMutation.isPending ||
 			logoutSessionMutation.isPending ||
 			restartSessionMutation.isPending,
 		[
-			createQueue.isLoading,
-			startQueue.isLoading,
-			stopQueue.isLoading,
-			logoutQueue.isLoading,
-			restartQueue.isLoading,
 			createSessionMutation.isPending,
 			startSessionMutation.isPending,
 			stopSessionMutation.isPending,
@@ -175,149 +32,187 @@ export function useWhatsAppSession() {
 		],
 	);
 
-	// Session creation (uses server-side webhook configuration)
+	// Session creation (直接执行，不通过队列)
 	const createSession = useCallback(
 		async (
 			instanceId: string,
 			userWahaApiEndpoint?: string,
 			userWahaApiKey?: string,
 		) => {
-			// 实例状态更新为连接中
-			await updateInstance({
-				id: instanceId,
-				status: "connecting",
-			});
+			try {
+				// 实例状态更新为连接中
+				await updateInstance({
+					id: instanceId,
+					status: "connecting",
+				});
 
-			// 通过队列创建会话
-			return createQueue.executeQueuedOperation({
-				instanceId,
-				userWahaApiEndpoint,
-				userWahaApiKey,
-				executeOperation: async () => {
-					return createSessionMutation.mutateAsync({
-						instanceId,
-						userWahaApiEndpoint,
-						userWahaApiKey,
-					});
-				},
-			});
+				// 直接执行创建会话
+				const result = await createSessionMutation.mutateAsync({
+					instanceId,
+					userWahaApiEndpoint,
+					userWahaApiKey,
+				});
+
+				// 实例状态更新为已连接
+				await updateInstance({
+					id: instanceId,
+					status: "connected",
+				});
+
+				return result;
+			} catch (error) {
+				// 失败时更新状态为断开
+				await updateInstance({
+					id: instanceId,
+					status: "disconnected",
+				});
+				throw error;
+			}
 		},
-		[updateInstance, createQueue.executeQueuedOperation, createSessionMutation],
+		[updateInstance, createSessionMutation],
 	);
 
-	// Start session
+	// Start session (直接执行，不通过队列)
 	const startSession = useCallback(
 		async (
 			instanceId: string,
 			userWahaApiEndpoint?: string,
 			userWahaApiKey?: string,
 		) => {
-			// 实例状态更新为连接中
-			await updateInstance({
-				id: instanceId,
-				status: "connecting",
-			});
+			try {
+				// 实例状态更新为连接中
+				await updateInstance({
+					id: instanceId,
+					status: "connecting",
+				});
 
-			// 通过队列启动会话
-			return startQueue.executeQueuedOperation({
-				instanceId,
-				userWahaApiEndpoint,
-				userWahaApiKey,
-				executeOperation: async () => {
-					return startSessionMutation.mutateAsync({
-						instanceId,
-						userWahaApiEndpoint,
-						userWahaApiKey,
-					});
-				},
-			});
+				// 直接执行启动会话
+				const result = await startSessionMutation.mutateAsync({
+					instanceId,
+					userWahaApiEndpoint,
+					userWahaApiKey,
+				});
+
+				// 实例状态更新为已连接
+				await updateInstance({
+					id: instanceId,
+					status: "connected",
+				});
+
+				return result;
+			} catch (error) {
+				// 失败时更新状态为断开
+				await updateInstance({
+					id: instanceId,
+					status: "disconnected",
+				});
+				throw error;
+			}
 		},
-		[updateInstance, startQueue.executeQueuedOperation, startSessionMutation],
+		[updateInstance, startSessionMutation],
 	);
 
-	// Stop session
+	// Stop session (直接执行，不通过队列)
 	const stopSession = useCallback(
 		async (
 			instanceId: string,
 			userWahaApiEndpoint?: string,
 			userWahaApiKey?: string,
 		) => {
-			// 通过队列停止会话
-			return stopQueue.executeQueuedOperation({
-				instanceId,
-				userWahaApiEndpoint,
-				userWahaApiKey,
-				executeOperation: async () => {
-					return stopSessionMutation.mutateAsync({
-						instanceId,
-						userWahaApiEndpoint,
-						userWahaApiKey,
-					});
-				},
-			});
+			try {
+				// 直接执行停止会话
+				const result = await stopSessionMutation.mutateAsync({
+					instanceId,
+					userWahaApiEndpoint,
+					userWahaApiKey,
+				});
+
+				// 实例状态更新为断开
+				await updateInstance({
+					id: instanceId,
+					status: "disconnected",
+				});
+
+				return result;
+			} catch (error) {
+				console.error("停止会话失败:", error);
+				throw error;
+			}
 		},
-		[stopQueue.executeQueuedOperation, stopSessionMutation],
+		[updateInstance, stopSessionMutation],
 	);
 
-	// Logout session
+	// Logout session (直接执行，不通过队列)
 	const logoutSession = useCallback(
 		async (
 			instanceId: string,
 			userWahaApiEndpoint?: string,
 			userWahaApiKey?: string,
 		) => {
-			// 通过队列退出会话
-			return logoutQueue.executeQueuedOperation({
-				instanceId,
-				userWahaApiEndpoint,
-				userWahaApiKey,
-				executeOperation: async () => {
-					return logoutSessionMutation.mutateAsync({
-						instanceId,
-						userWahaApiEndpoint,
-						userWahaApiKey,
-					});
-				},
-			});
+			try {
+				// 直接执行退出会话
+				const result = await logoutSessionMutation.mutateAsync({
+					instanceId,
+					userWahaApiEndpoint,
+					userWahaApiKey,
+				});
+
+				// 实例状态更新为断开
+				await updateInstance({
+					id: instanceId,
+					status: "disconnected",
+				});
+
+				return result;
+			} catch (error) {
+				console.error("退出会话失败:", error);
+				throw error;
+			}
 		},
-		[logoutQueue.executeQueuedOperation, logoutSessionMutation],
+		[updateInstance, logoutSessionMutation],
 	);
 
-	// Restart session
+	// Restart session (直接执行，不通过队列)
 	const restartSession = useCallback(
 		async (
 			instanceId: string,
 			userWahaApiEndpoint?: string,
 			userWahaApiKey?: string,
 		) => {
-			// 实例状态更新为连接中
-			await updateInstance({
-				id: instanceId,
-				status: "connecting",
-			});
+			try {
+				// 实例状态更新为连接中
+				await updateInstance({
+					id: instanceId,
+					status: "connecting",
+				});
 
-			// 通过队列重启会话
-			return restartQueue.executeQueuedOperation({
-				instanceId,
-				userWahaApiEndpoint,
-				userWahaApiKey,
-				executeOperation: async () => {
-					return restartSessionMutation.mutateAsync({
-						instanceId,
-						userWahaApiEndpoint,
-						userWahaApiKey,
-					});
-				},
-			});
+				// 直接执行重启会话
+				const result = await restartSessionMutation.mutateAsync({
+					instanceId,
+					userWahaApiEndpoint,
+					userWahaApiKey,
+				});
+
+				// 实例状态更新为已连接
+				await updateInstance({
+					id: instanceId,
+					status: "connected",
+				});
+
+				return result;
+			} catch (error) {
+				// 失败时更新状态为断开
+				await updateInstance({
+					id: instanceId,
+					status: "disconnected",
+				});
+				throw error;
+			}
 		},
-		[
-			updateInstance,
-			restartQueue.executeQueuedOperation,
-			restartSessionMutation,
-		],
+		[updateInstance, restartSessionMutation],
 	);
 
-	// Retry session creation
+	// Retry session creation (直接重试，不通过队列)
 	const retrySession = useCallback(
 		async (
 			instanceId: string,
@@ -325,70 +220,15 @@ export function useWhatsAppSession() {
 			userWahaApiKey?: string,
 		) => {
 			try {
-				const operation = createQueue.queueState.operation;
-
-				// 根据操作类型选择正确的队列和执行方法
-				switch (operation) {
-					case "create":
-						await createSession(
-							instanceId,
-							userWahaApiEndpoint,
-							userWahaApiKey,
-						);
-						toast.success("正在重新创建会话");
-						break;
-					case "start":
-						await startSession(instanceId, userWahaApiEndpoint, userWahaApiKey);
-						toast.success("正在重新启动会话");
-						break;
-					case "restart":
-						await restartSession(
-							instanceId,
-							userWahaApiEndpoint,
-							userWahaApiKey,
-						);
-						toast.success("正在重新刷新会话");
-						break;
-					case "stop":
-						await stopSession(instanceId, userWahaApiEndpoint, userWahaApiKey);
-						toast.success("正在重新停止会话");
-						break;
-					case "logout":
-						await logoutSession(
-							instanceId,
-							userWahaApiEndpoint,
-							userWahaApiKey,
-						);
-						toast.success("正在重新退出会话");
-						break;
-					default:
-						// 如果不确定操作类型，默认创建会话
-						await createSession(
-							instanceId,
-							userWahaApiEndpoint,
-							userWahaApiKey,
-						);
-						toast.success("正在创建会话");
-				}
-
-				// 更新实例状态
-				await updateInstance({
-					id: instanceId,
-					status: "connecting",
-				});
+				// 默认重试创建会话
+				await createSession(instanceId, userWahaApiEndpoint, userWahaApiKey);
+				toast.success("正在重新创建会话");
 			} catch (error) {
 				toast.error(`重试操作失败: ${(error as Error).message}`);
+				throw error;
 			}
 		},
-		[
-			createQueue.queueState.operation,
-			createSession,
-			startSession,
-			restartSession,
-			stopSession,
-			logoutSession,
-			updateInstance,
-		],
+		[createSession],
 	);
 
 	// Display QR code dialog
@@ -406,14 +246,26 @@ export function useWhatsAppSession() {
 		[],
 	);
 
+	// 返回空的队列状态以保持接口兼容性
+	const emptyQueueState = {
+		status: "idle" as const,
+		queuePosition: undefined,
+		estimatedWaitTime: undefined,
+		waitingCount: undefined,
+		activeCount: undefined,
+		errorMessage: undefined,
+		currentJob: undefined,
+		operation: "create" as const,
+	};
+
 	return {
 		isLoading,
 		queueState: {
-			create: createQueue.queueState,
-			start: startQueue.queueState,
-			stop: stopQueue.queueState,
-			logout: logoutQueue.queueState,
-			restart: restartQueue.queueState,
+			create: emptyQueueState,
+			start: emptyQueueState,
+			stop: emptyQueueState,
+			logout: emptyQueueState,
+			restart: emptyQueueState,
 		},
 		createSession,
 		retrySession,

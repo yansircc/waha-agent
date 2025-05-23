@@ -27,7 +27,6 @@ export function useInstanceManager() {
 		retrySession,
 		displayQRDialog,
 		isLoading: isSessionLoading,
-		queueState,
 	} = useWhatsAppSession();
 
 	// Handle dialog open/close
@@ -50,6 +49,11 @@ export function useInstanceManager() {
 		) => {
 			if (!agentId) {
 				toast.error("请选择一个AI机器人");
+				return;
+			}
+
+			if (!apiEndpoint?.trim()) {
+				toast.error("请填写 WAHA API 端点");
 				return;
 			}
 
@@ -77,17 +81,11 @@ export function useInstanceManager() {
 
 				// 创建会话成功后处理UI状态
 				if (result) {
-					// 如果在队列中，保持对话框打开，展示队列状态
-					if (queueState.create.status === "queued") {
-						toast.success("WhatsApp账号已创建并加入队列");
-					}
-					// 如果直接完成或活跃中，关闭对话框，显示QR码扫描
-					else {
-						handleCloseAddDialog();
-						// 显示QR码扫描对话框
-						displayQRDialog(newInstance.id);
-						toast.success("WhatsApp账号已创建");
-					}
+					// 直接关闭对话框，显示QR码扫描
+					handleCloseAddDialog();
+					// 显示QR码扫描对话框
+					displayQRDialog(newInstance.id);
+					toast.success("WhatsApp账号已创建");
 				}
 			} catch (error) {
 				toast.error(`创建账号时出错: ${(error as Error).message}`);
@@ -101,7 +99,6 @@ export function useInstanceManager() {
 			handleCloseAddDialog,
 			displayQRDialog,
 			agents,
-			queueState.create.status,
 		],
 	);
 
@@ -238,14 +235,14 @@ export function useInstanceManager() {
 		handleRetrySession,
 
 		// Queue related state
-		queuePosition: queueState.create.queuePosition,
-		estimatedWaitTime: queueState.create.estimatedWaitTime,
-		isQueued: queueState.create.status === "queued",
-		isTimeout: queueState.create.status === "timeout",
-		waitingCount: queueState.create.waitingCount,
-		activeCount: queueState.create.activeCount,
-		errorMessage: queueState.create.errorMessage,
-		currentJobId: queueState.create.currentJob?.id,
+		queuePosition: undefined,
+		estimatedWaitTime: undefined,
+		isQueued: false,
+		isTimeout: false,
+		waitingCount: undefined,
+		activeCount: undefined,
+		errorMessage: undefined,
+		currentJobId: undefined,
 
 		// Webhook state and function
 		userWebhooks,

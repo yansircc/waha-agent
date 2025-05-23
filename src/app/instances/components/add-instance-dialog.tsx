@@ -129,7 +129,9 @@ export function AddInstanceDialog({
 
 						{/* 自定义 WAHA API 端点输入 */}
 						<div className="grid gap-2">
-							<Label htmlFor="wahaApi">自定义 WAHA API 端点 (可选)</Label>
+							<Label htmlFor="wahaApi">
+								自定义 WAHA API 端点 <span className="text-destructive">*</span>
+							</Label>
 							<input
 								id="wahaApi"
 								type="url"
@@ -137,9 +139,10 @@ export function AddInstanceDialog({
 								value={userWahaApiEndpoint}
 								onChange={(e) => setUserWahaApiEndpoint(e.target.value)}
 								className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+								required
 							/>
 							<p className="text-muted-foreground text-xs">
-								指定自定义的 WAHA API 端点，留空则使用默认端点。
+								请指定 WAHA API 端点。
 							</p>
 						</div>
 
@@ -332,7 +335,12 @@ export function AddInstanceDialog({
 						</Button>
 						<Button
 							type="submit"
-							disabled={!selectedAgentId || isLoading || isTimeout}
+							disabled={
+								!selectedAgentId ||
+								!userWahaApiEndpoint ||
+								isLoading ||
+								isTimeout
+							}
 						>
 							{isLoading ? (
 								<>
